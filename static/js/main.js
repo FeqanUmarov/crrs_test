@@ -16,6 +16,8 @@ const map = new ol.Map({
    TICKET
    ========================= */
 const PAGE_TICKET = window.PAGE_TICKET || null;
+const basemapApi = window.setupBasemaps?.(map, googleImagery);
+window.basemapApi = basemapApi;
 
 
 window.tv = TekuisValidator.init({
