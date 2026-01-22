@@ -723,8 +723,10 @@ function renderDataPanel(){
   loadTab('shp');
 
   const btnSave = document.getElementById('btnSaveDataPanel');
-  btnSave.addEventListener('click', saveSelectedPolygon);
-  updateAllSaveButtons();
+  if (btnSave) {
+    btnSave.addEventListener('click', saveSelectedPolygon);
+    updateAllSaveButtons();
+  }
 }
 
 /* =========================
