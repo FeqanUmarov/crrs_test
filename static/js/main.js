@@ -488,7 +488,7 @@ function fetchNecasByBboxForLayer(layer){
 }
 
 function fetchNecasByGeomForLayer(layer){
-  const { wkt, bufferMeters } = composeLayerWKTAndSuggestBuffer(layer);
+  const { wkt, bufferMeters } = window.composeLayerWKTAndSuggestBuffer?.(layer) || { wkt: null, bufferMeters: 0 };
   if (!wkt) return fetchNecasByBboxForLayer(layer);
 
   return fetch('/api/necas/parcels/by-geom/', {
@@ -570,7 +570,7 @@ function composeLayerMultiPolygonWKT(layer){
 
 
 function fetchTekuisByGeomForLayer(layer){
-  const { wkt, bufferMeters } = composeLayerWKTAndSuggestBuffer(layer);
+  const { wkt, bufferMeters } = window.composeLayerWKTAndSuggestBuffer?.(layer) || { wkt: null, bufferMeters: 0 };
   if (!wkt){
     // Heç nə formalaşmadısa — son çarə BBOX
     return fetchTekuisByBboxForLayer(layer);
@@ -585,117 +585,20 @@ function fetchTekuisByGeomForLayer(layer){
   .catch(err => console.error('TEKUİS GEOM error:', err));
 }
 
-
-
-
-
-
-
-
-let uploadedLayer = null;
-function addGeoJSONToMap(geojson){
-  const format   = new ol.format.GeoJSON();
-  const features = format.readFeatures(geojson, {
-    dataProjection: 'EPSG:4326',
-    featureProjection: 'EPSG:3857'
-  });
-  const source = new ol.source.Vector({ features });
-
-  if (uploadedLayer) map.removeLayer(uploadedLayer);
-
-  uploadedLayer = new ol.layer.Vector({
-    source,
-    style: styleByGeom
-  });
-  map.addLayer(uploadedLayer);
-
-  registerSnapSource(source);
-
-  const extent = source.getExtent();
-  map.getView().fit(extent, { padding: [20,20,20,20], duration: 600, maxZoom: 18 });
-
-  tekuisSource.clear(true);
-  tekuisCount = 0;
-  const lblT = document.getElementById('lblTekuisCount');
-  if (lblT) lblT.textContent = '(0)';
-
-
-}
-
-function styleByGeom(feature){
-  const t = feature.getGeometry().getType();
-  if (t === 'Point' || t === 'MultiPoint') {
-    return new ol.style.Style({
-      image: new ol.style.Circle({
-        radius: 5,
-        fill: new ol.style.Fill({ color: 'rgba(37,99,235,0.9)' }),
-        stroke: new ol.style.Stroke({ color: '#ffffff', width: 1.5 })
-      })
-    });
+const uploadLayerApi = window.setupUploadedLayer?.({
+  map,
+  registerSnapSource,
+  onResetTekuis: () => {
+    tekuisSource.clear(true);
+    tekuisCount = 0;
+    const lblT = document.getElementById('lblTekuisCount');
+    if (lblT) lblT.textContent = '(0)';
   }
-  if (t === 'LineString' || t === 'MultiLineString') {
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: '#2563eb', width: 2 })
-    });
-  }
-  return new ol.style.Style({
-    fill: new ol.style.Fill({ color: 'rgba(37,99,235,0.25)' }),
-    stroke: new ol.style.Stroke({ color: '#2563eb', width: 2 })
-  });
-}
+});
 
-
-
-// -- Tədqiqat layı üçün default yaşıl stil
-function styleTicketDefault(feature){
-  const t = feature.getGeometry().getType();
-  if (t === 'Point' || t === 'MultiPoint') {
-    return new ol.style.Style({
-      image: new ol.style.Circle({
-        radius: 5,
-        fill:  new ol.style.Fill({ color: 'rgba(16,185,129,0.9)' }), // #10b981
-        stroke:new ol.style.Stroke({ color: '#ffffff', width: 1.5 })
-      })
-    });
-  }
-  if (t === 'LineString' || t === 'MultiLineString') {
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: '#10b981', width: 2 })
-    });
-  }
-  return new ol.style.Style({
-    fill:   new ol.style.Fill({ color: 'rgba(16,185,129,0.25)' }),
-    stroke: new ol.style.Stroke({ color: '#10b981', width: 2 })
-  });
-}
-
-// -- Qoşma lay üçün default narıncı stil
-function styleAttachDefault(feature){
-  const t = feature.getGeometry().getType();
-  if (t === 'Point' || t === 'MultiPoint') {
-    return new ol.style.Style({
-      image: new ol.style.Circle({
-        radius: 5,
-        fill:  new ol.style.Fill({ color: 'rgba(234,88,12,0.9)' }), // #ea580c
-        stroke:new ol.style.Stroke({ color: '#ffffff', width: 1.5 })
-      })
-    });
-  }
-  if (t === 'LineString' || t === 'MultiLineString') {
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: '#ea580c', width: 2 })
-    });
-  }
-  return new ol.style.Style({
-    fill:   new ol.style.Fill({ color: 'rgba(234,88,12,0.25)' }),
-    stroke: new ol.style.Stroke({ color: '#ea580c', width: 2 })
-  });
-}
-
-
-/* =========================
-   Upload helpers (SHAPE & POINTS)
-   ========================= */
+const styleByGeom = window.styleByGeom;
+const styleTicketDefault = window.styleTicketDefault;
+const styleAttachDefault = window.styleAttachDefault;
 
 
 
@@ -723,7 +626,7 @@ async function uploadArchiveToBackend(file){
       throw new Error((await resp.text()) || `HTTP ${resp.status}`);
     }
     const geojson = await resp.json();
-    addGeoJSONToMap(geojson);
+    uploadLayerApi?.addGeoJSONToMap(geojson);
     lastUploadState.type = 'zip';
     lastUploadState.file = file;
     lastUploadState.crs  = null; // SHP üçün koordinat sistemi DB-yə yazılmır
@@ -751,7 +654,7 @@ async function uploadPointsToBackend(file, crs){
       throw new Error((await resp.text()) || `HTTP ${resp.status}`);
     }
     const geojson = await resp.json();
-    addGeoJSONToMap(geojson);
+    uploadLayerApi?.addGeoJSONToMap(geojson);
     lastUploadState.type = 'csvtxt';
     lastUploadState.file = file;
     lastUploadState.crs  = crs; // CSV/TXT üçün seçilən CRS saxlanır (attach zamanı DB-yə yazılacaq)
@@ -1943,9 +1846,9 @@ function renderBasemapsPanel(){
   `;
   openPanel('Basemaps', html);
   panelBodyEl.querySelectorAll('.basemap-item').forEach(el=>{
-    el.addEventListener('click', ()=> basemapApi?.setBasemap(el.dataset.key));
+    el.addEventListener('click', ()=> window.basemapApi?.setBasemap(el.dataset.key));
   });
-  basemapApi?.highlightSelectedBasemap();
+  window.basemapApi?.highlightSelectedBasemap();
 }
 
 
