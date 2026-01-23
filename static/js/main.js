@@ -345,10 +345,17 @@ async function fetchTekuisByAttachTicket(){
 
 
 function tekuisHasCache(){
-  try { return !!localStorage.getItem(LS_KEYS.tekuis); } catch { return false; }
+    if (tekuisCache?.hasTekuisCache) return tekuisCache.hasTekuisCache();
+    const key = PAGE_TICKET ? `tekuis_fc_${PAGE_TICKET}` : 'tekuis_fc_global';
+    try { return !!localStorage.getItem(key); } catch { return false; }
 }
 function clearTekuisCache(){
-  try { localStorage.removeItem(LS_KEYS.tekuis); } catch {}
+  if (tekuisCache?.clearTekuisCache) {
+    tekuisCache.clearTekuisCache();
+    return;
+  }
+  const key = PAGE_TICKET ? `tekuis_fc_${PAGE_TICKET}` : 'tekuis_fc_global';
+  try { localStorage.removeItem(key); } catch {}
 }
 
 // Səhifə bağlananda / refresh olanda kəsilmiş TEKUİS keşini sil
