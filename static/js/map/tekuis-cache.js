@@ -12,6 +12,9 @@ function setupTekuisCache({
 
   const geojsonFmt = new ol.format.GeoJSON();
 
+  // ADDED: localStorage yazısı uğursuz olsa belə cache-in "dirty" olduğunu saxlayır
+  let hasDirtyCache = false;
+
   function readVis() {
     try { return JSON.parse(localStorage.getItem(LS_KEYS.vis)) || {}; }
     catch { return {}; }
@@ -30,6 +33,9 @@ function setupTekuisCache({
   }
 
   function saveTekuisToLS(){
+    // CHANGED: əvvəlcə dirty flag qurulur
+    hasDirtyCache = true;
+
     try{
       const feats = tekuisSource?.getFeatures?.() || [];
       const fcObj = geojsonFmt.writeFeaturesObject(feats, {
@@ -38,6 +44,21 @@ function setupTekuisCache({
       });
       localStorage.setItem(LS_KEYS.tekuis, JSON.stringify(fcObj));
     }catch{}
+  }
+
+  function hasTekuisCache(){
+    // CHANGED: localStorage yazılmasa da dirty flag varsa true olmalıdır
+    if (hasDirtyCache) return true;
+
+    try { return !!localStorage.getItem(LS_KEYS.tekuis); }
+    catch { return false; }
+  }
+
+  function clearTekuisCache(){
+    // CHANGED: cache təmizlənəndə dirty flag sıfırlanır
+    hasDirtyCache = false;
+
+    try { localStorage.removeItem(LS_KEYS.tekuis); } catch {}
   }
 
   function loadTekuisFromLS(){
@@ -62,6 +83,10 @@ function setupTekuisCache({
       tekuisSource?.clear?.(true);
       tekuisSource?.addFeatures?.(feats);
       const nextCount = feats.length;
+
+      // ADDED: LS-dən yüklənəndə də dirty flag true olsun
+      hasDirtyCache = true;
+
       onCountChange?.(nextCount);
       return nextCount > 0;
     }catch{ return false; }
@@ -72,6 +97,8 @@ function setupTekuisCache({
     writeVis,
     setVisFlag,
     getVisFlag,
+    hasTekuisCache,
+    clearTekuisCache,
     saveTekuisToLS,
     loadTekuisFromLS
   };
