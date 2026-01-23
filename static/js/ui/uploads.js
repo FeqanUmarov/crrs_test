@@ -5,11 +5,13 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
     crs: null
   });
 
+  function ensureEditAllowed(){
+    if (!ensureEditAllowed()) return;
+    return true;
+  }
+
   async function uploadArchiveToBackend(file){
-    if (!window.EDIT_ALLOWED) {
-      Swal.fire('Diqqət', 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'warning');
-      return;
-    }
+    if (!ensureEditAllowed()) return;
 
     try {
       const fd = new FormData();
