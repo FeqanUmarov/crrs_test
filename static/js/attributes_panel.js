@@ -14,6 +14,13 @@
   const PANEL_TITLE = 'Atribut məlumatları';
   const PANEL_BODY_SELECTOR = '#side-panel .panel-body';
 
+  function getPanelApi() {
+    return {
+      openPanel: window.openPanel || window.PanelUI?.openPanel || window.MainState?.openPanel,
+      moveIndicatorToButton: window.moveIndicatorToButton || window.PanelUI?.moveIndicatorToButton || window.MainState?.moveIndicatorToButton
+    };
+  }
+
     // Sol paneldə "Attributes" düyməsini aktiv edən helper
   function setAttributesTabActive() {
     try {
@@ -27,9 +34,8 @@
       btn.classList.add('active');
 
       // Sağdakı indikator xəttini də bu düymənin yanına çək
-      if (typeof moveIndicatorToButton === 'function') {
-        moveIndicatorToButton(btn);
-      }
+      const { moveIndicatorToButton } = getPanelApi();
+      moveIndicatorToButton?.(btn);
     } catch (e) {
       console.warn('Attributes tab aktivləşdirmə xətası:', e);
     }
@@ -103,6 +109,11 @@
         <div class="hint">Xəritədə TEKUİS Parseli seçdikdə atribut sahələri burada görünəcək.</div>
       </div>
     `;
+    const { openPanel } = getPanelApi();
+    if (typeof openPanel !== 'function') {
+      console.warn('openPanel tapılmadı.');
+      return;
+    }
     openPanel(PANEL_TITLE, html);
     setAttributesTabActive();
   }
@@ -130,6 +141,11 @@
       </div>
       <div id="attr-readonly-note">Bu parsel artıq yadda saxlanıb – atributlar yalnız oxunandır.</div>
     `;
+    const { openPanel } = getPanelApi();
+    if (typeof openPanel !== 'function') {
+      console.warn('openPanel tapılmadı.');
+      return;
+    }
     openPanel(PANEL_TITLE, html);
 
     setAttributesTabActive();

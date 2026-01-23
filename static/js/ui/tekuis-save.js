@@ -77,6 +77,9 @@ function setupTekuisSave({ tekuisSource, ticket } = {}){
       const out = await resp.json();
       if (out?.ok){
         window.showToast?.(`Saxlandı: ${out.saved_count || 0} parsel`);
+        if (out.meta_id != null) {
+          window.CURRENT_META_ID = out.meta_id;
+        }
       } else {
         window.showToast?.(out?.error || 'Bilinməyən xəta');
       }

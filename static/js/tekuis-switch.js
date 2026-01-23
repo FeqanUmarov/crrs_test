@@ -31,30 +31,11 @@
 
   // Ticket və ya meta_id tapmaq üçün yardımçı funksiya
   function getCurrentIdentifier(){
-    // 1. Əvvəl window.PAGE_TICKET yoxla
-    if (window.PAGE_TICKET) {
-      return { type: 'ticket', value: window.PAGE_TICKET };
-    }
-    
-    // 2. URL-dən ticket parametrini yoxla
-    const urlParams = new URLSearchParams(window.location.search);
-    const ticketFromUrl = urlParams.get('ticket');
-    if (ticketFromUrl) {
-      return { type: 'ticket', value: ticketFromUrl };
-    }
-    
-    // 3. window.CURRENT_META_ID yoxla (əgər sistemdə belə bir dəyişən varsa)
+    // 1. window.CURRENT_META_ID yoxla (əgər sistemdə belə bir dəyişən varsa)
     if (window.CURRENT_META_ID) {
       return { type: 'meta_id', value: window.CURRENT_META_ID };
     }
-    
-    // 4. Form və ya DOM elementlərindən ticket tapmağa çalış
-    const ticketInput = document.querySelector('input[name="ticket"]');
-    if (ticketInput && ticketInput.value) {
-      return { type: 'ticket', value: ticketInput.value };
-    }
-    
-    // 5. Attach list varsa, onun meta_id-sini götür
+    // 2. Attach list varsa, onun meta_id-sini götür
     if (window.attachListData && window.attachListData.length > 0) {
       const firstAttach = window.attachListData[0];
       if (firstAttach.meta_id) {
@@ -62,12 +43,30 @@
       }
     }
     
-    // 6. GIS data obyektlərindən meta_id tapmağa çalış
+    // 3. GIS data obyektlərindən meta_id tapmağa çalış
     if (window.gisDataFeatures && window.gisDataFeatures.length > 0) {
       const firstFeature = window.gisDataFeatures[0];
       if (firstFeature.properties && firstFeature.properties.fk_metadata) {
         return { type: 'meta_id', value: firstFeature.properties.fk_metadata };
       }
+    }
+    
+    // 4. Əvvəl window.PAGE_TICKET yoxla
+    if (window.PAGE_TICKET) {
+      return { type: 'ticket', value: window.PAGE_TICKET };
+    }
+    
+    // 5. URL-dən ticket parametrini yoxla
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticketFromUrl = urlParams.get('ticket');
+    if (ticketFromUrl) {
+      return { type: 'ticket', value: ticketFromUrl };
+    }
+    
+    // 6. Form və ya DOM elementlərindən ticket tapmağa çalış
+    const ticketInput = document.querySelector('input[name="ticket"]');
+    if (ticketInput && ticketInput.value) {
+      return { type: 'ticket', value: ticketInput.value };
     }
     
     return null;
