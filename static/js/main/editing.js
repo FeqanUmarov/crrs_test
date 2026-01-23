@@ -531,6 +531,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     }
     return true;
   }
+  window.ensureEditAllowed = ensureEditAllowed;
 
   function injectRightEditButtons(){
     const host = document.getElementById('rightTools');
@@ -776,4 +777,5 @@ window.MainEditing.init = function initEditing(state = {}) {
     updateAllSaveButtons,
     updateDeleteButtonState
   };
+  
 };

@@ -5,8 +5,14 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
     crs: null
   });
 
-  function ensureEditAllowed(){
-    if (!ensureEditAllowed()) return;
+  function ensureEditAllowed(title = 'Diqqət') {
+    if (typeof window.ensureEditAllowed === 'function') {
+      return window.ensureEditAllowed(title);
+    }
+    if (!window.EDIT_ALLOWED) {
+      Swal.fire(title, 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'warning');
+      return false;
+    }
     return true;
   }
 
@@ -36,10 +42,7 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
   }
 
   async function uploadPointsToBackend(file, crs){
-    if (!window.EDIT_ALLOWED) {
-      Swal.fire('Diqqət', 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'warning');
-      return;
-    }
+    if (!ensureEditAllowed()) return;
     try {
       const fd = new FormData();
       fd.append('file', file);
