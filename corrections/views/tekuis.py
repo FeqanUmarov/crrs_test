@@ -15,7 +15,7 @@ from shapely.geometry import mapping, shape as shapely_shape
 from .attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_zip_file, _smb_net_use
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
-from .tekuis_validation import ignore_gap, validate_tekuis
+from corrections.tekuis_validation import ignore_gap, validate_tekuis
 
 TEKUIS_ATTRS = (
     "LAND_CATEGORY2ENUM",
