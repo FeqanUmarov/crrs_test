@@ -12,6 +12,44 @@ from .geo_utils import _clean_wkt_text, _payload_to_wkt_list
 from .mssql import PYODBC_AVAILABLE, _is_edit_allowed_for_fk, _mssql_clear_objectid, _mssql_set_objectid
 
 
+TEKUIS_PARCEL_TABLE = "public.tekuis_parcel"
+TEKUIS_PARCEL_OLD_TABLE = "public.tekuis_parcel_old"
+GIS_DATA_TABLE = "public.gis_data"
+ATTACH_FILE_TABLE = "public.attach_file"
+
+
+def _soft_delete_table_by_meta_id(cur, table_name, meta_column, meta_id, *, touch_last_edited=False):
+    update_parts = ["status = 0"]
+    if touch_last_edited:
+        update_parts.append("last_edited_date = NOW()")
+    update_clause = ", ".join(update_parts)
+    cur.execute(
+        f"""
+            UPDATE {table_name}
+               SET {update_clause}
+             WHERE {meta_column} = %s::int
+               AND COALESCE(status, 1) <> 0
+        """,
+        [meta_id],
+    )
+    return cur.rowcount or 0
+
+
+def _soft_delete_tekuis_current(cur, meta_id):
+    cur.execute(
+        f"""
+            UPDATE {TEKUIS_PARCEL_TABLE}
+               SET status = 0,
+                   last_edited_date = NOW()
+             WHERE meta_id = %s::int
+               AND COALESCE(status, 1) <> 0
+         RETURNING tekuis_id
+        """,
+        [meta_id],
+    )
+    return [row[0] for row in cur.fetchall()]
+
+
 # ==========================
 # PostGIS insert (save)
 # ==========================
@@ -180,45 +218,33 @@ def soft_delete_gis_by_ticket(request):
 
     with transaction.atomic():
         with connection.cursor() as cur:
-            # 1) TEKUIS: schema-ni tam yaz + cast et, RETURNING ilə diaqnostika
-            cur.execute(
-                """
-                UPDATE public.tekuis_parcel
-                SET status = 0,
-                    last_edited_date = NOW()
-                WHERE meta_id = %s::int
-                  AND COALESCE(status, 1) <> 0
-                RETURNING tekuis_id
-            """,
-                [meta_id_int],
-            )
-            updated_rows = cur.fetchall()  # təsirlənən sətrlərin id-ləri
+            updated_rows = _soft_delete_tekuis_current(cur, meta_id_int)
             affected_parcel = len(updated_rows)
 
-            # 2) GIS DATA
-            cur.execute(
-                """
-                UPDATE public.gis_data
-                SET status = 0,
-                    last_edited_date = NOW()
-                WHERE fk_metadata = %s::int
-                  AND COALESCE(status, 1) <> 0
-            """,
-                [meta_id_int],
+            affected_parcel_old = _soft_delete_table_by_meta_id(
+                cur,
+                TEKUIS_PARCEL_OLD_TABLE,
+                "meta_id",
+                meta_id_int,
             )
-            affected_gis = cur.rowcount or 0
+
+            # 2) GIS DATA
+            affected_gis = _soft_delete_table_by_meta_id(
+                cur,
+                GIS_DATA_TABLE,
+                "fk_metadata",
+                meta_id_int,
+                touch_last_edited=True,
+            )
+
 
             # 3) ATTACH
-            cur.execute(
-                """
-                UPDATE public.attach_file
-                SET status = 0
-                WHERE meta_id = %s::int
-                  AND COALESCE(status, 1) <> 0
-            """,
-                [meta_id_int],
+            affected_attach = _soft_delete_table_by_meta_id(
+                cur,
+                ATTACH_FILE_TABLE,
+                "meta_id",
+                meta_id_int,
             )
-            affected_attach = cur.rowcount or 0
 
         try:
             objectid_nullified = _mssql_clear_objectid(meta_id_int)
@@ -230,6 +256,7 @@ def soft_delete_gis_by_ticket(request):
             "ok": True,
             "meta_id": meta_id_int,
             "affected_parcel": affected_parcel,
+            "affected_parcel_old": affected_parcel_old,
             "affected_gis": affected_gis,
             "affected_attach": affected_attach,
             "objectid_nullified": bool(objectid_nullified),
