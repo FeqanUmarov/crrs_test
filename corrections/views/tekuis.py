@@ -796,7 +796,7 @@ def _insert_tekuis_rows(
         geom_json = json.dumps(geom)
 
 
-                if include_user_fields:
+        if include_user_fields:
             cur.execute(
                 f"""
                 INSERT INTO {table_name} (

@@ -587,9 +587,14 @@ async function validateTekuisLocal(featureCollection){
   return validateTekuisBothKinds(featureCollection);
 }
 
+function isValidFeatureCollection(fc){
+  return !!fc && fc.type === 'FeatureCollection' && Array.isArray(fc.features);
+}
+
+
 
 // --- Serverdə yadda saxla ---------------------------------------------------
-async function saveTekuisOnServer(featureCollection, { ignored, skipValidation } = {}) {
+async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, originalGeojson } = {}) {
   // Lokal header-lar
   const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
@@ -598,7 +603,16 @@ async function saveTekuisOnServer(featureCollection, { ignored, skipValidation }
   const metaRaw = (typeof window.META_ID !== 'undefined') ? window.META_ID : null;
   const metaInt = metaRaw != null && String(metaRaw).trim() !== '' ? parseInt(metaRaw, 10) : null;
 
-  const body = { geojson: featureCollection, ticket };
+  const originalFc = originalGeojson || window.tekuisCache?.getOriginalTekuis?.();
+  if (!isValidFeatureCollection(originalFc)) {
+    return {
+      ok: false,
+      status: 400,
+      data: { error: 'original_geojson FeatureCollection tələb olunur' }
+    };
+  }
+
+  const body = { geojson: featureCollection, original_geojson: originalFc, ticket };
   if (Number.isFinite(metaInt)) body.meta_id = metaInt;
 
   // Eyni geometriyadırsa serverdə də validasiyanı ötür
@@ -699,6 +713,13 @@ async function tryValidateAndSaveTekuis(){
     return;
   }
 
+  const originalFc = window.tekuisCache?.getOriginalTekuis?.();
+  if (!isValidFeatureCollection(originalFc)) {
+    Swal.fire('Xəta', 'Köhnə TEKUİS məlumatı tapılmadı. Zəhmət olmasa canlı məlumatı yeniləyin.', 'error');
+    return;
+  }
+
+
   const src = getTekuisSourceSmart();
   const feats = src?.getFeatures?.() || [];
   if (feats.length === 0){
@@ -765,7 +786,8 @@ async function tryValidateAndSaveTekuis(){
   try {
     const s = await saveTekuisOnServer(fc, {
       ignored: ignoredPayload,
-      skipValidation: shouldSkipValidation
+      skipValidation: shouldSkipValidation,
+      originalGeojson: originalFc
     });
 
     if (!s.ok){
