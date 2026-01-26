@@ -23,7 +23,20 @@ TEKUIS_DB_SELECT_COLUMNS = (
 )
 
 
-def _build_tekuis_select_sql():
+TEKUIS_DB_TABLES = {
+    "current": "tekuis_parcel",
+    "old": "tekuis_parcel_old",
+}
+
+
+def _resolve_tekuis_table(source):
+    normalized = (source or "current").strip().lower()
+    if normalized not in TEKUIS_DB_TABLES:
+        raise ValueError("source yalnız current və ya old ola bilər.")
+    return TEKUIS_DB_TABLES[normalized]
+
+
+def _build_tekuis_select_sql(table_name: str):
     column_sql = ",\n            ".join(
         f'{col} AS "{alias}"' if alias else col for col, alias in TEKUIS_DB_SELECT_COLUMNS
     )
@@ -31,7 +44,7 @@ def _build_tekuis_select_sql():
         SELECT
             {column_sql},
             ST_AsGeoJSON(geom, 7) AS geom_geojson
-        FROM tekuis_parcel
+        FROM {table_name}
         WHERE meta_id = %s
           AND status = 1
     """
@@ -42,12 +55,19 @@ def _build_tekuis_select_sql():
 def tekuis_parcels_by_db(request):
     """
     GeoJSON FeatureCollection:
+    - ?source=current|old (current = tekuis_parcel, old = tekuis_parcel_old)
     - ?meta_id=XXX (üstün)
     - və ya ?ticket=ABC  -> helper ilə meta_id tapılır
     - status=1 filtrini tətbiq edir (cədvəldə status yoxdursa, şərti silmək olar)
     """
     meta_id = request.GET.get("meta_id")
     ticket  = request.GET.get("ticket")
+    source = request.GET.get("source")
+
+    try:
+        table_name = _resolve_tekuis_table(source)
+    except ValueError as exc:
+        return HttpResponseBadRequest(str(exc))
 
     if not meta_id:
         if not ticket:
@@ -61,7 +81,7 @@ def tekuis_parcels_by_db(request):
     except ValueError:
         return HttpResponseBadRequest("meta_id rəqəm olmalıdır.")
 
-    sql = _build_tekuis_select_sql()
+    sql = _build_tekuis_select_sql(table_name)
     features = []
     with connection.cursor() as cur:
         cur.execute(sql, [meta_id_int])

@@ -1,10 +1,25 @@
 // tekuis-switch.js
-// TEKUİS mənbə rejimi: 'live' (cari TEKUİS) | 'db' (PostgreSQL tekuis_parcel, status=1)
+// TEKUİS mənbə rejimi: 'old' (tekuis_parcel_old) | 'current' (tekuis_parcel)
 (function(){
-  let TEKUIS_MODE = 'live';
+  let TEKUIS_MODE = 'current';
+
+  const TEKUIS_SOURCES = {
+    old: {
+      label: 'tekuis_parcel_old',
+      title: 'tekuis_parcel məlumatlarına keç',
+      uiClass: 'is-old',
+      note: 'Mənbə: tekuis_parcel_old'
+    },
+    current: {
+      label: 'tekuis_parcel',
+      title: 'tekuis_parcel_old məlumatlarına keç',
+      uiClass: 'is-current',
+      note: 'Mənbə: tekuis_parcel'
+    }
+  };
 
   function setTekuisMode(mode){
-    TEKUIS_MODE = (mode === 'db') ? 'db' : 'live';
+    TEKUIS_MODE = (mode === 'old') ? 'old' : 'current';
     updateTekuisSwitchUI();
   }
 
@@ -13,30 +28,22 @@
     const small = document.querySelector('#cardTekuis .small');
     if (!btn || !small) return;
 
-    if (TEKUIS_MODE === 'live'){
-      btn.title = 'PostgreSQL (status=1) məlumatlarına keç';
-      btn.classList.remove('is-db');
-      btn.classList.add('is-live');
-      small.textContent = (window.TEXT_TEKUIS_DEFAULT || 'TEKUİS sisteminin parsel məlumatları.') + ' (Mənbə: TEKUİS – canlı)';
-    } else {
-      btn.title = 'TEKUİS canlı məlumata qayıt';
-      btn.classList.remove('is-live');
-      btn.classList.add('is-db');
-      small.textContent =
-        (window.TEXT_TEKUIS_DB_DEFAULT || 'Tədqiqat nəticəsində dəyişiklik eilərək saxlanılan TEKUİS parselləri')
-        + ' (Mənbə: DB)';
+    const source = TEKUIS_SOURCES[TEKUIS_MODE] || TEKUIS_SOURCES.current;
+    const other = TEKUIS_MODE === 'old' ? TEKUIS_SOURCES.current : TEKUIS_SOURCES.old;
 
-    }
+    btn.title = other.title;
+    btn.classList.remove('is-old', 'is-current');
+    btn.classList.add(source.uiClass);
+
+    const description = TEKUIS_MODE === 'old'
+      ? (window.TEXT_TEKUIS_DB_DEFAULT || 'Tədqiqat nəticəsində dəyişiklik eilərək saxlanılan TEKUİS parselləri')
+      : (window.TEXT_TEKUIS_DEFAULT || 'TEKUİS sisteminin parsel məlumatları.');
+
+    small.textContent = `${description} (${source.note})`;
   }
 
   function getNextTekuisMode(){
-    return TEKUIS_MODE === 'db' ? 'live' : 'db';
-  }
-
-  function getRefreshTekuisFromAttach(){
-    return window.refreshTekuisFromAttachIfAny
-      || window.MainState?.refreshTekuisFromAttachIfAny
-      || window.MainState?.layers?.refreshTekuisFromAttachIfAny;
+    return TEKUIS_MODE === 'current' ? 'old' : 'current';
   }
 
 
@@ -87,7 +94,7 @@
     return null;
   }
 
-  async function fetchTekuisFromDb({ metaId=null } = {}){
+ async function fetchTekuisFromDb({ metaId=null, source=null } = {}){
     // Əgər parametr verilməyibsə, avtomatik tap
     if (!metaId) {
       const identifier = getCurrentIdentifier();
@@ -116,6 +123,9 @@
         return;
       }
     }
+    if (source) {
+      qs.set('source', source);
+    }
 
     const url = `/api/tekuis/parcels/by-db/?${qs.toString()}`;
     console.log('TEKUİS DB sorğusu:', url);
@@ -142,6 +152,12 @@
     }
   }
 
+  async function showTekuisSource(mode, metaId = null){
+    const normalizedMode = mode === 'old' ? 'old' : 'current';
+    setTekuisMode(normalizedMode);
+    await fetchTekuisFromDb({ source: normalizedMode, metaId });
+  }
+
   // TEKUİS kartı DOM-a gələndə düyməni yerinə tik
   function ensureSwitchButton(){
     const card = document.getElementById('cardTekuis');
@@ -153,31 +169,21 @@
     if (!document.getElementById('btnSwitchTekuis')){
       const btn = document.createElement('button');
       btn.id = 'btnSwitchTekuis';
-      btn.className = 'icon-btn ico-switch is-live';
-      btn.title = 'Mənbəni dəyiş (TEKUİS ↔ DB)';
+      btn.className = 'icon-btn ico-switch is-current';
+      btn.title = 'Mənbəni dəyiş (tekuis_parcel ↔ tekuis_parcel_old)';
       actions.prepend(btn);
 
       btn.addEventListener('click', async ()=>{
         const nextMode = getNextTekuisMode();
-        if (nextMode === 'db'){
-          // Əvvəlcə identifier olub-olmadığını yoxla
-          const identifier = getCurrentIdentifier();
-          if (!identifier) {
-            Swal.fire('Diqqət', 'Əvvəlcə məlumat yükləyin və ya ticket daxil edin.', 'warning');
-            return;
-          }
-          setTekuisMode('db');
-          await fetchTekuisFromDb();
-        } else {
-          setTekuisMode('live');
-          // canlı TEKUİS-ə qayıdış: qoşma geometriyasına görə çək (force=true)
-                    const refreshTekuis = getRefreshTekuisFromAttach();
-          if (refreshTekuis) {
-            await refreshTekuis(true);
-          } else {
-            console.warn('TEKUİS canlı yeniləmə funksiyası tapılmadı');
-          }
+        // Əvvəlcə identifier olub-olmadığını yoxla
+        const identifier = getCurrentIdentifier();
+        if (!identifier) {
+          Swal.fire('Diqqət', 'Əvvəlcə məlumat yükləyin və ya ticket daxil edin.', 'warning');
+          return;
         }
+
+        setTekuisMode(nextMode);
+        await fetchTekuisFromDb({ source: nextMode });
 
         const chk = document.getElementById('chkTekuisLayer');
         const tekuisVisible = chk ? chk.checked : true;
@@ -204,6 +210,7 @@
     setMode: setTekuisMode,
     getMode: () => TEKUIS_MODE,
     fetchFromDb: fetchTekuisFromDb,
+    showSource: showTekuisSource,
     getCurrentIdentifier: getCurrentIdentifier
   };
 })();

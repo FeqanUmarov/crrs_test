@@ -715,7 +715,7 @@ async function tryValidateAndSaveTekuis(){
 
   const originalFc = window.tekuisCache?.getOriginalTekuis?.();
   if (!isValidFeatureCollection(originalFc)) {
-    Swal.fire('Xəta', 'Köhnə TEKUİS məlumatı tapılmadı. Zəhmət olmasa canlı məlumatı yeniləyin.', 'error');
+    Swal.fire('Xəta', 'Köhnə TEKUİS məlumatı tapılmadı. Zəhmət olmasa tekuis_parcel_old məlumatını yeniləyin.', 'error');
     return;
   }
 
@@ -809,6 +809,13 @@ async function tryValidateAndSaveTekuis(){
 
     if (s.data?.meta_id != null) {
       window.CURRENT_META_ID = s.data.meta_id;
+    }
+
+    try {
+      const metaId = s.data?.meta_id ?? window.CURRENT_META_ID ?? null;
+      await window.TekuisSwitch?.showSource?.('current', metaId);
+    } catch (e) {
+      console.warn('TEKUİS cari mənbə yenilənmədi:', e);
     }
     
     Swal.fire('Uğurlu', `${s.data?.saved_count ?? feats.length} TEKUİS parseli bazaya yazıldı.`, 'success');

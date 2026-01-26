@@ -642,8 +642,8 @@ body, button, input, select, textarea {
 
 
 .ico-switch { background-image:url('/static/icons/images/switch.png'); }
-#btnSwitchTekuis.is-live  { box-shadow: 0 0 0 2px rgba(37,99,235,.20) inset; }
-#btnSwitchTekuis.is-db    { box-shadow: 0 0 0 2px rgba(16,185,129,.22) inset; }
+#btnSwitchTekuis.is-old      { box-shadow: 0 0 0 2px rgba(37,99,235,.20) inset; }
+#btnSwitchTekuis.is-current  { box-shadow: 0 0 0 2px rgba(16,185,129,.22) inset; }
 
 
 
