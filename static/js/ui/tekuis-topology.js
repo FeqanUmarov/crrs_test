@@ -10,6 +10,28 @@ const renderTopoErrorsOnMap = mapContext.renderTopoErrorsOnMap || window.renderT
 const zoomAndHighlightTopoGeometry = mapContext.zoomAndHighlightTopoGeometry || window.zoomAndHighlightTopoGeometry;
 const saveTekuisToLocal = () => window.saveTekuisToLS?.();
 const clearTekuisCache = () => window.tekuisCache?.clearTekuisCache?.();
+const DEFAULT_TOPO_MIN_AREA_SQM = 0.0001;
+
+function resolveTopoMinAreaSqm(){
+  const raw = (window.TOPO_MIN_AREA_SQM ?? window.TOPO_MAX_ERROR_SQM);
+  if (Number.isFinite(+raw)) return Math.max(0, +raw);
+  return DEFAULT_TOPO_MIN_AREA_SQM;
+}
+
+function syncTopoMinArea(){
+  const minArea = resolveTopoMinAreaSqm();
+  if (window.tv && typeof window.tv.setMinAreaSqm === 'function') {
+    window.tv.setMinAreaSqm(minArea);
+  }
+  return minArea;
+}
+
+function formatAreaSqm(value){
+  if (!Number.isFinite(+value)) return '—';
+  const area = Math.max(0, +value);
+  const digits = area >= 1 ? 2 : (area >= 0.01 ? 4 : 6);
+  return Number(area.toFixed(digits)).toString();
+}
 
 // TEKUİS GeoJSON FeatureCollection (EPSG:4326) çıxarır
 function getTekuisFeatureCollection() {
@@ -343,10 +365,12 @@ function openTopologyModal(validation){
 
   const s = validation?.stats || {};
   const eff = computeEffective(validation);
+  const minArea = window.tv?.getMinAreaSqm?.() ?? resolveTopoMinAreaSqm();
   modal.querySelector('#topo-summary').innerHTML =
     `Feature sayı: <b>${s.n_features ?? 0}</b> &nbsp; | &nbsp; ` +
     `Overlap: <b>${eff.overlapsLeft}</b> / ${eff.overlapsTotal} (sayılmayan: ${eff.overlapsIgnored}) &nbsp; | &nbsp; ` +
-    `Gap: <b>${eff.gapsLeft}</b> / ${eff.gapsTotal} (sayılmayan: ${eff.gapsIgnored})`;
+    `Gap: <b>${eff.gapsLeft}</b> / ${eff.gapsTotal} (sayılmayan: ${eff.gapsIgnored}) &nbsp; | &nbsp; ` +
+    `Min sahə: <b>${formatAreaSqm(minArea)}</b> m²`;
 
 // Overlaps
   const ovSec  = modal.querySelector('#topo-overlaps-sec');
@@ -364,7 +388,7 @@ function openTopologyModal(validation){
       el.dataset.key  = key;
       el.innerHTML = `
         <div>
-          #${i+1} — sahə: <b>${o.area_sqm ?? '—'}</b> m²
+          #${i+1} — sahə: <b>${formatAreaSqm(o.area_sqm)}</b> m²
           <span class="badge-ignored ${ignored ? '' : 'hidden'}">sayılmır</span>
         </div>
         <div class="topo-actions">
@@ -436,7 +460,7 @@ function openTopologyModal(validation){
       el.dataset.key  = key;
       el.innerHTML = `
         <div>
-          #${i+1} — boşluq sahəsi: <b>${g.area_sqm ?? '—'}</b> m²
+          #${i+1} — boşluq sahəsi: <b>${formatAreaSqm(g.area_sqm)}</b> m²
           <span class="badge-ignored ${ignored ? '' : 'hidden'}">sayılmır</span>
         </div>
         <div class="topo-actions">
@@ -766,6 +790,7 @@ async function tryValidateAndSaveTekuis(){
   
   // 2) Skip edilməzsə → yenidən validate et
   if (!shouldSkipValidation) {
+    syncTopoMinArea();
     const res = await validateTekuisLocal(fc);
     validationResult = res?.validation || {};
     window._lastTopoValidation = validationResult;

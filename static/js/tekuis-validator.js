@@ -21,7 +21,10 @@
   let DEFAULT_GAP_FRAME = "ticket";
 
   // Səs-küy kimi sayılacaq minimal sahə (m²)
-  let MIN_AREA_SQM = 0.25;
+  const DEFAULT_MIN_AREA_SQM = 0.0001;
+  const clampMinArea = (value) =>
+    Number.isFinite(+value) ? Math.max(0, +value) : DEFAULT_MIN_AREA_SQM;
+  let MIN_AREA_SQM = clampMinArea(window.TOPO_MIN_AREA_SQM ?? window.TOPO_MAX_ERROR_SQM);
 
   /* =========================================================
      UTIL-LƏR
@@ -43,11 +46,6 @@
     await loadScriptOnce(TURF_URL);
     if (!window.turf) throw new Error("Turf.js yüklənmədi");
     return window.turf;
-  }
-
-  function round(n, p = 2) {
-    const k = Math.pow(10, p);
-    return Math.round(n * k) / k;
   }
 
   // GeoJSON Geometry (EPSG:4326) → OL Geometry (EPSG:3857)
@@ -123,7 +121,7 @@
               return;
             const area = turf.area(f);
             if (area >= MIN_AREA_SQM) {
-              out.push({ geom: f.geometry, area_sqm: round(area, 2) });
+              out.push({ geom: f.geometry, area_sqm: area });
             }
           });
         } catch {
@@ -196,7 +194,7 @@
         )
           return;
         const a = turf.area(f);
-        if (a >= MIN_AREA_SQM) res.push({ geom: f.geometry, area_sqm: round(a, 2) });
+        if (a >= MIN_AREA_SQM) res.push({ geom: f.geometry, area_sqm: a });
       });
       return res;
     } catch {
@@ -334,6 +332,10 @@
         },
         setMinAreaSqm(v) {
           if (Number.isFinite(+v) && +v >= 0) MIN_AREA_SQM = +v;
+          MIN_AREA_SQM = clampMinArea(v);
+        },
+        getMinAreaSqm() {
+          return MIN_AREA_SQM;
         },
 
         /**
