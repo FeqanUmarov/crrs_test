@@ -381,7 +381,58 @@ window.MainEditing.init = function initEditing(state = {}) {
   function updateCutButtonState() {
     if (!rtEditUI?.btnCut) return;
     const selected = getSelectedPolygons();
-    rtEditUI.btnCut.disabled = selected.length !== 1;
+    const hasSingle = selected.length === 1;
+    rtEditUI.btnCut.disabled = false;
+    rtEditUI.btnCut.classList.toggle('inactive', !hasSingle);
+    rtEditUI.btnCut.title = hasSingle
+      ? 'Poliqonu xətt ilə kəs'
+      : 'Poliqonu kəsmək üçün əvvəlcə tək bir parsel seçin';
+  }
+
+  function normalizePolygonFeatures(polygonFeature) {
+    const geom = polygonFeature?.geometry;
+    if (!geom) return [];
+    if (geom.type === 'Polygon') return [polygonFeature];
+    if (geom.type !== 'MultiPolygon') return [];
+    const props = polygonFeature.properties || {};
+    return geom.coordinates.map(coords => ({
+      type: 'Feature',
+      properties: { ...props },
+      geometry: { type: 'Polygon', coordinates: coords }
+    }));
+  }
+
+  function splitPolygonFeature(turf, polygonFeature, lineForSplit) {
+    if (typeof turf.polygonSplit !== 'function') {
+      return { ok: false, reason: 'no-polygon-split' };
+    }
+    try {
+      const split = turf.polygonSplit(polygonFeature, lineForSplit);
+      const splitFeatures = split?.features || [];
+      if (splitFeatures.length < 2) {
+        return { ok: true, split: false, features: [polygonFeature] };
+      }
+      return { ok: true, split: true, features: splitFeatures };
+    } catch (error) {
+      console.error('polygonSplit error', error);
+      return { ok: false, reason: 'split-failed' };
+    }
+  }
+
+  function splitPolygonGeometry(turf, polygonGJ, lineForSplit) {
+    const polygons = normalizePolygonFeatures(polygonGJ);
+    if (polygons.length === 0) return { ok: false, reason: 'no-polygon' };
+
+    let didSplit = false;
+    const outFeatures = [];
+    for (const polygonFeature of polygons) {
+      const splitResult = splitPolygonFeature(turf, polygonFeature, lineForSplit);
+      if (!splitResult.ok) return splitResult;
+      if (splitResult.split) didSplit = true;
+      outFeatures.push(...splitResult.features);
+    }
+    if (!didSplit) return { ok: false, reason: 'no-split' };
+    return { ok: true, features: outFeatures };
   }
 
   async function splitPolygonByLine(targetFeature, lineFeature) {
@@ -401,28 +452,13 @@ window.MainEditing.init = function initEditing(state = {}) {
     });
 
     const lineForSplit = extendCutLineForSplit(turf, polygonGJ, lineGJ);
+    const splitResult = splitPolygonGeometry(turf, polygonGJ, lineForSplit);
+    if (!splitResult.ok) return splitResult;
 
-    if (typeof turf.polygonSplit !== 'function') {
-      return { ok: false, reason: 'no-polygon-split' };
-    }
-
-    let split;
-    try {
-      split = turf.polygonSplit(polygonGJ, lineForSplit);
-    } catch (err) {
-      console.error('polygonSplit error', err);
-      return { ok: false, reason: 'split-failed' };
-    }
-
-    const splitFeatures = split?.features || [];
-    if (splitFeatures.length < 2) {
-      return { ok: false, reason: 'no-split' };
-    }
-
-    const newFeatures = gjFmt.readFeatures(split, {
-      dataProjection: 'EPSG:4326',
-      featureProjection: 'EPSG:3857'
-    });
+    const newFeatures = gjFmt.readFeatures(
+      { type: 'FeatureCollection', features: splitResult.features },
+      { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' }
+    );
     const baseProps = cloneFeatureAttributes(targetFeature);
 
     const selectAnyFeatures = selectAny.getFeatures();
@@ -483,18 +519,29 @@ window.MainEditing.init = function initEditing(state = {}) {
   }
 
   function ensureTekuisSnapSources() {
+    const sources = new Set();
     if (typeof tekuisSource !== 'undefined' && tekuisSource) {
-      registerSnapSource(tekuisSource);
+      sources.add(tekuisSource);
     }
     try {
       const extLayer = findExternalTekuisLayer?.();
       const extSource = extLayer?.getSource?.();
-      if (extSource) {
-        registerSnapSource(extSource);
-      }
+      if (extSource) sources.add(extSource);
     } catch (error) {
       console.warn('External TEKUİS snap source lookup failed.', error);
     }
+    const scan = (layer) => {
+      if (!layer) return;
+      if (layer instanceof ol.layer.Group) {
+        (layer.getLayers()?.getArray?.() || []).forEach(scan);
+        return;
+      }
+      if (!isTekuisLayer(layer)) return;
+      const source = layer.getSource?.();
+      if (source) sources.add(source);
+    };
+    (map.getLayers()?.getArray?.() || []).forEach(scan);
+    sources.forEach(registerSnapSource);
   }
 
   function disableCutMode({ silent = false } = {}) {
