@@ -24,6 +24,9 @@ except Exception:
 # === Parametrlər ===
 # Minimal sahə həddi (m²)
 MIN_AREA_SQM = float(getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
+# Gap signature dəqiqliyi
+GAP_SIG_BOUNDS_DECIMALS = int(getattr(settings, "TEKUIS_GAP_SIG_BOUNDS_DECIMALS", 7))
+GAP_SIG_AREA_DECIMALS = int(getattr(settings, "TEKUIS_GAP_SIG_AREA_DECIMALS", 3))
 
 # Proyeksiya çeviriciləri
 # (Daxilə 4326 gəlir; hesablamalar 3857-də aparılır; çıxış 4326 qayıdır)
@@ -71,7 +74,13 @@ def _gap_signature(g4326: BaseGeometry) -> str:
     4326-də zərfə + kvantlaşdırılmış sahə istifadə olunur (stabil olsun deyə).
     """
     minx, miny, maxx, maxy = g4326.envelope.bounds
-    sig = f"{round(minx,6)},{round(miny,6)},{round(maxx,6)},{round(maxy,6)}|{round(_geom_area_sqm(g4326),1)}"
+    sig = (
+        f"{round(minx, GAP_SIG_BOUNDS_DECIMALS)},"
+        f"{round(miny, GAP_SIG_BOUNDS_DECIMALS)},"
+        f"{round(maxx, GAP_SIG_BOUNDS_DECIMALS)},"
+        f"{round(maxy, GAP_SIG_BOUNDS_DECIMALS)}|"
+        f"{round(_geom_area_sqm(g4326), GAP_SIG_AREA_DECIMALS)}"
+    )
     return hashlib.md5(sig.encode("utf-8")).hexdigest()
 
 

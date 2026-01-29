@@ -140,8 +140,8 @@ NODE_REDEEM_EXP_SKEW_SEC = env("NODE_REDEEM_EXP_SKEW_SEC", "15", cast=int)  # ki
 NODE_REDEEM_BEARER       = env("NODE_REDEEM_BEARER", "")               # lazım deyilsə boş qalsın
 
 
-TEKUIS_VALIDATION_MIN_OVERLAP_SQM = 0.25   # çox xırda sliver-lər itməsin deyirsənsə 0.01 də verə bilərsən
-TEKUIS_VALIDATION_MIN_GAP_SQM     = 5.0
+TEKUIS_VALIDATION_MIN_OVERLAP_SQM = 0.01   # ArcGIS Pro həssaslığına yaxınlaşdırmaq üçün xırda sliver-ləri də tut
+TEKUIS_VALIDATION_MIN_GAP_SQM     = 0.01   # çox kiçik boşluqların itməməsi üçün aşağı hədd
 
 
 # ======================
