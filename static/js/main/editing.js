@@ -185,6 +185,10 @@ window.MainEditing.init = function initEditing(state = {}) {
 
   registerSnapSource(editSource);
 
+  if (tekuisSource) {
+    registerSnapSource(tekuisSource);
+  }
+
 
   // Draw (Polygon)
   let drawInteraction = null;
@@ -320,6 +324,248 @@ window.MainEditing.init = function initEditing(state = {}) {
     return props;
   }
 
+  function getSingleSelectedPolygon() {
+    const selected = getSelectedPolygons();
+    if (selected.length === 0) {
+      Swal.fire('Info', 'Cut üçün əvvəlcə 1 poliqon seçin.', 'info');
+      return null;
+    }
+    if (selected.length > 1) {
+      Swal.fire('Info', 'Cut üçün yalnız 1 poliqon seçilə bilər.', 'info');
+      return null;
+    }
+    return selected[0];
+  }
+
+  async function ensureTurf() {
+    if (window.turf) return window.turf;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js';
+      s.onload = () => resolve(window.turf);
+      s.onerror = () => reject(new Error('turf.js yüklənmədi'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function createCutLineLayer() {
+    const lineSource = new ol.source.Vector();
+    const lineLayer = new ol.layer.Vector({
+      source: lineSource,
+      style: new ol.style.Style({
+        stroke: new ol.style.Stroke({
+          color: '#2563eb',
+          width: 3,
+          lineDash: [10, 8]
+        })
+      })
+    });
+    lineLayer.set('selectIgnore', true);
+    lineLayer.set('infoIgnore', true);
+    lineLayer.setZIndex(50);
+    map.addLayer(lineLayer);
+    return { lineSource, lineLayer };
+  }
+
+  function clearCutLine(lineSource) {
+    if (lineSource) lineSource.clear(true);
+  }
+
+  function setCutButtonActive(on) {
+    if (rtEditUI?.btnCut) {
+      rtEditUI.btnCut.classList.toggle('active', !!on);
+    }
+  }
+
+  function updateCutButtonState() {
+    if (!rtEditUI?.btnCut) return;
+    const selected = getSelectedPolygons();
+    rtEditUI.btnCut.disabled = selected.length !== 1;
+  }
+
+  async function splitPolygonByLine(targetFeature, lineFeature) {
+    if (!targetFeature || !lineFeature) return { ok: false, reason: 'no-target' };
+    const hit = findVectorLayerAndSourceOfFeature(targetFeature);
+    if (!hit?.source) return { ok: false, reason: 'no-source' };
+
+    const gjFmt = new ol.format.GeoJSON();
+    const turf = await ensureTurf();
+    const polygonGJ = gjFmt.writeFeatureObject(targetFeature, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+    const lineGJ = gjFmt.writeFeatureObject(lineFeature, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+
+    const lineInside = turf.booleanWithin(lineGJ, polygonGJ);
+    if (lineInside) {
+      return { ok: false, reason: 'line-inside' };
+    }
+
+    if (typeof turf.polygonSplit !== 'function') {
+      return { ok: false, reason: 'no-polygon-split' };
+    }
+
+    let split;
+    try {
+      split = turf.polygonSplit(polygonGJ, lineGJ);
+    } catch (err) {
+      console.error('polygonSplit error', err);
+      return { ok: false, reason: 'split-failed' };
+    }
+
+    const splitFeatures = split?.features || [];
+    if (splitFeatures.length < 2) {
+      return { ok: false, reason: 'no-split' };
+    }
+
+    const newFeatures = gjFmt.readFeatures(split, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+    const baseProps = cloneFeatureAttributes(targetFeature);
+
+    const selectAnyFeatures = selectAny.getFeatures();
+    const selectInteractionFeatures = selectInteraction.getFeatures();
+    const wasInSelectAny = selectAnyFeatures.getArray().includes(targetFeature);
+    const wasInSelectInteraction = selectInteractionFeatures.getArray().includes(targetFeature);
+
+    try { hit.source.removeFeature(targetFeature); } catch {}
+    if (wasInSelectAny) { try { selectAnyFeatures.remove(targetFeature); } catch {} }
+    if (wasInSelectInteraction) { try { selectInteractionFeatures.remove(targetFeature); } catch {} }
+
+    newFeatures.forEach((feature) => {
+      feature.setProperties(baseProps);
+      hit.source.addFeature(feature);
+    });
+
+    if (wasInSelectAny) {
+      newFeatures.forEach(f => selectAnyFeatures.push(f));
+    }
+    if (wasInSelectInteraction) {
+      newFeatures.forEach(f => selectInteractionFeatures.push(f));
+    }
+
+    try { window.saveTekuisToLS?.(); } catch {}
+    updateDeleteButtonState();
+    updateAllSaveButtons();
+    updateCutButtonState();
+
+    return { ok: true, createdCount: newFeatures.length };
+  }
+
+  const cutState = {
+    enabled: false,
+    targetFeature: null,
+    draw: null,
+    lineSource: null,
+    lineLayer: null,
+    wasSnapEnabled: false,
+    escHandler: null
+  };
+
+  function disableCutMode({ silent = false } = {}) {
+    if (cutState.draw) {
+      try { map.removeInteraction(cutState.draw); } catch {}
+      cutState.draw = null;
+    }
+    if (cutState.lineSource) {
+      clearCutLine(cutState.lineSource);
+    }
+    if (!cutState.wasSnapEnabled) {
+      disableSnap();
+    }
+    cutState.targetFeature = null;
+    cutState.enabled = false;
+    setCutButtonActive(false);
+    resumeEditingInteractions();
+
+    if (cutState.escHandler) {
+      document.removeEventListener('keydown', cutState.escHandler);
+      cutState.escHandler = null;
+    }
+
+    if (!silent) {
+      updateCutButtonState();
+    }
+  }
+
+  async function enableCutMode() {
+    if (!ensureEditAllowed()) return;
+    const targetFeature = getSingleSelectedPolygon();
+    if (!targetFeature) return;
+
+    cutState.targetFeature = targetFeature;
+    cutState.enabled = true;
+    setCutButtonActive(true);
+    pauseEditingInteractions();
+    const prevSnapEnabled = snapState.enabled;
+    stopDraw(true);
+
+    if (!cutState.lineSource || !cutState.lineLayer) {
+      const layerInfo = createCutLineLayer();
+      cutState.lineSource = layerInfo.lineSource;
+      cutState.lineLayer = layerInfo.lineLayer;
+    } else {
+      clearCutLine(cutState.lineSource);
+    }
+
+    cutState.wasSnapEnabled = prevSnapEnabled;
+    if (!snapState.enabled) {
+      enableSnap();
+    } else {
+      refreshSnapOrder();
+    }
+
+    cutState.draw = new ol.interaction.Draw({
+      source: cutState.lineSource,
+      type: 'LineString'
+    });
+    map.addInteraction(cutState.draw);
+
+    cutState.draw.on('drawend', async (evt) => {
+      const lineFeature = evt.feature;
+      const result = await splitPolygonByLine(cutState.targetFeature, lineFeature);
+
+      if (!result.ok) {
+        if (result.reason === 'line-inside') {
+          Swal.fire('Info', 'Çəkilən xətt poliqonun içində qaldığı üçün kəsilmə olmadı.', 'info');
+        } else if (result.reason === 'no-split') {
+          Swal.fire('Info', 'Kəsilmə baş vermədi. Xətt poliqonu tam bölmədi.', 'info');
+        } else {
+          Swal.fire('Xəta', 'Cut əməliyyatı alınmadı.', 'error');
+        }
+      } else {
+        if (window.showToast) {
+          window.showToast(`Cut tamamlandı: ${result.createdCount} hissə yaradıldı`, 2400);
+        } else {
+          Swal.fire('Uğurlu', `Cut tamamlandı: ${result.createdCount} hissə yaradıldı`, 'success');
+        }
+      }
+
+      disableCutMode({ silent: true });
+    });
+
+    cutState.escHandler = (e) => {
+      if (e.key === 'Escape') {
+        disableCutMode();
+      }
+    };
+    document.addEventListener('keydown', cutState.escHandler);
+  }
+
+  function toggleCutMode() {
+    if (cutState.enabled) {
+      disableCutMode();
+    } else {
+      enableCutMode();
+    }
+  }
+
+
+
   function explodeSelectedMultiPolygons(){
     const unified = getUnifiedSelectedFeatures();
     if (unified.length === 0) {
@@ -417,6 +663,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     if (rtEditUI && rtEditUI.btnSave) {
       rtEditUI.btnSave.disabled = !hasPoly;
     }
+    updateCutButtonState();
   }
 
   const wktWriter = new ol.format.WKT();
@@ -612,6 +859,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     btnDraw:   null,
     btnSnap:   null,
     btnDelete: null,
+    btnCut: null,
     btnExplode: null,
     btnClear:  null,
     btnSave:   null
@@ -646,12 +894,32 @@ window.MainEditing.init = function initEditing(state = {}) {
       return b;
     };
 
+    const mkSvgBtn = (id, title, svg) => {
+      if (document.getElementById(id)) return document.getElementById(id);
+      const b = document.createElement('button');
+      b.id = id;
+      b.className = 'rt-btn';
+      b.title = title || '';
+      b.innerHTML = svg;
+      host.appendChild(b);
+      return b;
+    };
+
 
     rtEditUI.btnInfo   = mkBtn('rtInfo',      'İnformasiya (obyektə kliklə)', 'info');
     rtEditUI.btnDraw   = mkBtn('rtDraw',      'Poliqon çək / dayandır',       'draw');
     rtEditUI.btnSnap   = mkBtn('rtSnap',      'Snap aç/bağla',                'snap');
     rtEditUI.btnDelete = mkBtn('rtDeleteSel', 'Seçiləni sil',                 'deleteSel');
     rtEditUI.btnExplode = mkBtn('rtExplode',  'Multipart poliqonu parçala',  'explode');
+    rtEditUI.btnCut = mkSvgBtn(
+      'rtCutPolygon',
+      'Poliqonu xətt ilə kəs',
+      `<svg class="rt-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h8a2 2 0 1 1 0 4H9a2 2 0 1 0 0 4h11" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 4l4 4-4 4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="6" cy="17" r="2" fill="rgba(37,99,235,0.2)" stroke="#2563eb" stroke-width="1.5"/>
+      </svg>`
+    );
     rtEditUI.btnClear  = mkBtn('rtClearAll',  'Hamısını sil',                 'clearAll');
     rtEditUI.btnSave   = mkBtn('rtSave',      'Yadda saxla',                  'save');
     rtEditUI.btnErase  = mkBtn('rtErase',     'Tədqiqat daxilini kəs & sil',  'erase');
@@ -733,6 +1001,11 @@ window.MainEditing.init = function initEditing(state = {}) {
       explodeSelectedMultiPolygons();
     });
 
+    rtEditUI.btnCut.addEventListener('click', () => {
+      if (!ensureEditAllowed()) return;
+      toggleCutMode();
+    });
+
 
     // 6) Clear düyməsi
     rtEditUI.btnClear.addEventListener('click', () => {
@@ -783,6 +1056,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     rtEditUI.btnSnap.classList.toggle('active', !!snapState.enabled);
     rtEditUI.btnDelete.disabled = (selectInteraction.getFeatures().getLength() === 0);
     rtEditUI.btnSave.disabled   = !hasAtLeastOnePolygonSelected();
+    updateCutButtonState();
   }
 
   // Xəritə hazır olanda düymələri daxil et
@@ -833,6 +1107,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     if (rtEditUI && rtEditUI.btnDelete) {
       rtEditUI.btnDelete.disabled = (deletableCount === 0);
     }
+    updateCutButtonState();
   }
 
 
