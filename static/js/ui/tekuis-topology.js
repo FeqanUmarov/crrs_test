@@ -10,7 +10,7 @@ const renderTopoErrorsOnMap = mapContext.renderTopoErrorsOnMap || window.renderT
 const zoomAndHighlightTopoGeometry = mapContext.zoomAndHighlightTopoGeometry || window.zoomAndHighlightTopoGeometry;
 const saveTekuisToLocal = () => window.saveTekuisToLS?.();
 const clearTekuisCache = () => window.tekuisCache?.clearTekuisCache?.();
-const DEFAULT_TOPO_MIN_AREA_SQM = 0.0001;
+const DEFAULT_TOPO_MIN_AREA_SQM = 0;
 
 function resolveTopoMinAreaSqm(){
   const raw = (window.TOPO_MIN_AREA_SQM ?? window.TOPO_MAX_ERROR_SQM);

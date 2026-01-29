@@ -21,7 +21,7 @@
   let DEFAULT_GAP_FRAME = "ticket";
 
   // Səs-küy kimi sayılacaq minimal sahə (m²)
-  const DEFAULT_MIN_AREA_SQM = 0.0001;
+  const DEFAULT_MIN_AREA_SQM = 0;
   const clampMinArea = (value) =>
     Number.isFinite(+value) ? Math.max(0, +value) : DEFAULT_MIN_AREA_SQM;
   let MIN_AREA_SQM = clampMinArea(window.TOPO_MIN_AREA_SQM ?? window.TOPO_MAX_ERROR_SQM);
@@ -331,7 +331,6 @@
           return DEFAULT_GAP_FRAME;
         },
         setMinAreaSqm(v) {
-          if (Number.isFinite(+v) && +v >= 0) MIN_AREA_SQM = +v;
           MIN_AREA_SQM = clampMinArea(v);
         },
         getMinAreaSqm() {
