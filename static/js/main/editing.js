@@ -407,6 +407,12 @@ window.MainEditing.init = function initEditing(state = {}) {
       return { ok: false, reason: 'no-polygon-split' };
     }
     try {
+      if (typeof turf.booleanIntersects === 'function') {
+        const intersects = turf.booleanIntersects(polygonFeature, lineForSplit);
+        if (!intersects) {
+          return { ok: true, split: false, features: [polygonFeature] };
+        }
+      }
       const split = turf.polygonSplit(polygonFeature, lineForSplit);
       const splitFeatures = split?.features || [];
       if (splitFeatures.length < 2) {
@@ -418,15 +424,42 @@ window.MainEditing.init = function initEditing(state = {}) {
       return { ok: false, reason: 'split-failed' };
     }
   }
+  function stripZCoords(coords) {
+    if (!Array.isArray(coords)) return coords;
+    if (typeof coords[0] === 'number') return coords.slice(0, 2);
+    return coords.map(stripZCoords);
+  }
+
+  function prepareFeatureForSplit(turf, feature) {
+    if (!feature?.geometry?.coordinates) return feature;
+    const cleaned = {
+      ...feature,
+      geometry: {
+        ...feature.geometry,
+        coordinates: stripZCoords(feature.geometry.coordinates)
+      }
+    };
+    if (typeof turf.cleanCoords === 'function') {
+      try {
+        return turf.cleanCoords(cleaned);
+      } catch {
+        return cleaned;
+      }
+    }
+    return cleaned;
+  }
+
 
   function splitPolygonGeometry(turf, polygonGJ, lineForSplit) {
-    const polygons = normalizePolygonFeatures(polygonGJ);
+    const cleanedPolygon = prepareFeatureForSplit(turf, polygonGJ);
+    const cleanedLine = prepareFeatureForSplit(turf, lineForSplit);
+    const polygons = normalizePolygonFeatures(cleanedPolygon);
     if (polygons.length === 0) return { ok: false, reason: 'no-polygon' };
 
     let didSplit = false;
     const outFeatures = [];
     for (const polygonFeature of polygons) {
-      const splitResult = splitPolygonFeature(turf, polygonFeature, lineForSplit);
+      const splitResult = splitPolygonFeature(turf, polygonFeature, cleanedLine);
       if (!splitResult.ok) return splitResult;
       if (splitResult.split) didSplit = true;
       outFeatures.push(...splitResult.features);
@@ -603,6 +636,9 @@ window.MainEditing.init = function initEditing(state = {}) {
       type: 'LineString'
     });
     map.addInteraction(cutState.draw);
+    if (snapState.enabled) {
+      refreshSnapOrder();
+    }
 
     cutState.draw.on('drawend', async (evt) => {
       const lineFeature = evt.feature;
