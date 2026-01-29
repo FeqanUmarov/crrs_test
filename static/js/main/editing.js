@@ -401,6 +401,26 @@ window.MainEditing.init = function initEditing(state = {}) {
       geometry: { type: 'Polygon', coordinates: coords }
     }));
   }
+  function expandPolygonsForSplit(turf, polygonFeature) {
+    if (typeof turf.unkinkPolygon !== 'function') return [polygonFeature];
+    try {
+      const unkinked = turf.unkinkPolygon(polygonFeature);
+      const features = unkinked?.features;
+      if (!Array.isArray(features) || features.length === 0) {
+        return [polygonFeature];
+      }
+      const props = polygonFeature.properties || {};
+      return features.map((feature) => ({
+        type: 'Feature',
+        properties: { ...props, ...(feature.properties || {}) },
+        geometry: feature.geometry
+      }));
+    } catch (error) {
+      console.warn('unkinkPolygon failed, using original polygon.', error);
+      return [polygonFeature];
+    }
+  }
+
 
   function splitPolygonFeature(turf, polygonFeature, lineForSplit) {
     if (typeof turf.polygonSplit !== 'function') {
@@ -453,7 +473,8 @@ window.MainEditing.init = function initEditing(state = {}) {
   function splitPolygonGeometry(turf, polygonGJ, lineForSplit) {
     const cleanedPolygon = prepareFeatureForSplit(turf, polygonGJ);
     const cleanedLine = prepareFeatureForSplit(turf, lineForSplit);
-    const polygons = normalizePolygonFeatures(cleanedPolygon);
+    const polygons = normalizePolygonFeatures(cleanedPolygon)
+      .flatMap(polygonFeature => expandPolygonsForSplit(turf, polygonFeature));
     if (polygons.length === 0) return { ok: false, reason: 'no-polygon' };
 
     let didSplit = false;
