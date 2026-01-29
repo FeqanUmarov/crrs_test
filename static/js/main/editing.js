@@ -167,6 +167,7 @@ window.MainEditing.init = function initEditing(state = {}) {
 
   function enableSnap(){
     if (snapState.enabled) return;
+    ensureTekuisSnapSources();
     snapState.enabled = true;
     snapSources.forEach(addSnapForSource);
     refreshSnapOrder();                   // NEW
@@ -327,7 +328,7 @@ window.MainEditing.init = function initEditing(state = {}) {
   function getSingleSelectedPolygon() {
     const selected = getSelectedPolygons();
     if (selected.length === 0) {
-      Swal.fire('Info', 'Cut üçün əvvəlcə 1 poliqon seçin.', 'info');
+      Swal.fire('Info', 'Hər hansı bir parcel məlumatı seçməlisiz.', 'info');
       return null;
     }
     if (selected.length > 1) {
@@ -399,10 +400,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       featureProjection: 'EPSG:3857'
     });
 
-    const lineInside = turf.booleanWithin(lineGJ, polygonGJ);
-    if (lineInside) {
-      return { ok: false, reason: 'line-inside' };
-    }
+    const lineForSplit = extendCutLineForSplit(turf, polygonGJ, lineGJ);
 
     if (typeof turf.polygonSplit !== 'function') {
       return { ok: false, reason: 'no-polygon-split' };
@@ -410,7 +408,7 @@ window.MainEditing.init = function initEditing(state = {}) {
 
     let split;
     try {
-      split = turf.polygonSplit(polygonGJ, lineGJ);
+      split = turf.polygonSplit(polygonGJ, lineForSplit);
     } catch (err) {
       console.error('polygonSplit error', err);
       return { ok: false, reason: 'split-failed' };
@@ -466,6 +464,39 @@ window.MainEditing.init = function initEditing(state = {}) {
     escHandler: null
   };
 
+  function getPolygonDiagonalKm(turf, polygonGJ) {
+    const bbox = turf.bbox(polygonGJ);
+    const sw = [bbox[0], bbox[1]];
+    const ne = [bbox[2], bbox[3]];
+    const diagonal = turf.distance(sw, ne, { units: 'kilometers' });
+    return Math.max(diagonal, 0.01);
+  }
+
+  function extendCutLineForSplit(turf, polygonGJ, lineGJ) {
+    try {
+      const distance = getPolygonDiagonalKm(turf, polygonGJ);
+      return turf.lineExtend(lineGJ, distance, distance, { units: 'kilometers' });
+    } catch (error) {
+      console.warn('Cut line extend failed, using original line.', error);
+      return lineGJ;
+    }
+  }
+
+  function ensureTekuisSnapSources() {
+    if (typeof tekuisSource !== 'undefined' && tekuisSource) {
+      registerSnapSource(tekuisSource);
+    }
+    try {
+      const extLayer = findExternalTekuisLayer?.();
+      const extSource = extLayer?.getSource?.();
+      if (extSource) {
+        registerSnapSource(extSource);
+      }
+    } catch (error) {
+      console.warn('External TEKUİS snap source lookup failed.', error);
+    }
+  }
+
   function disableCutMode({ silent = false } = {}) {
     if (cutState.draw) {
       try { map.removeInteraction(cutState.draw); } catch {}
@@ -513,6 +544,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     }
 
     cutState.wasSnapEnabled = prevSnapEnabled;
+    ensureTekuisSnapSources();
     if (!snapState.enabled) {
       enableSnap();
     } else {
@@ -530,9 +562,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       const result = await splitPolygonByLine(cutState.targetFeature, lineFeature);
 
       if (!result.ok) {
-        if (result.reason === 'line-inside') {
-          Swal.fire('Info', 'Çəkilən xətt poliqonun içində qaldığı üçün kəsilmə olmadı.', 'info');
-        } else if (result.reason === 'no-split') {
+        if (result.reason === 'no-split') {
           Swal.fire('Info', 'Kəsilmə baş vermədi. Xətt poliqonu tam bölmədi.', 'info');
         } else {
           Swal.fire('Xəta', 'Cut əməliyyatı alınmadı.', 'error');
@@ -894,32 +924,13 @@ window.MainEditing.init = function initEditing(state = {}) {
       return b;
     };
 
-    const mkSvgBtn = (id, title, svg) => {
-      if (document.getElementById(id)) return document.getElementById(id);
-      const b = document.createElement('button');
-      b.id = id;
-      b.className = 'rt-btn';
-      b.title = title || '';
-      b.innerHTML = svg;
-      host.appendChild(b);
-      return b;
-    };
-
 
     rtEditUI.btnInfo   = mkBtn('rtInfo',      'İnformasiya (obyektə kliklə)', 'info');
     rtEditUI.btnDraw   = mkBtn('rtDraw',      'Poliqon çək / dayandır',       'draw');
     rtEditUI.btnSnap   = mkBtn('rtSnap',      'Snap aç/bağla',                'snap');
     rtEditUI.btnDelete = mkBtn('rtDeleteSel', 'Seçiləni sil',                 'deleteSel');
     rtEditUI.btnExplode = mkBtn('rtExplode',  'Multipart poliqonu parçala',  'explode');
-    rtEditUI.btnCut = mkSvgBtn(
-      'rtCutPolygon',
-      'Poliqonu xətt ilə kəs',
-      `<svg class="rt-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M4 7h8a2 2 0 1 1 0 4H9a2 2 0 1 0 0 4h11" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
-        <path d="M16 4l4 4-4 4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="6" cy="17" r="2" fill="rgba(37,99,235,0.2)" stroke="#2563eb" stroke-width="1.5"/>
-      </svg>`
-    );
+    rtEditUI.btnCut = mkBtn('rtCutPolygon', 'Poliqonu xətt ilə kəs', 'cutpolygon');
     rtEditUI.btnClear  = mkBtn('rtClearAll',  'Hamısını sil',                 'clearAll');
     rtEditUI.btnSave   = mkBtn('rtSave',      'Yadda saxla',                  'save');
     rtEditUI.btnErase  = mkBtn('rtErase',     'Tədqiqat daxilini kəs & sil',  'erase');
