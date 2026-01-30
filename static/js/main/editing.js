@@ -421,17 +421,80 @@ window.MainEditing.init = function initEditing(state = {}) {
     }
   }
 
+  function collectPolygonLineFeatures(turf, polygonFeature) {
+    if (typeof turf.polygonToLine !== 'function') return [];
+    const polygonLine = turf.polygonToLine(polygonFeature);
+    if (!polygonLine) return [];
+    if (polygonLine.type === 'FeatureCollection') {
+      return polygonLine.features || [];
+    }
+    if (polygonLine.type === 'Feature') return [polygonLine];
+    return [{ type: 'Feature', geometry: polygonLine, properties: {} }];
+  }
 
-  function splitPolygonFeature(turf, polygonFeature, lineForSplit) {
-    if (typeof turf.polygonSplit !== 'function') {
+
+  function splitPolygonFallback(turf, polygonFeature, lineForSplit) {
+    if (
+      typeof turf.polygonToLine !== 'function' ||
+      typeof turf.lineSplit !== 'function' ||
+      typeof turf.polygonize !== 'function'
+    ) {
       return { ok: false, reason: 'no-polygon-split' };
     }
+    try {
+      const boundaryLines = collectPolygonLineFeatures(turf, polygonFeature);
+      if (boundaryLines.length === 0) {
+        return { ok: false, reason: 'split-failed' };
+      }
+
+      const splitBoundary = [];
+      boundaryLines.forEach((lineFeature) => {
+        const split = turf.lineSplit(lineFeature, lineForSplit);
+        if (split?.features?.length) {
+          splitBoundary.push(...split.features);
+        } else {
+          splitBoundary.push(lineFeature);
+        }
+      });
+
+      const polygonized = turf.polygonize(
+        turf.featureCollection([...splitBoundary, lineForSplit])
+      );
+      const polygons = polygonized?.features || [];
+      if (polygons.length < 2) {
+        return { ok: true, split: false, features: [polygonFeature] };
+      }
+
+      let filtered = polygons;
+      if (typeof turf.booleanPointInPolygon === 'function') {
+        filtered = polygons.filter((feature) => {
+          const center = turf.centroid(feature);
+          return turf.booleanPointInPolygon(center, polygonFeature);
+        });
+      } else if (typeof turf.booleanWithin === 'function') {
+        filtered = polygons.filter((feature) => turf.booleanWithin(feature, polygonFeature));
+      }
+
+      if (filtered.length < 2) {
+        return { ok: true, split: false, features: [polygonFeature] };
+      }
+      return { ok: true, split: true, features: filtered };
+    } catch (error) {
+      console.error('polygonSplit fallback error', error);
+      return { ok: false, reason: 'split-failed' };
+    }
+  }
+
+  function splitPolygonFeature(turf, polygonFeature, lineForSplit) {
     try {
       if (typeof turf.booleanIntersects === 'function') {
         const intersects = turf.booleanIntersects(polygonFeature, lineForSplit);
         if (!intersects) {
           return { ok: true, split: false, features: [polygonFeature] };
         }
+      }
+      if (typeof turf.polygonSplit !== 'function') {
+        return splitPolygonFallback(turf, polygonFeature, lineForSplit);
       }
       const split = turf.polygonSplit(polygonFeature, lineForSplit);
       const splitFeatures = split?.features || [];
@@ -440,6 +503,9 @@ window.MainEditing.init = function initEditing(state = {}) {
       }
       return { ok: true, split: true, features: splitFeatures };
     } catch (error) {
+      if (typeof turf.polygonSplit !== 'function') {
+        return splitPolygonFallback(turf, polygonFeature, lineForSplit);
+      }
       try {
         if (typeof turf.buffer === 'function') {
           const buffered = turf.buffer(polygonFeature, 0, { units: 'kilometers' });
