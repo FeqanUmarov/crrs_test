@@ -440,6 +440,20 @@ window.MainEditing.init = function initEditing(state = {}) {
       }
       return { ok: true, split: true, features: splitFeatures };
     } catch (error) {
+      try {
+        if (typeof turf.buffer === 'function') {
+          const buffered = turf.buffer(polygonFeature, 0, { units: 'kilometers' });
+          if (buffered?.geometry) {
+            const split = turf.polygonSplit(buffered, lineForSplit);
+            const splitFeatures = split?.features || [];
+            if (splitFeatures.length >= 2) {
+              return { ok: true, split: true, features: splitFeatures };
+            }
+          }
+        }
+      } catch (retryError) {
+        console.error('polygonSplit retry error', retryError);
+      }
       console.error('polygonSplit error', error);
       return { ok: false, reason: 'split-failed' };
     }
@@ -452,7 +466,7 @@ window.MainEditing.init = function initEditing(state = {}) {
 
   function prepareFeatureForSplit(turf, feature) {
     if (!feature?.geometry?.coordinates) return feature;
-    const cleaned = {
+    let cleaned = {
       ...feature,
       geometry: {
         ...feature.geometry,
@@ -461,12 +475,29 @@ window.MainEditing.init = function initEditing(state = {}) {
     };
     if (typeof turf.cleanCoords === 'function') {
       try {
-        return turf.cleanCoords(cleaned);
+        cleaned = turf.cleanCoords(cleaned);
       } catch {
-        return cleaned;
+        cleaned = cleaned;
+      }
+    }
+    if (typeof turf.truncate === 'function') {
+      try {
+        cleaned = turf.truncate(cleaned, { precision: 6, coordinates: 2, mutate: false });
+      } catch {
+        cleaned = cleaned;
       }
     }
     return cleaned;
+  }
+
+  function resolveFeatureSource(feature) {
+    const hit = findVectorLayerAndSourceOfFeature(feature);
+    if (hit?.source) return hit.source;
+    if (typeof tekuisSource !== 'undefined' && tekuisSource?.hasFeature?.(feature)) {
+      return tekuisSource;
+    }
+    if (editSource?.hasFeature?.(feature)) return editSource;
+    return null;
   }
 
 
@@ -491,8 +522,8 @@ window.MainEditing.init = function initEditing(state = {}) {
 
   async function splitPolygonByLine(targetFeature, lineFeature) {
     if (!targetFeature || !lineFeature) return { ok: false, reason: 'no-target' };
-    const hit = findVectorLayerAndSourceOfFeature(targetFeature);
-    if (!hit?.source) return { ok: false, reason: 'no-source' };
+    const targetSource = resolveFeatureSource(targetFeature);
+    if (!targetSource) return { ok: false, reason: 'no-source' };
 
     const gjFmt = new ol.format.GeoJSON();
     const turf = await ensureTurf();
@@ -520,13 +551,13 @@ window.MainEditing.init = function initEditing(state = {}) {
     const wasInSelectAny = selectAnyFeatures.getArray().includes(targetFeature);
     const wasInSelectInteraction = selectInteractionFeatures.getArray().includes(targetFeature);
 
-    try { hit.source.removeFeature(targetFeature); } catch {}
+    try { targetSource.removeFeature(targetFeature); } catch {}
     if (wasInSelectAny) { try { selectAnyFeatures.remove(targetFeature); } catch {} }
     if (wasInSelectInteraction) { try { selectInteractionFeatures.remove(targetFeature); } catch {} }
 
     newFeatures.forEach((feature) => {
       feature.setProperties(baseProps);
-      hit.source.addFeature(feature);
+      targetSource.addFeature(feature);
     });
 
     if (wasInSelectAny) {
