@@ -2,6 +2,7 @@
 // TEKUİS mənbə rejimi: 'old' (tekuis_parcel_old) | 'current' (tekuis_parcel)
 (function(){
   let TEKUIS_MODE = 'current';
+  const DIFFERENCE_HIGHLIGHT_DURATION_MS = 2000;
 
   const TEKUIS_SOURCES = {
     old: {
@@ -237,12 +238,16 @@
     return differing;
   }
 
-  function highlightTekuisDifferences(features, durationMs = 2000){
-    if (!features.length) return;
-    const style = new ol.style.Style({
+  function createDifferenceHighlightStyle(){
+    return new ol.style.Style({
       fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0.35)' }),
       stroke: new ol.style.Stroke({ color: '#f59e0b', width: 3 })
     });
+  }
+
+  function highlightTekuisDifferences(features, durationMs = DIFFERENCE_HIGHLIGHT_DURATION_MS){
+    if (!features.length) return;
+    const style = createDifferenceHighlightStyle();
     const previousStyles = new Map();
     features.forEach((feature) => {
       previousStyles.set(feature, feature.getStyle());
@@ -265,7 +270,7 @@
     if (!currentFeatures.length) return;
     const oldIndex = buildOldTekuisIndex(oldFc);
     const differing = getDifferingCurrentFeatures(currentFeatures, oldIndex);
-    highlightTekuisDifferences(differing, 2000);
+    highlightTekuisDifferences(differing, DIFFERENCE_HIGHLIGHT_DURATION_MS);
   }
 
 
