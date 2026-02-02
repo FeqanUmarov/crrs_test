@@ -656,6 +656,7 @@
     b.id = 'rtEditVertices';
     b.className = 'rt-btn';
     b.title = 'TEKUİS parsellerin vertex redaktəsi';
+    b.dataset.color = 'edit';
 
     const iconUrl = (window.RT_ICONS && window.RT_ICONS.editVertices) || null;
     if (iconUrl) {

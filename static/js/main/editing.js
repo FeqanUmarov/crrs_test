@@ -1232,7 +1232,6 @@ window.MainEditing.init = function initEditing(state = {}) {
     btnDelete: null,
     btnCut: null,
     btnExplode: null,
-    btnClear:  null,
     btnSave:   null
   };
 
@@ -1250,12 +1249,15 @@ window.MainEditing.init = function initEditing(state = {}) {
     if (!host) return;
 
     // Köməkçi: PNG ikonlu rt-btn yarat
-    const mkBtn = (id, title, iconKey) => {
+    const mkBtn = (id, title, iconKey, colorKey = iconKey) => {
       if (document.getElementById(id)) return document.getElementById(id);
       const b = document.createElement('button');
       b.id = id;
       b.className = 'rt-btn';
       b.title = title || '';
+      if (colorKey) {
+        b.dataset.color = colorKey;
+      }
       const img = document.createElement('img');
       img.className = 'rt-icon-img';
       img.alt = title || id;
@@ -1269,10 +1271,9 @@ window.MainEditing.init = function initEditing(state = {}) {
     rtEditUI.btnInfo   = mkBtn('rtInfo',      'İnformasiya (obyektə kliklə)', 'info');
     rtEditUI.btnDraw   = mkBtn('rtDraw',      'Poliqon çək / dayandır',       'draw');
     rtEditUI.btnSnap   = mkBtn('rtSnap',      'Snap aç/bağla',                'snap');
-    rtEditUI.btnDelete = mkBtn('rtDeleteSel', 'Seçiləni sil',                 'deleteSel');
+    rtEditUI.btnDelete = mkBtn('rtDeleteSel', 'Seçiləni sil',                 'deleteSel', 'delete');
     rtEditUI.btnExplode = mkBtn('rtExplode',  'Multipart poliqonu parçala',  'explode');
-    rtEditUI.btnCut = mkBtn('rtCutPolygon', 'Poliqonu xətt ilə kəs', 'cutpolygon');
-    rtEditUI.btnClear  = mkBtn('rtClearAll',  'Hamısını sil',                 'clearAll');
+    rtEditUI.btnCut = mkBtn('rtCutPolygon', 'Poliqonu xətt ilə kəs', 'cutpolygon', 'cut');
     rtEditUI.btnSave   = mkBtn('rtSave',      'Yadda saxla',                  'save');
     rtEditUI.btnErase  = mkBtn('rtErase',     'Tədqiqat daxilini kəs & sil',  'erase');
 
@@ -1359,17 +1360,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     });
 
 
-    // 6) Clear düyməsi
-    rtEditUI.btnClear.addEventListener('click', () => {
-      if (!ensureEditAllowed()) return;
-      editSource.clear();
-      selectInteraction.getFeatures().clear();
-      updateDeleteButtonState();
-      updateEditStatus && updateEditStatus('Bütün obyektlər silindi.');
-      updateAllSaveButtons();
-    });
-
-    // 7) Save düyməsi
+// 6) Save düyməsi
     rtEditUI.btnSave.addEventListener('click', () => {
       if (!ensureEditAllowed()) return;
       saveSelected({ alsoAttach:true });
@@ -1382,6 +1373,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       b.id = 'rtMove';
       b.className = 'rt-btn';
       b.title = 'Obyekti sürüşdür (Move)';
+      b.dataset.color = 'move';
       const img = document.createElement('img');
       img.className = 'rt-icon-img';
       img.alt = 'Move';

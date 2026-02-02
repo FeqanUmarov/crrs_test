@@ -488,12 +488,13 @@ function formatYMDToDMY(txt) {
     btn.title = "Tarixçə";
     btn.setAttribute("aria-label", "Tarixçə");
     btn.setAttribute("data-open-history", "1");
+    btn.dataset.color = "history";
 
     const t = (window.APP && window.APP.ticket) ? String(window.APP.ticket).trim() : "";
     if (t) btn.setAttribute("data-ticket", t);
 
     const img = document.createElement("img");
-    img.className = "rt-icon";
+    img.className = "rt-icon-img";
     img.alt = "history";
 
     const iconSrc = (window.HISTORY_ICON || "").toString();

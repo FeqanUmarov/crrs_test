@@ -71,7 +71,6 @@
       draw:         "{% static 'icons/images/edit.svg' %}",
       snap:         "{% static 'icons/images/snap.svg' %}",
       deleteSel:    "{% static 'icons/images/delete.svg' %}",
-      clearAll:     "{% static 'icons/images/clean.png' %}",
       save:         "{% static 'icons/images/save.svg' %}",
       move:         "{% static 'icons/images/move.svg' %}",
       explode:      "{% static 'icons/images/explode.svg' %}",
@@ -132,6 +131,21 @@
     }
     .rt-icon{ width:24px; height:24px; }
     .rt-icon-img{ width:26px; height:26px; object-fit:contain; }
+    .rt-btn[data-color] .rt-icon-img,
+    .rt-btn[data-color] .rt-icon{
+      filter: var(--rt-icon-filter, none);
+    }
+    .rt-btn[data-color="info"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(39%) sepia(85%) saturate(1676%) hue-rotate(202deg) brightness(101%) contrast(94%); }
+    .rt-btn[data-color="draw"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(53%) sepia(68%) saturate(470%) hue-rotate(94deg) brightness(95%) contrast(92%); }
+    .rt-btn[data-color="snap"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(46%) sepia(58%) saturate(2059%) hue-rotate(229deg) brightness(100%) contrast(95%); }
+    .rt-btn[data-color="delete"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(38%) sepia(84%) saturate(5446%) hue-rotate(349deg) brightness(96%) contrast(95%); }
+    .rt-btn[data-color="explode"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(55%) sepia(63%) saturate(4000%) hue-rotate(356deg) brightness(98%) contrast(97%); }
+    .rt-btn[data-color="cut"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(64%) sepia(78%) saturate(3550%) hue-rotate(360deg) brightness(100%) contrast(95%); }
+    .rt-btn[data-color="save"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(46%) sepia(68%) saturate(498%) hue-rotate(113deg) brightness(93%) contrast(90%); }
+    .rt-btn[data-color="erase"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(42%) sepia(63%) saturate(3800%) hue-rotate(332deg) brightness(98%) contrast(96%); }
+    .rt-btn[data-color="move"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(54%) sepia(52%) saturate(2191%) hue-rotate(154deg) brightness(98%) contrast(94%); }
+    .rt-btn[data-color="edit"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(38%) sepia(66%) saturate(3379%) hue-rotate(232deg) brightness(97%) contrast(92%); }
+    .rt-btn[data-color="history"]{ --rt-icon-filter: brightness(0) saturate(100%) invert(43%) sepia(12%) saturate(563%) hue-rotate(173deg) brightness(93%) contrast(87%); }
 
     .kv{
       display:grid; grid-template-columns: 180px 1fr; gap:6px 12px;
