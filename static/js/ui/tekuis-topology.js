@@ -33,6 +33,7 @@ function formatAreaSqm(value){
   return Number(area.toFixed(digits)).toString();
 }
 
+
 // TEKUİS GeoJSON FeatureCollection (EPSG:4326) çıxarır
 function getTekuisFeatureCollection() {
   const src = getTekuisSourceSmart();
@@ -703,8 +704,7 @@ function findExternalTekuisLayer() {
 
 // TEKUİS mənbəyini ağıllı seç (əvvəl özümüzünkünü, yoxdursa xaricidən)
 function getTekuisSourceSmart() {
-
-  if (tekuisSource && tekuisSource.getFeatures &&
+    if (tekuisSource && tekuisSource.getFeatures &&
       tekuisSource.getFeatures().length > 0) {
     return tekuisSource;
   }
