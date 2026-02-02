@@ -2,7 +2,6 @@
 // TEKUİS mənbə rejimi: 'old' (tekuis_parcel_old) | 'current' (tekuis_parcel)
 (function(){
   let TEKUIS_MODE = 'current';
-  const DIFFERENCE_HIGHLIGHT_DURATION_MS = 2000;
 
   const TEKUIS_SOURCES = {
     old: {
@@ -175,16 +174,6 @@
     return value;
   }
 
-  function getTekuisIdFromProps(props = {}){
-    const candKeys = ['tekuis_id', 'TEKUIS_ID', 'ID', 'OBJECTID', 'rid', 'RID'];
-    for (const key of candKeys) {
-      const val = props?.[key];
-      if (val == null || String(val).trim() === '') continue;
-      const parsed = Number(val);
-      if (!Number.isNaN(parsed)) return parsed;
-    }
-    return null;
-  }
 
   function getGeometrySignature(geometry){
     if (!geometry) return '';
@@ -206,71 +195,55 @@
     return getGeometrySignature(geojsonGeom);
   }
 
+  function getTekuisSourceSafe(){
+    return window.MapContext?.tekuisSource || window.MainState?.tekuisSource || window.tekuisSource || null;
+  }
+
   function buildOldTekuisIndex(oldFc){
-    const byId = new Map();
     const geomSet = new Set();
     (oldFc?.features || []).forEach((feature) => {
-      const props = feature?.properties || {};
-      const id = getTekuisIdFromProps(props);
       const geomSig = getGeometrySignature(feature?.geometry);
-      if (id != null) {
-        byId.set(id, geomSig);
-      } else if (geomSig) {
+      if (geomSig) {
         geomSet.add(geomSig);
       }
     });
-    return { byId, geomSet };
+    return { geomSet };
   }
 
   function getDifferingCurrentFeatures(currentFeatures, oldIndex){
     const differing = [];
     currentFeatures.forEach((feature) => {
-      const props = feature.getProperties?.() || {};
-      const id = getTekuisIdFromProps(props);
       const geomSig = getOlGeometrySignature(feature);
-      if (id != null) {
-        const oldGeom = oldIndex.byId.get(id);
-        if (!oldGeom || oldGeom !== geomSig) differing.push(feature);
-        return;
-      }
-      if (!oldIndex.geomSet.has(geomSig)) differing.push(feature);
+      if (geomSig && !oldIndex.geomSet.has(geomSig)) differing.push(feature);
     });
     return differing;
   }
 
   function createDifferenceHighlightStyle(){
     return new ol.style.Style({
-      fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0.35)' }),
+      fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0)' }),
       stroke: new ol.style.Stroke({ color: '#f59e0b', width: 3 })
     });
   }
 
-  function highlightTekuisDifferences(features, durationMs = DIFFERENCE_HIGHLIGHT_DURATION_MS){
+  function highlightTekuisDifferences(features){
     if (!features.length) return;
     const style = createDifferenceHighlightStyle();
-    const previousStyles = new Map();
     features.forEach((feature) => {
-      previousStyles.set(feature, feature.getStyle());
       feature.setStyle(style);
     });
     window.tekuisLayer?.changed?.();
-    setTimeout(() => {
-      features.forEach((feature) => {
-        feature.setStyle(previousStyles.get(feature) || null);
-      });
-      window.tekuisLayer?.changed?.();
-    }, durationMs);
   }
 
   async function highlightDifferencesWithOldTekuis(){
     const oldFc = await fetchTekuisGeojsonFromDb({ source: 'old' });
     if (!oldFc) return;
-    const tekuisSource = window.tekuisSource;
+    const tekuisSource = getTekuisSourceSafe();
     const currentFeatures = tekuisSource?.getFeatures?.() || [];
     if (!currentFeatures.length) return;
     const oldIndex = buildOldTekuisIndex(oldFc);
     const differing = getDifferingCurrentFeatures(currentFeatures, oldIndex);
-    highlightTekuisDifferences(differing, DIFFERENCE_HIGHLIGHT_DURATION_MS);
+    highlightTekuisDifferences(differing);
   }
 
 
@@ -312,8 +285,9 @@
 
         const chk = document.getElementById('chkTekuisLayer');
         const tekuisVisible = chk ? chk.checked : true;
-        if (window.tekuisLayer && window.tekuisSource){
-          window.tekuisLayer.setVisible(tekuisVisible && window.tekuisSource.getFeatures().length > 0);
+        const tekuisSource = getTekuisSourceSafe();
+        if (window.tekuisLayer && tekuisSource){
+          window.tekuisLayer.setVisible(tekuisVisible && tekuisSource.getFeatures().length > 0);
           if (tekuisVisible && window.flashLayer) window.flashLayer(window.tekuisLayer);
         }
       });
