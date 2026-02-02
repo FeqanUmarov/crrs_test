@@ -663,63 +663,78 @@ body, button, input, select, textarea {
 
 .toast{
   pointer-events: auto;
-  background: linear-gradient(135deg, rgba(17,24,39,.96), rgba(15,23,42,.88));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(31,41,55,.96), rgba(17,24,39,.95));
   color: #f8fafc;
   border-radius: 14px;
-  padding: 12px 40px 12px 14px;
-  box-shadow: 0 16px 32px rgba(2,6,23,.35), 0 2px 8px rgba(15,23,42,.2);
+  padding: 14px 44px 14px 16px;
+  box-shadow: 0 14px 28px rgba(2,6,23,.35), 0 2px 8px rgba(15,23,42,.2);
   position: relative;
   overflow: hidden;
   transform: translateY(8px) translateX(8px);
   opacity: 0;
   transition: transform .2s ease, opacity .2s ease, filter .2s ease;
-  border: 1px solid rgba(148,163,184,.28);
-  backdrop-filter: blur(6px);
+  border: 1px solid rgba(148,163,184,.15);
 }
 
 .toast.show{ transform: translateY(0) translateX(0); opacity: 1; }
 .toast.hide{ opacity:.0; transform: translateY(8px) translateX(8px); filter: blur(1px); }
 
-.toast::before{ /* sol rəng zolağı */
-  content:"";
-  position:absolute; left:0; top:0; bottom:0; width:5px;
-  background: linear-gradient(180deg, var(--toast-accent,#60a5fa), rgba(255,255,255,.0));
-  opacity:.9;
-}
 .toast::after{
   content:"";
   position:absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(circle at top left, rgba(255,255,255,.14), rgba(255,255,255,0) 50%);
-  opacity: .7;
+  background: radial-gradient(circle at top left, rgba(255,255,255,.10), rgba(255,255,255,0) 55%);
+  opacity: .65;
+}
+.toast .toast-icon{
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--toast-accent,#22c55e) 85%, #0b0f0f 15%);
+  color: #0b150e;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(0,0,0,.35), inset 0 0 0 6px rgba(0,0,0,.15);
+}
+.toast .toast-body{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 .toast .toast-title{
   font-weight: 600; font-size: 14px; line-height: 1.3;
-  margin-bottom: 4px;
+  margin: 0;
 }
 .toast .toast-text{
   font-size: 13px; line-height: 1.4; opacity:.9;
+  margin: 0;
 }
 .toast .toast-close{
-  position:absolute; right:8px; top:8px;
+  position:absolute; right:10px; top:10px;
   width: 24px; height: 24px;
-  border-radius: 8px; border: 1px solid rgba(148,163,184,.25);
-  background: rgba(15,23,42,.4); color:#f8fafc;
-  font-size:16px; line-height: 22px; cursor: pointer;
+  border-radius: 8px; border: 0;
+  background: transparent; color:#d1d5db;
+  font-size:18px; line-height: 22px; cursor: pointer;
   opacity:.85;
-  transition: background .2s ease, opacity .2s ease, transform .2s ease;
+  transition: opacity .2s ease, transform .2s ease, color .2s ease;
 }
 .toast .toast-close:hover{
-  background: rgba(148,163,184,.2);
+  color: #f8fafc;
   opacity: 1;
   transform: translateY(-1px);
 }
 
 .toast .toast-progress{
-  position:absolute; left:10px; right:10px; bottom:8px; height:4px;
-  border-radius: 999px; background: rgba(148,163,184,.25); overflow:hidden;
+  display: none;
 }
 .toast .toast-progress > span{
   display:block; height:100%; width:100%;
@@ -847,23 +862,10 @@ body, button, input, select, textarea {
 @keyframes toastCountdown{ from{transform:scaleX(1)} to{transform:scaleX(0)} }
 
 /* Növlər üzrə rənglər */
-.toast--success{
-  background: linear-gradient(135deg, rgba(16,185,129,.2), rgba(6,95,70,.95));
-  --toast-accent:#22c55e;
-}
-.toast--error{
-  background: linear-gradient(135deg, rgba(239,68,68,.2), rgba(127,29,29,.95));
-  --toast-accent:#f87171;
-}
-.toast--warning{
-  background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(120,53,15,.95));
-  --toast-accent:#fbbf24;
-}
-.toast--info{
-  background: linear-gradient(135deg, rgba(59,130,246,.2), rgba(30,41,59,.95));
-  --toast-accent:#60a5fa;
-}
-
+.toast--success{ --toast-accent:#22c55e; }
+.toast--error{ --toast-accent:#f87171; }
+.toast--warning{ --toast-accent:#fbbf24; }
+.toast--info{ --toast-accent:#60a5fa; }
 /* Kiçik ekranlarda məsafə */
 @media (max-width:480px){
   .toast-stack{ right:10px; left:10px; max-width:unset; }

@@ -37,6 +37,15 @@
     t.setAttribute('role','status');
     t.setAttribute('aria-live','polite');
 
+    const iconEl = document.createElement('div');
+    iconEl.className = 'toast-icon';
+    iconEl.textContent = type === 'success' ? '✓' :
+                         type === 'error'   ? '×' :
+                         type === 'warning' ? '!' : 'i';
+
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'toast-body';
+
     const titleEl = document.createElement('div');
     titleEl.className = 'toast-title';
     titleEl.textContent = title || (type === 'success' ? 'Uğurlu' :
@@ -59,8 +68,10 @@
     bar.style.animationDuration = Math.max(1000, duration|0) + 'ms';
     prog.appendChild(bar);
 
-    t.appendChild(titleEl);
-    t.appendChild(textEl);
+    bodyEl.appendChild(titleEl);
+    if (text || html) bodyEl.appendChild(textEl);
+    t.appendChild(iconEl);
+    t.appendChild(bodyEl);
     t.appendChild(closeBtn);
     t.appendChild(prog);
 
