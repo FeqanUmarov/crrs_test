@@ -98,25 +98,25 @@
     return null;
   }
 
- async function fetchTekuisFromDb({ metaId=null, source=null } = {}){
-    // Əgər parametr verilməyibsə, avtomatik tap
-    if (!metaId) {
+  function buildTekuisQuery({ metaId = null, source = null } = {}){
+    let resolvedMetaId = metaId;
+    if (!resolvedMetaId) {
       const identifier = getCurrentIdentifier();
       if (!identifier) {
         console.warn('TEKUİS DB: ticket və ya meta_id tapılmadı');
-        Swal.fire('Diqqət','Bu səhifədə ticket və ya meta_id tapılmadı. Zəhmət olmasa əvvəlcə məlumat yükləyin.','warning');
-        return;
+        Swal.fire('Diqqət', 'Bu səhifədə ticket və ya meta_id tapılmadı. Zəhmət olmasa əvvəlcə məlumat yükləyin.', 'warning');
+        return null;
       }
       
       // identifier tipinə görə parametr hazırla
       if (identifier.type === 'meta_id') {
-        metaId = identifier.value;
+        resolvedMetaId = identifier.value;
       }
     }
     
     const qs = new URLSearchParams();
-    if (metaId) {
-      qs.set('meta_id', metaId);
+    if (resolvedMetaId) {
+      qs.set('meta_id', resolvedMetaId);
     } else {
       const identifier = getCurrentIdentifier();
       if (identifier && identifier.type === 'ticket') {
@@ -124,37 +124,150 @@
       } else {
         console.error('TEKUİS DB: nə ticket, nə də meta_id tapıldı');
         Swal.fire('Xəta', 'Məlumat identifikatoru tapılmadı.', 'error');
-        return;
+        return null;
       }
     }
     if (source) {
       qs.set('source', source);
     }
 
-    const url = `/api/tekuis/parcels/by-db/?${qs.toString()}`;
+      return `/api/tekuis/parcels/by-db/?${qs.toString()}`;
+  }
+
+  async function fetchTekuisGeojsonFromDb({ metaId = null, source = null } = {}){
+    const url = buildTekuisQuery({ metaId, source });
+    if (!url) return null;
     console.log('TEKUİS DB sorğusu:', url);
     
-    try{
+    try {
       const resp = await fetch(url, { headers: { 'Accept':'application/json' } });
       if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
       const fc = await resp.json();
       
-      // Nəticəni yoxla
+
       if (!fc.features || fc.features.length === 0) {
         console.log('TEKUİS DB: heç bir parsel tapılmadı');
         Swal.fire('Məlumat', 'Database-də saxlanılmış parsel tapılmadı.', 'info');
-        return;
+        return null;
       }
       
       console.log(`TEKUİS DB: ${fc.features.length} parsel tapıldı`);
-      
-      // main.js-dən hazır util:
-      window.showTekuis && window.showTekuis(fc);
-    }catch(e){
+
+      return fc;
+    } catch (e) {
       console.error('TEKUİS DB error:', e);
       Swal.fire('Xəta', e.message || 'DB-dən TEKUİS parsellərini almaq alınmadı.', 'error');
+      return null;
     }
   }
+
+  async function fetchTekuisFromDb({ metaId = null, source = null } = {}){
+    const fc = await fetchTekuisGeojsonFromDb({ metaId, source });
+    if (!fc) return null;
+    window.showTekuis?.(fc);
+    return fc;
+  }
+
+  function normalizeCoords(value){
+    if (Array.isArray(value)) return value.map(normalizeCoords);
+    if (typeof value === 'number') return Number(value.toFixed(6));
+    return value;
+  }
+
+  function getTekuisIdFromProps(props = {}){
+    const candKeys = ['tekuis_id', 'TEKUIS_ID', 'ID', 'OBJECTID', 'rid', 'RID'];
+    for (const key of candKeys) {
+      const val = props?.[key];
+      if (val == null || String(val).trim() === '') continue;
+      const parsed = Number(val);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return null;
+  }
+
+  function getGeometrySignature(geometry){
+    if (!geometry) return '';
+    const normalized = {
+      type: geometry.type,
+      coordinates: normalizeCoords(geometry.coordinates)
+    };
+    return JSON.stringify(normalized);
+  }
+
+  function getOlGeometrySignature(feature){
+    const geom = feature?.getGeometry?.();
+    if (!geom) return '';
+    const fmt = new ol.format.GeoJSON();
+    const geojsonGeom = fmt.writeGeometryObject(geom, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+    return getGeometrySignature(geojsonGeom);
+  }
+
+  function buildOldTekuisIndex(oldFc){
+    const byId = new Map();
+    const geomSet = new Set();
+    (oldFc?.features || []).forEach((feature) => {
+      const props = feature?.properties || {};
+      const id = getTekuisIdFromProps(props);
+      const geomSig = getGeometrySignature(feature?.geometry);
+      if (id != null) {
+        byId.set(id, geomSig);
+      } else if (geomSig) {
+        geomSet.add(geomSig);
+      }
+    });
+    return { byId, geomSet };
+  }
+
+  function getDifferingCurrentFeatures(currentFeatures, oldIndex){
+    const differing = [];
+    currentFeatures.forEach((feature) => {
+      const props = feature.getProperties?.() || {};
+      const id = getTekuisIdFromProps(props);
+      const geomSig = getOlGeometrySignature(feature);
+      if (id != null) {
+        const oldGeom = oldIndex.byId.get(id);
+        if (!oldGeom || oldGeom !== geomSig) differing.push(feature);
+        return;
+      }
+      if (!oldIndex.geomSet.has(geomSig)) differing.push(feature);
+    });
+    return differing;
+  }
+
+  function highlightTekuisDifferences(features, durationMs = 2000){
+    if (!features.length) return;
+    const style = new ol.style.Style({
+      fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0.35)' }),
+      stroke: new ol.style.Stroke({ color: '#f59e0b', width: 3 })
+    });
+    const previousStyles = new Map();
+    features.forEach((feature) => {
+      previousStyles.set(feature, feature.getStyle());
+      feature.setStyle(style);
+    });
+    window.tekuisLayer?.changed?.();
+    setTimeout(() => {
+      features.forEach((feature) => {
+        feature.setStyle(previousStyles.get(feature) || null);
+      });
+      window.tekuisLayer?.changed?.();
+    }, durationMs);
+  }
+
+  async function highlightDifferencesWithOldTekuis(){
+    const oldFc = await fetchTekuisGeojsonFromDb({ source: 'old' });
+    if (!oldFc) return;
+    const tekuisSource = window.tekuisSource;
+    const currentFeatures = tekuisSource?.getFeatures?.() || [];
+    if (!currentFeatures.length) return;
+    const oldIndex = buildOldTekuisIndex(oldFc);
+    const differing = getDifferingCurrentFeatures(currentFeatures, oldIndex);
+    highlightTekuisDifferences(differing, 2000);
+  }
+
 
   async function showTekuisSource(mode, metaId = null){
     const normalizedMode = mode === 'old' ? 'old' : 'current';
@@ -188,6 +301,9 @@
 
         setTekuisMode(nextMode);
         await fetchTekuisFromDb({ source: nextMode });
+        if (nextMode === 'current') {
+          await highlightDifferencesWithOldTekuis();
+        }
 
         const chk = document.getElementById('chkTekuisLayer');
         const tekuisVisible = chk ? chk.checked : true;
