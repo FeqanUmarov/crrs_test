@@ -174,13 +174,117 @@
     return value;
   }
 
+  function compareCoord(a, b){
+    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+      const av = a[i] ?? 0;
+      const bv = b[i] ?? 0;
+      if (av !== bv) return av - bv;
+    }
+    return 0;
+  }
+
+  function isSameCoord(a, b){
+    return compareCoord(a, b) === 0;
+  }
+
+  function ringArea(ring){
+    let area = 0;
+    for (let i = 0; i < ring.length - 1; i += 1) {
+      const [x1, y1] = ring[i];
+      const [x2, y2] = ring[i + 1];
+      area += (x1 * y2) - (x2 * y1);
+    }
+    return area / 2;
+  }
+
+  function stripClosingCoord(ring){
+    if (ring.length > 1 && isSameCoord(ring[0], ring[ring.length - 1])) {
+      return ring.slice(0, -1);
+    }
+    return ring.slice();
+  }
+
+  function rotateToSmallest(ring){
+    if (!ring.length) return ring;
+    let minIndex = 0;
+    for (let i = 1; i < ring.length; i += 1) {
+      if (compareCoord(ring[i], ring[minIndex]) < 0) {
+        minIndex = i;
+      }
+    }
+    return ring.slice(minIndex).concat(ring.slice(0, minIndex));
+  }
+
+  function normalizeRing(ring){
+    let normalized = stripClosingCoord(ring);
+    if (!normalized.length) return normalized;
+    if (ringArea([...normalized, normalized[0]]) < 0) {
+      normalized = normalized.slice().reverse();
+    }
+    normalized = rotateToSmallest(normalized);
+    normalized.push(normalized[0]);
+    return normalized;
+  }
+
+  function normalizeLine(line){
+    if (line.length < 2) return line.slice();
+    const start = line[0];
+    const end = line[line.length - 1];
+    if (compareCoord(end, start) < 0) {
+      return line.slice().reverse();
+    }
+    return line.slice();
+  }
+
+  function normalizePolygon(coords){
+    const rings = coords.map(normalizeRing);
+    rings.sort((a, b) => compareCoord(a[0] ?? [], b[0] ?? []));
+    return rings;
+  }
+
+  function normalizeMultiPolygon(coords){
+    const polys = coords.map(normalizePolygon);
+    polys.sort((a, b) => compareCoord(a[0]?.[0] ?? [], b[0]?.[0] ?? []));
+    return polys;
+  }
+
+  function normalizeMultiLine(coords){
+    const lines = coords.map(normalizeLine);
+    lines.sort((a, b) => compareCoord(a[0] ?? [], b[0] ?? []));
+    return lines;
+  }
+
+  function normalizeMultiPoint(coords){
+    const points = coords.slice();
+    points.sort(compareCoord);
+    return points;
+  }
+
+  function normalizeGeometry(geometry){
+    if (!geometry) return null;
+    const normalizedCoords = normalizeCoords(geometry.coordinates);
+    switch (geometry.type) {
+      case 'Point':
+        return { type: 'Point', coordinates: normalizedCoords };
+      case 'MultiPoint':
+        return { type: 'MultiPoint', coordinates: normalizeMultiPoint(normalizedCoords) };
+      case 'LineString':
+        return { type: 'LineString', coordinates: normalizeLine(normalizedCoords) };
+      case 'MultiLineString':
+        return { type: 'MultiLineString', coordinates: normalizeMultiLine(normalizedCoords) };
+      case 'Polygon':
+        return { type: 'Polygon', coordinates: normalizePolygon(normalizedCoords) };
+      case 'MultiPolygon':
+        return { type: 'MultiPolygon', coordinates: normalizeMultiPolygon(normalizedCoords) };
+      default:
+        return { type: geometry.type, coordinates: normalizedCoords };
+    }
+  }
+
 
   function getGeometrySignature(geometry){
-    if (!geometry) return '';
-    const normalized = {
-      type: geometry.type,
-      coordinates: normalizeCoords(geometry.coordinates)
-    };
+    const normalized = normalizeGeometry(geometry);
+    if (!normalized) return '';
     return JSON.stringify(normalized);
   }
 
