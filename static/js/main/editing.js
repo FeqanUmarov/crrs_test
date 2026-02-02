@@ -349,6 +349,17 @@ window.MainEditing.init = function initEditing(state = {}) {
     });
   }
 
+  async function ensureJsts() {
+    if (window.jsts) return window.jsts;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/jsts@2.11.1/dist/jsts.min.js';
+      s.onload = () => resolve(window.jsts);
+      s.onerror = () => reject(new Error('jsts yüklənmədi'));
+      document.head.appendChild(s);
+    });
+  }
+
   function createCutLineLayer() {
     const lineSource = new ol.source.Vector();
     const lineLayer = new ol.layer.Vector({
@@ -490,7 +501,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       if (typeof turf.booleanIntersects === 'function') {
         const intersects = turf.booleanIntersects(polygonFeature, lineForSplit);
         if (!intersects) {
-          return { ok: true, split: false, features: [polygonFeature] };
+          return { ok: true, split: false, features: +[polygonFeature] };
         }
       }
       if (typeof turf.polygonSplit !== 'function') {
@@ -586,10 +597,113 @@ window.MainEditing.init = function initEditing(state = {}) {
     return { ok: true, features: outFeatures };
   }
 
-  async function splitPolygonByLine(targetFeature, lineFeature) {
-    if (!targetFeature || !lineFeature) return { ok: false, reason: 'no-target' };
-    const targetSource = resolveFeatureSource(targetFeature);
-    if (!targetSource) return { ok: false, reason: 'no-source' };
+  function collectPolygonGeometries(geometry) {
+    if (!geometry) return [];
+    const type = geometry.getType?.();
+    if (type === 'Polygon') return [geometry];
+    if (type === 'MultiPolygon') {
+      if (typeof geometry.getPolygons === 'function') return geometry.getPolygons();
+      const coords = geometry.getCoordinates?.() || [];
+      return coords.map((polyCoords) => new ol.geom.Polygon(polyCoords));
+    }
+    return [];
+  }
+
+  function buildJstsParser(jsts) {
+    const parser = new jsts.io.OL3Parser();
+    if (typeof parser.inject === 'function') {
+      parser.inject(
+        ol.geom.Point,
+        ol.geom.LineString,
+        ol.geom.LinearRing,
+        ol.geom.Polygon,
+        ol.geom.MultiPoint,
+        ol.geom.MultiLineString,
+        ol.geom.MultiPolygon
+      );
+    }
+    return parser;
+  }
+
+  function toHolePolygon(parser, holeRing) {
+    const coords = holeRing.getCoordinates().map((c) => [c.x, c.y]);
+    return parser.read(new ol.geom.Polygon([coords]));
+  }
+
+  function splitPolygonWithJsts(parser, polygonGeom, lineGeom) {
+    const polygonToSplit = parser.read(polygonGeom);
+    const line = parser.read(lineGeom);
+    const holes = [];
+    const holeCount = polygonToSplit.getNumInteriorRing();
+    for (let i = 0; i < holeCount; i += 1) {
+      holes.push(polygonToSplit.getInteriorRingN(i));
+    }
+
+    const union = polygonToSplit.getExteriorRing().union(line);
+    const polygonizer = new jsts.operation.polygonize.Polygonizer();
+    polygonizer.add(union);
+    const polygons = polygonizer.getPolygons();
+    const polygonsArray = polygons.array || polygons.toArray?.() || [];
+
+    if (polygonsArray.length < 2) {
+      return { ok: true, split: false, geometries: [polygonToSplit] };
+    }
+
+    const splitGeometries = polygonsArray.map((geom) => {
+      let updatedGeom = geom;
+      holes.forEach((hole) => {
+        const holePolygon = toHolePolygon(parser, hole);
+        updatedGeom = updatedGeom.difference(holePolygon);
+      });
+      return updatedGeom;
+    });
+
+    return { ok: true, split: true, geometries: splitGeometries };
+  }
+
+  async function splitPolygonByLineUsingJsts(targetFeature, lineFeature) {
+    const jsts = await ensureJsts();
+    if (!jsts?.io?.OL3Parser) {
+      return { ok: false, reason: 'no-jsts' };
+    }
+
+    const polygonGeom = targetFeature?.getGeometry?.();
+    const lineGeom = lineFeature?.getGeometry?.();
+    if (!polygonGeom || !lineGeom) {
+      return { ok: false, reason: 'no-geometry' };
+    }
+
+    const parser = buildJstsParser(jsts);
+    const polygons = collectPolygonGeometries(polygonGeom);
+    if (polygons.length === 0) {
+      return { ok: false, reason: 'no-polygon' };
+    }
+
+    const outGeometries = [];
+    let didSplit = false;
+    for (const polygon of polygons) {
+      const splitResult = splitPolygonWithJsts(parser, polygon, lineGeom);
+      if (!splitResult.ok) return splitResult;
+      if (splitResult.split) didSplit = true;
+      splitResult.geometries.forEach((geom) => {
+        const olGeom = parser.write(geom);
+        const collected = collectPolygonGeometries(olGeom);
+        if (collected.length) {
+          outGeometries.push(...collected);
+        }
+      });
+    }
+
+    if (!didSplit) {
+      return { ok: false, reason: 'no-split' };
+    }
+
+    return { ok: true, geometries: outGeometries };
+  }
+
+  async function splitPolygonByLineUsingTurf(targetFeature, lineFeature) {
+
+
 
     const gjFmt = new ol.format.GeoJSON();
     const turf = await ensureTurf();
@@ -610,6 +724,32 @@ window.MainEditing.init = function initEditing(state = {}) {
       { type: 'FeatureCollection', features: splitResult.features },
       { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' }
     );
+
+    return { ok: true, geometries: newFeatures.map((feature) => feature.getGeometry()) };
+  }
+
+  async function splitPolygonByLine(targetFeature, lineFeature) {
+    if (!targetFeature || !lineFeature) return { ok: false, reason: 'no-target' };
+    const targetSource = resolveFeatureSource(targetFeature);
+    if (!targetSource) return { ok: false, reason: 'no-source' };
+
+    let splitResult;
+    try {
+      splitResult = await splitPolygonByLineUsingJsts(targetFeature, lineFeature);
+    } catch (error) {
+      console.warn('JSTS split failed, fallback to turf.', error);
+      splitResult = { ok: false, reason: 'jsts-failed' };
+    }
+    if (!splitResult.ok && splitResult.reason !== 'no-split') {
+      try {
+        splitResult = await splitPolygonByLineUsingTurf(targetFeature, lineFeature);
+      } catch (error) {
+        console.warn('Turf split failed.', error);
+      }
+    }
+    if (!splitResult.ok) return splitResult;
+
+    const newFeatures = splitResult.geometries.map((geom) => new ol.Feature({ geometry: geom }));
     const baseProps = cloneFeatureAttributes(targetFeature);
 
     const selectAnyFeatures = selectAny.getFeatures();
