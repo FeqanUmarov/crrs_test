@@ -88,7 +88,7 @@
   }
 
   // Sürətləndirmək üçün bbox ilə əvvəlcədən yoxlama → sonra dəqiq kəsişmə
-  function detectOverlaps(polyFC, turf) {
+  function detectOverlaps(polyFC, turf, minAreaSqm) {
     const feats = polyFC.features || [];
     const out = [];
     for (let i = 0; i < feats.length; i++) {
@@ -120,7 +120,7 @@
             )
               return;
             const area = turf.area(f);
-            if (area >= MIN_AREA_SQM) {
+            if (area >= minAreaSqm) {
               out.push({ geom: f.geometry, area_sqm: area });
             }
           });
@@ -176,7 +176,7 @@
     return null;
   }
 
-  function detectGaps({ turf, polyFC, frameMode }) {
+  function detectGaps({ turf, polyFC, frameMode, minAreaSqm }) {
     const frame = buildGapFrame({ turf, polyFC, frameMode });
     if (!frame) return [];
     const union = dissolveUnion(polyFC, turf);
@@ -194,7 +194,7 @@
         )
           return;
         const a = turf.area(f);
-        if (a >= MIN_AREA_SQM) res.push({ geom: f.geometry, area_sqm: a });
+        if (a >= minAreaSqm) res.push({ geom: f.geometry, area_sqm: a });
       });
       return res;
     } catch {
@@ -202,11 +202,25 @@
     }
   }
 
-  function buildValidation({ turf, fc, frameMode }) {
+  function buildValidation({
+    turf,
+    fc,
+    frameMode,
+    minAreaSqm,
+    checkOverlaps = true,
+    checkGaps = true
+  }) {
     const polyFC = flattenToPolygons(toFC(fc), turf);
     const stats = { n_features: polyFC.features.length };
-    const overlaps = detectOverlaps(polyFC, turf);
-    const gaps = detectGaps({ turf, polyFC, frameMode });
+    const effectiveMinArea = clampMinArea(
+      Number.isFinite(+minAreaSqm) ? +minAreaSqm : MIN_AREA_SQM
+    );
+    const overlaps = checkOverlaps
+      ? detectOverlaps(polyFC, turf, effectiveMinArea)
+      : [];
+    const gaps = checkGaps
+      ? detectGaps({ turf, polyFC, frameMode, minAreaSqm: effectiveMinArea })
+      : [];
     return { stats, overlaps, gaps };
   }
 
@@ -344,7 +358,14 @@
          *  - preferServer: boolean
          *  - frameMode: "ticket" | "hull" (ops.)
          */
-        async run({ geojson, preferServer = false, frameMode } = {}) {
+        async run({
+          geojson,
+          preferServer = false,
+          frameMode,
+          checkOverlaps = true,
+          checkGaps = true,
+          minAreaSqm
+        } = {}) {
           if (!geojson) {
             return {
               ok: true,
@@ -363,7 +384,10 @@
             const validation = buildValidation({
               turf,
               fc: geojson,
-              frameMode: _frame
+              frameMode: _frame,
+              minAreaSqm,
+              checkOverlaps,
+              checkGaps
             });
             return { ok: true, validation };
           } catch (e) {

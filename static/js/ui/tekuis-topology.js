@@ -11,12 +11,19 @@ const zoomAndHighlightTopoGeometry = mapContext.zoomAndHighlightTopoGeometry || 
 const saveTekuisToLocal = () => window.saveTekuisToLS?.();
 const clearTekuisCache = () => window.tekuisCache?.clearTekuisCache?.();
 const DEFAULT_TOPO_MIN_AREA_SQM = 0;
+const DEFAULT_TOPO_OVERLAP_MIN_AREA_SQM = 0;
 
 function resolveTopoMinAreaSqm(){
   const raw = (window.TOPO_MIN_AREA_SQM ?? window.TOPO_MAX_ERROR_SQM);
   if (Number.isFinite(+raw)) return Math.max(0, +raw);
   return DEFAULT_TOPO_MIN_AREA_SQM;
 }
+function resolveOverlapMinAreaSqm(){
+  const raw = window.TOPO_MIN_OVERLAP_SQM;
+  if (Number.isFinite(+raw)) return Math.max(0, +raw);
+  return DEFAULT_TOPO_OVERLAP_MIN_AREA_SQM;
+}
+
 
 function syncTopoMinArea(){
   const minArea = resolveTopoMinAreaSqm();
@@ -555,13 +562,16 @@ async function validateTekuisBothKinds(featureCollection){
     let allOverlaps = [];
     let allGaps = [];
     let stats = {};
+    const overlapMinArea = resolveOverlapMinAreaSqm();
+    const gapMinArea = resolveTopoMinAreaSqm();
     
     // 1) Sadəcə overlap yoxlaması üçün konfiqurasiya
     try {
       const resOverlap = await window.tv.run({
         geojson: featureCollection,
         checkGaps: false,        // Gap-ları söndür
-        checkOverlaps: true      // Yalnız overlap-ları yoxla
+        checkOverlaps: true,     // Yalnız overlap-ları yoxla
+        minAreaSqm: overlapMinArea
       });
       const vOv = normalizeValidation(resOverlap?.validation);
       allOverlaps = vOv.overlaps || [];
@@ -575,7 +585,8 @@ async function validateTekuisBothKinds(featureCollection){
       const resGap = await window.tv.run({
         geojson: featureCollection,
         checkGaps: true,         // Yalnız gap-ları yoxla
-        checkOverlaps: false     // Overlap-ları söndür
+        checkOverlaps: false,    // Overlap-ları söndür
+        minAreaSqm: gapMinArea
       });
       const vGap = normalizeValidation(resGap?.validation);
       allGaps = vGap.gaps || [];
