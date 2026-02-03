@@ -52,7 +52,12 @@
 
   function getTekuisModifiedFlag(feature){
     const raw = feature?.get?.('is_modified');
-    const value = raw ?? feature?.getProperties?.()?.is_modified ?? feature?.properties?.is_modified;
+    const props = feature?.getProperties?.() || feature?.properties || {};
+    const direct = raw ?? props.is_modified;
+    const propKey = direct === undefined
+      ? Object.keys(props).find((key) => String(key).toLowerCase() === 'is_modified')
+      : null;
+    const value = direct ?? (propKey ? props[propKey] : undefined);
     if (TEKUIS_MODIFIED_VALUES.has(value)) {
       return true;
     }
@@ -90,7 +95,7 @@
     const currentMetaId = getCurrentTekuisMetaId();
     if (currentMetaId === null || currentMetaId === undefined || currentMetaId === '') return true;
     const featureMetaId = getFeatureMetaId(feature);
-    if (featureMetaId === null || featureMetaId === undefined || featureMetaId === '') return false;
+    if (featureMetaId === null || featureMetaId === undefined || featureMetaId === '') return true;
     return String(featureMetaId) === String(currentMetaId);
   }
 
