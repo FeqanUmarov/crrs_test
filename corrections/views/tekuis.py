@@ -769,14 +769,6 @@ def _build_tekuis_colvals(props: dict) -> dict:
         "qeyd": _prop_ci(props, "NAME"),
         "tekuis_db_id": tekuis_db_id,
     }
-def _tekuis_feature_signature(feature: dict) -> str:
-    props = feature.get("properties") or {}
-    geom = feature.get("geometry") or {}
-    payload = {
-        "geom": _round_deep_py(geom, 6),
-        "cols": _build_tekuis_colvals(props),
-    }
-    return json.dumps(payload, sort_keys=True)
 
 def _is_feature_marked_modified(props: dict) -> bool:
     value = _prop_ci(props, "is_modified")
@@ -792,33 +784,12 @@ def _is_feature_marked_modified(props: dict) -> bool:
 
 
 def _get_tekuis_modified_flags(current_features: list, original_features: list) -> list:
-    original_by_id = {}
-    original_signatures = set()
-
-    for feature in original_features or []:
-        props = feature.get("properties") or {}
-        sig = _tekuis_feature_signature(feature)
-        original_signatures.add(sig)
-
-        tekuis_id = _guess_tekuis_id(props)
-        if tekuis_id is not None and tekuis_id not in original_by_id:
-            original_by_id[tekuis_id] = sig
+    _ = original_features
 
     flags = []
     for feature in current_features or []:
         props = feature.get("properties") or {}
-        if _is_feature_marked_modified(props):
-            flags.append(True)
-            continue
-        tekuis_id = _guess_tekuis_id(props)
-        sig = _tekuis_feature_signature(feature)
-
-        if tekuis_id is not None and tekuis_id in original_by_id:
-            flags.append(original_by_id[tekuis_id] != sig)
-        elif sig in original_signatures:
-            flags.append(False)
-        else:
-            flags.append(True)
+        flags.append(_is_feature_marked_modified(props))
 
     return flags
 
