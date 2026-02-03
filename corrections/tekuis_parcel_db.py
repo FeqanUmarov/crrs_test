@@ -40,9 +40,14 @@ def _build_tekuis_select_sql(table_name: str):
     column_sql = ",\n            ".join(
         f'{col} AS "{alias}"' if alias else col for col, alias in TEKUIS_DB_SELECT_COLUMNS
     )
+    if table_name == TEKUIS_DB_TABLES["current"]:
+        modified_sql = 'is_modified AS "is_modified"'
+    else:
+        modified_sql = 'NULL AS "is_modified"'
     return f"""
         SELECT
             {column_sql},
+            {modified_sql},
             ST_AsGeoJSON(geom, 7) AS geom_geojson
         FROM {table_name}
         WHERE meta_id = %s
