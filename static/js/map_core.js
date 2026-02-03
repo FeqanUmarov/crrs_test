@@ -32,11 +32,11 @@
 
   const TEKUIS_STYLE_CONFIG = {
     fillColor: 'rgba(72, 163, 133, 0.15)',
-    fillModified: 'rgba(239, 68, 68, 0.25)',
+    fillModified: 'rgba(245, 158, 11, 0.25)',
     pointFillColor: 'rgba(72, 163, 133, 0.6)',
-    pointFillModified: 'rgba(239, 68, 68, 0.7)',
+    pointFillModified: 'rgba(245, 158, 11, 0.7)',
     strokeDefault: '#4d9bb8',
-    strokeModified: '#ef4444',
+    strokeModified: '#f59e0b',
     strokeWidth: 2,
     pointRadius: 5
   };
@@ -160,7 +160,6 @@
     if (!mode) return true;
     return mode === 'current';
   }
-
 
   function getTekuisStyle(feature){
     const geomType = normalizeTekuisGeometryType(feature?.getGeometry?.().getType?.());
