@@ -39,7 +39,7 @@
     pointRadius: 5
   };
 
-  const TEKUIS_MODIFIED_VALUES = new Set([true, 1, '1', 'true', 'True', 'TRUE']);
+  const TEKUIS_MODIFIED_VALUES = new Set([true, 1, '1']);
 
   function normalizeTekuisGeometryType(type){
     if (type === 'MultiPoint' || type === 'Point') return 'Point';
@@ -51,7 +51,14 @@
   function getTekuisModifiedFlag(feature){
     const raw = feature?.get?.('is_modified');
     const value = raw ?? feature?.getProperties?.()?.is_modified ?? feature?.properties?.is_modified;
-    return TEKUIS_MODIFIED_VALUES.has(value);
+    if (TEKUIS_MODIFIED_VALUES.has(value)) {
+      return true;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === 't' || normalized === 'yes' || normalized === 'y';
+    }
+    return value === true;
   }
 
   function buildTekuisStyle({ strokeColor, geomType }){
