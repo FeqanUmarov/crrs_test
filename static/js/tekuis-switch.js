@@ -167,158 +167,71 @@
     window.showTekuis?.(fc);
     return fc;
   }
-
-  function normalizeCoords(value){
-    if (Array.isArray(value)) return value.map(normalizeCoords);
-    if (typeof value === 'number') return Number(value.toFixed(6));
-    return value;
-  }
-
-  function compareCoord(a, b){
-    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-      const av = a[i] ?? 0;
-      const bv = b[i] ?? 0;
-      if (av !== bv) return av - bv;
-    }
-    return 0;
-  }
-
-  function isSameCoord(a, b){
-    return compareCoord(a, b) === 0;
-  }
-
-  function ringArea(ring){
-    let area = 0;
-    for (let i = 0; i < ring.length - 1; i += 1) {
-      const [x1, y1] = ring[i];
-      const [x2, y2] = ring[i + 1];
-      area += (x1 * y2) - (x2 * y1);
-    }
-    return area / 2;
-  }
-
-  function stripClosingCoord(ring){
-    if (ring.length > 1 && isSameCoord(ring[0], ring[ring.length - 1])) {
-      return ring.slice(0, -1);
-    }
-    return ring.slice();
-  }
-
-  function rotateToSmallest(ring){
-    if (!ring.length) return ring;
-    let minIndex = 0;
-    for (let i = 1; i < ring.length; i += 1) {
-      if (compareCoord(ring[i], ring[minIndex]) < 0) {
-        minIndex = i;
-      }
-    }
-    return ring.slice(minIndex).concat(ring.slice(0, minIndex));
-  }
-
-  function normalizeRing(ring){
-    let normalized = stripClosingCoord(ring);
-    if (!normalized.length) return normalized;
-    if (ringArea([...normalized, normalized[0]]) < 0) {
-      normalized = normalized.slice().reverse();
-    }
-    normalized = rotateToSmallest(normalized);
-    normalized.push(normalized[0]);
-    return normalized;
-  }
-
-  function normalizeLine(line){
-    if (line.length < 2) return line.slice();
-    const start = line[0];
-    const end = line[line.length - 1];
-    if (compareCoord(end, start) < 0) {
-      return line.slice().reverse();
-    }
-    return line.slice();
-  }
-
-  function normalizePolygon(coords){
-    const rings = coords.map(normalizeRing);
-    rings.sort((a, b) => compareCoord(a[0] ?? [], b[0] ?? []));
-    return rings;
-  }
-
-  function normalizeMultiPolygon(coords){
-    const polys = coords.map(normalizePolygon);
-    polys.sort((a, b) => compareCoord(a[0]?.[0] ?? [], b[0]?.[0] ?? []));
-    return polys;
-  }
-
-  function normalizeMultiLine(coords){
-    const lines = coords.map(normalizeLine);
-    lines.sort((a, b) => compareCoord(a[0] ?? [], b[0] ?? []));
-    return lines;
-  }
-
-  function normalizeMultiPoint(coords){
-    const points = coords.slice();
-    points.sort(compareCoord);
-    return points;
-  }
-
-  function normalizeGeometry(geometry){
-    if (!geometry) return null;
-    const normalizedCoords = normalizeCoords(geometry.coordinates);
-    switch (geometry.type) {
-      case 'Point':
-        return { type: 'Point', coordinates: normalizedCoords };
-      case 'MultiPoint':
-        return { type: 'MultiPoint', coordinates: normalizeMultiPoint(normalizedCoords) };
-      case 'LineString':
-        return { type: 'LineString', coordinates: normalizeLine(normalizedCoords) };
-      case 'MultiLineString':
-        return { type: 'MultiLineString', coordinates: normalizeMultiLine(normalizedCoords) };
-      case 'Polygon':
-        return { type: 'Polygon', coordinates: normalizePolygon(normalizedCoords) };
-      case 'MultiPolygon':
-        return { type: 'MultiPolygon', coordinates: normalizeMultiPolygon(normalizedCoords) };
-      default:
-        return { type: geometry.type, coordinates: normalizedCoords };
-    }
-  }
-
-
-  function getGeometrySignature(geometry){
-    const normalized = normalizeGeometry(geometry);
-    if (!normalized) return '';
-    return JSON.stringify(normalized);
-  }
-
-  function getOlGeometrySignature(feature){
-    const geom = feature?.getGeometry?.();
-    if (!geom) return '';
-    const fmt = new ol.format.GeoJSON();
-    const geojsonGeom = fmt.writeGeometryObject(geom, {
-      dataProjection: 'EPSG:4326',
-      featureProjection: 'EPSG:3857'
-    });
-    return getGeometrySignature(geojsonGeom);
-  }
-
   function getTekuisSourceSafe(){
     return window.MapContext?.tekuisSource || window.MainState?.tekuisSource || window.tekuisSource || null;
+
   }
 
-  function buildOldTekuisIndex(oldFc){
-    const geomSet = new Set();
+  function normalizeAreaValue(value){
+    if (value === null || value === undefined || value === '') return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return null;
+    return numeric;
+  }
+
+  function normalizeFeatureId(value){
+    if (value == null || value === '') return null;
+    return String(value);
+  }
+
+  function getFeatureId(feature){
+    if (!feature) return null;
+    if (typeof feature.getId === 'function') {
+      const id = normalizeFeatureId(feature.getId());
+      if (id) return id;
+    }
+    if (typeof feature.get === 'function') {
+      const id = normalizeFeatureId(feature.get('id'));
+      if (id) return id;
+    }
+    const props = feature.properties || feature.getProperties?.();
+    const fallbackId = normalizeFeatureId(props?.id);
+    if (fallbackId) return fallbackId;
+    return null;
+  }
+
+
+  function getFeatureAreaValue(feature){
+    const props = feature?.properties || feature?.getProperties?.() || {};
+    return normalizeAreaValue(props.AREA_HA ?? props.area ?? props.sahe_ha);
+  }
+
+  function buildOldTekuisAreaIndex(oldFc){
+    const areaById = new Map();
     (oldFc?.features || []).forEach((feature) => {
-      const geomSig = getGeometrySignature(feature?.geometry);
-      if (geomSig) {
-        geomSet.add(geomSig);
-      }
+      const featureId = normalizeFeatureId(feature?.properties?.id ?? feature?.id ?? null);
+      if (!featureId) return;
+      areaById.set(featureId, getFeatureAreaValue(feature));
     });
-    return { geomSet };
+    return { areaById };
+  }
+
+  function isAreaDifferent(currentArea, oldArea){
+    if (currentArea == null && oldArea == null) return false;
+    if (currentArea == null || oldArea == null) return true;
+    return Math.abs(currentArea - oldArea) > 0.000001;
   }
 
   function getDifferingCurrentFeatures(currentFeatures, oldIndex){
     const differing = [];
     currentFeatures.forEach((feature) => {
-      const geomSig = getOlGeometrySignature(feature);
-      if (geomSig && !oldIndex.geomSet.has(geomSig)) differing.push(feature);
+      const featureId = getFeatureId(feature);
+      if (featureId == null) return;
+      const oldArea = oldIndex.areaById.get(featureId);
+      const currentArea = getFeatureAreaValue(feature);
+      if (isAreaDifferent(currentArea, oldArea)) {
+        differing.push(feature);
+      }
     });
     return differing;
   }
@@ -328,6 +241,9 @@
       fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0)' }),
       stroke: new ol.style.Stroke({ color: '#f59e0b', width: 3 })
     });
+  }
+  function clearDifferenceHighlights(features){
+    features.forEach((feature) => feature.setStyle(null));
   }
 
   function highlightTekuisDifferences(features){
@@ -345,7 +261,8 @@
     const tekuisSource = getTekuisSourceSafe();
     const currentFeatures = tekuisSource?.getFeatures?.() || [];
     if (!currentFeatures.length) return;
-    const oldIndex = buildOldTekuisIndex(oldFc);
+    clearDifferenceHighlights(currentFeatures);
+    const oldIndex = buildOldTekuisAreaIndex(oldFc);
     const differing = getDifferingCurrentFeatures(currentFeatures, oldIndex);
     highlightTekuisDifferences(differing);
   }
