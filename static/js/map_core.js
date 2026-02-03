@@ -63,6 +63,37 @@
     return value === true;
   }
 
+  function getCurrentTekuisMetaId(){
+    const identifier = window.TekuisSwitch?.getCurrentIdentifier?.();
+    if (identifier?.type === 'meta_id') return identifier.value;
+    const fallback = window.CURRENT_META_ID ?? window.META_ID ?? null;
+    return fallback;
+  }
+
+  function getFeatureMetaId(feature){
+    const direct = feature?.get?.('meta_id');
+    if (direct !== undefined && direct !== null && direct !== '') return direct;
+    const props = feature?.getProperties?.() || feature?.properties || {};
+    const candidates = ['meta_id', 'fk_metadata', 'META_ID', 'FK_METADATA'];
+    for (const key of candidates) {
+      if (props[key] !== undefined && props[key] !== null && props[key] !== '') {
+        return props[key];
+      }
+    }
+    const foundKey = Object.keys(props).find(
+      (key) => String(key).toLowerCase() === 'meta_id' || String(key).toLowerCase() === 'fk_metadata'
+    );
+    return foundKey ? props[foundKey] : null;
+  }
+
+  function isTekuisFeatureFromCurrentTicket(feature){
+    const currentMetaId = getCurrentTekuisMetaId();
+    if (currentMetaId === null || currentMetaId === undefined || currentMetaId === '') return false;
+    const featureMetaId = getFeatureMetaId(feature);
+    if (featureMetaId === null || featureMetaId === undefined || featureMetaId === '') return false;
+    return String(featureMetaId) === String(currentMetaId);
+  }
+
   function buildTekuisStyle({ strokeColor, geomType, fillColor, pointFillColor }){
     if (geomType === 'Point') {
       return new ol.style.Style({
@@ -122,10 +153,10 @@
 
   function getTekuisStyle(feature){
     const geomType = normalizeTekuisGeometryType(feature?.getGeometry?.().getType?.());
-    const isModified = getTekuisModifiedFlag(feature);
-    const variant = isModified
-      ? (isTekuisCurrentMode() ? 'modifiedCurrent' : 'modified')
-      : 'default';
+    const shouldHighlight = isTekuisCurrentMode()
+      && getTekuisModifiedFlag(feature)
+      && isTekuisFeatureFromCurrentTicket(feature);
+    const variant = shouldHighlight ? 'modifiedCurrent' : 'default';
     return tekuisStyleCache[geomType][variant];
   }
 

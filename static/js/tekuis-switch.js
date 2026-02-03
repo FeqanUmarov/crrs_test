@@ -143,7 +143,10 @@
       const resp = await fetch(url, { headers: { 'Accept':'application/json' } });
       if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
       const fc = await resp.json();
-      
+      const metaIdFromResponse = fc?.features?.[0]?.properties?.meta_id;
+      if (metaIdFromResponse !== undefined && metaIdFromResponse !== null && metaIdFromResponse !== '') {
+        window.CURRENT_META_ID = metaIdFromResponse;
+      }
 
       if (!fc.features || fc.features.length === 0) {
         console.log('TEKUİS DB: heç bir parsel tapılmadı');
