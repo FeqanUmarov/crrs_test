@@ -11,6 +11,15 @@
    * Util-lər
    * ------------------------------ */
   const byId = (id)=>document.getElementById(id);
+  const markFeatureModified = (feature) => {
+    if (typeof window.markTekuisFeatureModified === 'function') {
+      window.markTekuisFeatureModified(feature);
+      return;
+    }
+    if (feature && typeof feature.set === 'function') {
+      feature.set('is_modified', true);
+    }
+  };
 
   // turf dinamiki
   function ensureTurf(){
@@ -223,6 +232,7 @@
         // TEKUİS layına aid olduğunu göstərmək üçün xüsusi işarə əlavə et
         newFeature.set('_from_tedqiqat', true);
         newFeature.set('_transfer_timestamp', Date.now());
+        newFeature.set('is_modified', true);
         console.log('Xüsusiyyətlər əlavə edildi');
         
         // Feature-ı TEKUİS layına əlavə et
@@ -343,6 +353,7 @@
           removed++;
         } else {
           f.setGeometry(newOlGeom);
+          markFeatureModified(f);
           modified++;
         }
       }

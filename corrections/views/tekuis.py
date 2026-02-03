@@ -778,6 +778,18 @@ def _tekuis_feature_signature(feature: dict) -> str:
     }
     return json.dumps(payload, sort_keys=True)
 
+def _is_feature_marked_modified(props: dict) -> bool:
+    value = _prop_ci(props, "is_modified")
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return bool(value)
+
 
 def _get_tekuis_modified_flags(current_features: list, original_features: list) -> list:
     original_by_id = {}
@@ -795,6 +807,9 @@ def _get_tekuis_modified_flags(current_features: list, original_features: list) 
     flags = []
     for feature in current_features or []:
         props = feature.get("properties") or {}
+        if _is_feature_marked_modified(props):
+            flags.append(True)
+            continue
         tekuis_id = _guess_tekuis_id(props)
         sig = _tekuis_feature_signature(feature)
 

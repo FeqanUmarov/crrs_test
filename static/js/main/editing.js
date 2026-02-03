@@ -303,6 +303,20 @@ window.MainEditing.init = function initEditing(state = {}) {
     } catch { return false; }
   }
 
+  function markTekuisFeatureModified(feature) {
+    if (!feature || typeof feature.set !== 'function') return;
+    const src = resolveFeatureSource(feature);
+    if (src && !isTekuisSource(src)) return;
+    feature.set('is_modified', true);
+  }
+
+  function markTekuisFeaturesModified(features) {
+    (features || []).forEach(markTekuisFeatureModified);
+  }
+
+  window.markTekuisFeatureModified = markTekuisFeatureModified;
+  window.markTekuisFeaturesModified = markTekuisFeaturesModified;
+
 
 
 
@@ -765,6 +779,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       feature.setProperties(baseProps);
       targetSource.addFeature(feature);
     });
+    markTekuisFeaturesModified(newFeatures);
 
     if (wasInSelectAny) {
       newFeatures.forEach(f => selectAnyFeatures.push(f));

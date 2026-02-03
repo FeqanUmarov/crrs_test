@@ -7,6 +7,15 @@
 
   // ----------------------------- Utils -----------------------------
   const byId = (id) => document.getElementById(id);
+  const markFeatureModified = (feature) => {
+    if (typeof window.markTekuisFeatureModified === 'function') {
+      window.markTekuisFeatureModified(feature);
+      return;
+    }
+    if (feature && typeof feature.set === 'function') {
+      feature.set('is_modified', true);
+    }
+  };
 
   function waitForMap(timeoutMs = 10000, intervalMs = 120) {
     return new Promise((resolve, reject) => {
@@ -358,6 +367,7 @@
 
       if (success) {
         modified = true;
+        markFeatureModified(feature);
         try {
           const g3857 = feature.getGeometry();
           if (g3857) {
@@ -432,6 +442,7 @@
           const feats = e.features ? e.features.getArray() : [];
           const arr = [];
           feats.forEach(f => {
+            markFeatureModified(f);
             const g3857 = f.getGeometry();
             if (!g3857) return;
             const g4326 = g3857.clone().transform('EPSG:3857','EPSG:4326');

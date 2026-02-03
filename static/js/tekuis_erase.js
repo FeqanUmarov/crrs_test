@@ -11,6 +11,15 @@
    * Util-lər
    * ------------------------------ */
   const byId = (id)=>document.getElementById(id);
+  const markFeatureModified = (feature) => {
+    if (typeof window.markTekuisFeatureModified === 'function') {
+      window.markTekuisFeatureModified(feature);
+      return;
+    }
+    if (feature && typeof feature.set === 'function') {
+      feature.set('is_modified', true);
+    }
+  };
 
   // turf dinamiki
   function ensureTurf(){
@@ -420,7 +429,8 @@ async function _addTicketFeaturesToTekuis(tekuisSrc, ticketFeatures, gjFmt, temp
         _from_tedqiqat: true,
         _transfer_timestamp: Date.now(),
         SOURCE: 'TEKUIS',
-        AREA_HA: calcHa
+        AREA_HA: calcHa,
+        is_modified: true
       };
 
       // 6) Whitelist üzrə şablon atributlarını köçür
@@ -589,6 +599,7 @@ async function _addTicketFeaturesToTekuis(tekuisSrc, ticketFeatures, gjFmt, temp
           removed++;
         } else {
           f.setGeometry(newOlGeom);
+          markFeatureModified(f);
           modified++;
         }
       }
