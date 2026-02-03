@@ -172,102 +172,6 @@
 
   }
 
-  function normalizeAreaValue(value){
-    if (value === null || value === undefined || value === '') return null;
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return null;
-    return numeric;
-  }
-
-  function normalizeFeatureId(value){
-    if (value == null || value === '') return null;
-    return String(value);
-  }
-
-  function getFeatureId(feature){
-    if (!feature) return null;
-    if (typeof feature.getId === 'function') {
-      const id = normalizeFeatureId(feature.getId());
-      if (id) return id;
-    }
-    if (typeof feature.get === 'function') {
-      const id = normalizeFeatureId(feature.get('id'));
-      if (id) return id;
-    }
-    const props = feature.properties || feature.getProperties?.();
-    const fallbackId = normalizeFeatureId(props?.id);
-    if (fallbackId) return fallbackId;
-    return null;
-  }
-
-
-  function getFeatureAreaValue(feature){
-    const props = feature?.properties || feature?.getProperties?.() || {};
-    return normalizeAreaValue(props.AREA_HA ?? props.area ?? props.sahe_ha);
-  }
-
-  function buildOldTekuisAreaIndex(oldFc){
-    const areaById = new Map();
-    (oldFc?.features || []).forEach((feature) => {
-      const featureId = normalizeFeatureId(feature?.properties?.id ?? feature?.id ?? null);
-      if (!featureId) return;
-      areaById.set(featureId, getFeatureAreaValue(feature));
-    });
-    return { areaById };
-  }
-
-  function isAreaDifferent(currentArea, oldArea){
-    if (currentArea == null && oldArea == null) return false;
-    if (currentArea == null || oldArea == null) return true;
-    return Math.abs(currentArea - oldArea) > 0.000001;
-  }
-
-  function getDifferingCurrentFeatures(currentFeatures, oldIndex){
-    const differing = [];
-    currentFeatures.forEach((feature) => {
-      const featureId = getFeatureId(feature);
-      if (featureId == null) return;
-      const oldArea = oldIndex.areaById.get(featureId);
-      const currentArea = getFeatureAreaValue(feature);
-      if (isAreaDifferent(currentArea, oldArea)) {
-        differing.push(feature);
-      }
-    });
-    return differing;
-  }
-
-  function createDifferenceHighlightStyle(){
-    return new ol.style.Style({
-      fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0)' }),
-      stroke: new ol.style.Stroke({ color: '#f59e0b', width: 3 })
-    });
-  }
-  function clearDifferenceHighlights(features){
-    features.forEach((feature) => feature.setStyle(null));
-  }
-
-  function highlightTekuisDifferences(features){
-    if (!features.length) return;
-    const style = createDifferenceHighlightStyle();
-    features.forEach((feature) => {
-      feature.setStyle(style);
-    });
-    window.tekuisLayer?.changed?.();
-  }
-
-  async function highlightDifferencesWithOldTekuis(){
-    const oldFc = await fetchTekuisGeojsonFromDb({ source: 'old' });
-    if (!oldFc) return;
-    const tekuisSource = getTekuisSourceSafe();
-    const currentFeatures = tekuisSource?.getFeatures?.() || [];
-    if (!currentFeatures.length) return;
-    clearDifferenceHighlights(currentFeatures);
-    const oldIndex = buildOldTekuisAreaIndex(oldFc);
-    const differing = getDifferingCurrentFeatures(currentFeatures, oldIndex);
-    highlightTekuisDifferences(differing);
-  }
-
-
   async function showTekuisSource(mode, metaId = null){
     const normalizedMode = mode === 'old' ? 'old' : 'current';
     setTekuisMode(normalizedMode);
@@ -300,10 +204,6 @@
 
         setTekuisMode(nextMode);
         await fetchTekuisFromDb({ source: nextMode });
-        if (nextMode === 'current') {
-          await highlightDifferencesWithOldTekuis();
-        }
-
         const chk = document.getElementById('chkTekuisLayer');
         const tekuisVisible = chk ? chk.checked : true;
         const tekuisSource = getTekuisSourceSafe();
