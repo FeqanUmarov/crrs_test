@@ -88,7 +88,7 @@
 
   function isTekuisFeatureFromCurrentTicket(feature){
     const currentMetaId = getCurrentTekuisMetaId();
-    if (currentMetaId === null || currentMetaId === undefined || currentMetaId === '') return false;
+    if (currentMetaId === null || currentMetaId === undefined || currentMetaId === '') return true;
     const featureMetaId = getFeatureMetaId(feature);
     if (featureMetaId === null || featureMetaId === undefined || featureMetaId === '') return false;
     return String(featureMetaId) === String(currentMetaId);
