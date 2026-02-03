@@ -836,7 +836,9 @@ def _insert_tekuis_rows(
 
 
         if include_user_fields:
-            is_modified = 1 if (modified_flags or []) and idx < len(modified_flags) and modified_flags[idx] else 0
+            is_modified = bool(
+                (modified_flags or []) and idx < len(modified_flags) and modified_flags[idx]
+            )
             cur.execute(
                 f"""
                 INSERT INTO {table_name} (
