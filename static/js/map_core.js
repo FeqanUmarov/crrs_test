@@ -30,12 +30,43 @@
   trackFeatureOwnership?.(tekuisSource);
   window.setupTekuisSave?.({ tekuisSource, ticket: window.PAGE_TICKET || '' });
 
+  const TEKUIS_STYLE_CONFIG = {
+    fillColor: 'rgba(72, 163, 133, 0.15)',
+    strokeDefault: '#4d9bb8',
+    strokeModified: '#ef4444',
+    strokeWidth: 2
+  };
+
+  function isTekuisModified(feature){
+    const raw = feature?.get?.('is_modified');
+    const value = raw ?? feature?.getProperties?.()?.is_modified ?? feature?.properties?.is_modified;
+    return value === true || value === 1 || value === '1' || value === 'true';
+  }
+
+  const tekuisStyleCache = {
+    default: new ol.style.Style({
+      fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.fillColor }),
+      stroke: new ol.style.Stroke({
+        color: TEKUIS_STYLE_CONFIG.strokeDefault,
+        width: TEKUIS_STYLE_CONFIG.strokeWidth
+      })
+    }),
+    modified: new ol.style.Style({
+      fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.fillColor }),
+      stroke: new ol.style.Stroke({
+        color: TEKUIS_STYLE_CONFIG.strokeModified,
+        width: TEKUIS_STYLE_CONFIG.strokeWidth
+      })
+    })
+  };
+
+  function getTekuisStyle(feature){
+    return isTekuisModified(feature) ? tekuisStyleCache.modified : tekuisStyleCache.default;
+  }
+
   const tekuisLayer  = new ol.layer.Vector({
     source: tekuisSource,
-    style: new ol.style.Style({
-      fill:   new ol.style.Fill({ color: 'rgba(72, 163, 133, 0.15)' }),
-      stroke: new ol.style.Stroke({ color: '#4d9bb8', width: 2 })
-    }),
+    style: getTekuisStyle,
     zIndex: 4,
     visible: false
   });
