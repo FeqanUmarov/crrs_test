@@ -129,8 +129,12 @@
     }
     
     if (layer) {
-      layer.setStyle(makeStyleForColor(hex));
-      if (layer.changed) layer.changed();
+      if (key === 'tekuis' && typeof window.setTekuisBaseColor === 'function') {
+        window.setTekuisBaseColor(hex);
+      } else {
+        layer.setStyle(makeStyleForColor(hex));
+        if (layer.changed) layer.changed();
+      }
     }
     const pair = CHIP_MAP.get(key);
     if (pair){

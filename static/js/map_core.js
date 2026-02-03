@@ -122,32 +122,38 @@
     });
   }
 
-  const tekuisStyleCache = {
-    Point: {
-      default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Point' }),
-      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Point' }),
-      modifiedCurrent: buildTekuisStyle({
-        strokeColor: TEKUIS_STYLE_CONFIG.strokeModified,
-        geomType: 'Point',
-        pointFillColor: TEKUIS_STYLE_CONFIG.pointFillModified
-      })
-    },
-    LineString: {
-      default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'LineString' }),
-      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' }),
-      modifiedCurrent: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' })
-    },
-    Polygon: {
-      default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Polygon' }),
-      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Polygon' }),
-      modifiedCurrent: buildTekuisStyle({
-        strokeColor: TEKUIS_STYLE_CONFIG.strokeModified,
-        geomType: 'Polygon',
-        fillColor: TEKUIS_STYLE_CONFIG.fillModified
-      })
-    }
+    let tekuisStyleCache = {};
 
-  };
+  function rebuildTekuisStyleCache(){
+    tekuisStyleCache = {
+      Point: {
+        default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Point' }),
+        modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Point' }),
+        modifiedCurrent: buildTekuisStyle({
+          strokeColor: TEKUIS_STYLE_CONFIG.strokeModified,
+          geomType: 'Point',
+          pointFillColor: TEKUIS_STYLE_CONFIG.pointFillModified
+        })
+      },
+      LineString: {
+        default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'LineString' }),
+        modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' }),
+        modifiedCurrent: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' })
+      },
+      Polygon: {
+        default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Polygon' }),
+        modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Polygon' }),
+        modifiedCurrent: buildTekuisStyle({
+          strokeColor: TEKUIS_STYLE_CONFIG.strokeModified,
+          geomType: 'Polygon',
+          fillColor: TEKUIS_STYLE_CONFIG.fillModified
+        })
+      }
+
+    };
+  }
+
+  rebuildTekuisStyleCache();
 
   function isTekuisCurrentMode(){
     const mode = window.TekuisSwitch?.getMode?.();
@@ -165,6 +171,29 @@
     return tekuisStyleCache[geomType][variant];
   }
 
+  function hexToRgba(hex, alpha){
+    const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+    if (!match) return null;
+    const r = parseInt(match[1], 16);
+    const g = parseInt(match[2], 16);
+    const b = parseInt(match[3], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function setTekuisBaseColor(hex){
+    if (!hex) return;
+    TEKUIS_STYLE_CONFIG.strokeDefault = hex;
+    const fillColor = hexToRgba(hex, 0.15);
+    const pointFillColor = hexToRgba(hex, 0.6);
+    if (fillColor) TEKUIS_STYLE_CONFIG.fillColor = fillColor;
+    if (pointFillColor) TEKUIS_STYLE_CONFIG.pointFillColor = pointFillColor;
+    rebuildTekuisStyleCache();
+    if (tekuisLayer){
+      tekuisLayer.setStyle(getTekuisStyle);
+      tekuisLayer.changed?.();
+    }
+  }
+
   const tekuisLayer  = new ol.layer.Vector({
     source: tekuisSource,
     style: getTekuisStyle,
@@ -176,6 +205,7 @@
   tekuisLayer.set('selectIgnore', false);  // Seçim interaction-u bu layı GÖRSÜN
   map.addLayer(tekuisLayer);
   window.tekuisLayer = tekuisLayer;
+  window.setTekuisBaseColor = setTekuisBaseColor;
 
   /* =========================
      NECAS (NECASMAPUSER.PARCEL) LAY
