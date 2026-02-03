@@ -32,36 +32,71 @@
 
   const TEKUIS_STYLE_CONFIG = {
     fillColor: 'rgba(72, 163, 133, 0.15)',
+    pointFillColor: 'rgba(72, 163, 133, 0.6)',
     strokeDefault: '#4d9bb8',
     strokeModified: '#ef4444',
-    strokeWidth: 2
+    strokeWidth: 2,
+    pointRadius: 5
   };
 
-  function isTekuisModified(feature){
+  const TEKUIS_MODIFIED_VALUES = new Set([true, 1, '1', 'true', 'True', 'TRUE']);
+
+  function normalizeTekuisGeometryType(type){
+    if (type === 'MultiPoint' || type === 'Point') return 'Point';
+    if (type === 'MultiLineString' || type === 'LineString') return 'LineString';
+    if (type === 'MultiPolygon' || type === 'Polygon') return 'Polygon';
+    return 'Polygon';
+  }
+
+  function getTekuisModifiedFlag(feature){
     const raw = feature?.get?.('is_modified');
     const value = raw ?? feature?.getProperties?.()?.is_modified ?? feature?.properties?.is_modified;
-    return value === true || value === 1 || value === '1' || value === 'true';
+    return TEKUIS_MODIFIED_VALUES.has(value);
+  }
+
+  function buildTekuisStyle({ strokeColor, geomType }){
+    if (geomType === 'Point') {
+      return new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: TEKUIS_STYLE_CONFIG.pointRadius,
+          fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.pointFillColor }),
+          stroke: new ol.style.Stroke({ color: strokeColor, width: TEKUIS_STYLE_CONFIG.strokeWidth })
+        })
+      });
+    }
+
+    if (geomType === 'LineString') {
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: strokeColor, width: TEKUIS_STYLE_CONFIG.strokeWidth })
+      });
+    }
+
+    return new ol.style.Style({
+      fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.fillColor }),
+      stroke: new ol.style.Stroke({ color: strokeColor, width: TEKUIS_STYLE_CONFIG.strokeWidth })
+    });
   }
 
   const tekuisStyleCache = {
-    default: new ol.style.Style({
-      fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.fillColor }),
-      stroke: new ol.style.Stroke({
-        color: TEKUIS_STYLE_CONFIG.strokeDefault,
-        width: TEKUIS_STYLE_CONFIG.strokeWidth
-      })
-    }),
-    modified: new ol.style.Style({
-      fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.fillColor }),
-      stroke: new ol.style.Stroke({
-        color: TEKUIS_STYLE_CONFIG.strokeModified,
-        width: TEKUIS_STYLE_CONFIG.strokeWidth
-      })
-    })
+    Point: {
+      default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Point' }),
+      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Point' })
+    },
+    LineString: {
+      default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'LineString' }),
+      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' })
+    },
+    Polygon: {
+      default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Polygon' }),
+      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Polygon' })
+    }
+
   };
 
   function getTekuisStyle(feature){
-    return isTekuisModified(feature) ? tekuisStyleCache.modified : tekuisStyleCache.default;
+    const geomType = normalizeTekuisGeometryType(feature?.getGeometry?.().getType?.());
+    const variant = getTekuisModifiedFlag(feature) ? 'modified' : 'default';
+    return tekuisStyleCache[geomType][variant];
   }
 
   const tekuisLayer  = new ol.layer.Vector({
