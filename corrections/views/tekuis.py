@@ -769,6 +769,44 @@ def _build_tekuis_colvals(props: dict) -> dict:
         "qeyd": _prop_ci(props, "NAME"),
         "tekuis_db_id": tekuis_db_id,
     }
+def _tekuis_feature_signature(feature: dict) -> str:
+    props = feature.get("properties") or {}
+    geom = feature.get("geometry") or {}
+    payload = {
+        "geom": _round_deep_py(geom, 6),
+        "cols": _build_tekuis_colvals(props),
+    }
+    return json.dumps(payload, sort_keys=True)
+
+
+def _get_tekuis_modified_flags(current_features: list, original_features: list) -> list:
+    original_by_id = {}
+    original_signatures = set()
+
+    for feature in original_features or []:
+        props = feature.get("properties") or {}
+        sig = _tekuis_feature_signature(feature)
+        original_signatures.add(sig)
+
+        tekuis_id = _guess_tekuis_id(props)
+        if tekuis_id is not None and tekuis_id not in original_by_id:
+            original_by_id[tekuis_id] = sig
+
+    flags = []
+    for feature in current_features or []:
+        props = feature.get("properties") or {}
+        tekuis_id = _guess_tekuis_id(props)
+        sig = _tekuis_feature_signature(feature)
+
+        if tekuis_id is not None and tekuis_id in original_by_id:
+            flags.append(original_by_id[tekuis_id] != sig)
+        elif sig in original_signatures:
+            flags.append(False)
+        else:
+            flags.append(True)
+
+    return flags
+
 
 
 def _insert_tekuis_rows(
@@ -780,11 +818,12 @@ def _insert_tekuis_rows(
     user_id: Optional[int] = None,
     user_full_name: Optional[str] = None,
     include_user_fields: bool = False,
+    modified_flags: Optional[list] = None,
 ):
     saved = 0
     skipped = 0
 
-    for f in features or []:
+    for idx, f in enumerate(features or []):
         geom = f.get("geometry") or {}
         gtype = (geom.get("type") or "").lower()
         if "polygon" not in gtype:  # yalnız (Multi)Polygon saxlayırıq
@@ -797,6 +836,7 @@ def _insert_tekuis_rows(
 
 
         if include_user_fields:
+            is_modified = 1 if (modified_flags or []) and idx < len(modified_flags) and modified_flags[idx] else 0
             cur.execute(
                 f"""
                 INSERT INTO {table_name} (
@@ -805,7 +845,7 @@ def _insert_tekuis_rows(
                     rayon_adi, ied_adi, belediyye_adi,
                     sahe_ha, qeyd, tekuis_db_id, geom,
                     meta_id, created_date, last_edited_date, status,
-                    user_id, user_full_name
+                    user_id, user_full_name, is_modified
                 )
                 VALUES (
                     %s, %s, %s, %s,
@@ -814,7 +854,7 @@ def _insert_tekuis_rows(
                     %s, %s, %s,
                     ST_Multi( ST_Buffer( ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), 0) ),
                     %s, now(), now(), 1,
-                    %s, %s
+                    %s, %s, %s
                 )
                 RETURNING tekuis_id
             """,
@@ -837,6 +877,7 @@ def _insert_tekuis_rows(
                     int(meta_id),
                     user_id,
                     user_full_name,
+                    is_modified,
                 ],
             )
         else:
@@ -1154,6 +1195,7 @@ def save_tekuis_parcels(request):
                     features=original_features,
                     include_user_fields=False,
                 )
+                modified_flags = _get_tekuis_modified_flags(features, original_features)
 
                 res = _insert_tekuis_rows(
                     cur,
@@ -1163,6 +1205,7 @@ def save_tekuis_parcels(request):
                     user_id=uid,
                     user_full_name=ufn,
                     include_user_fields=True,
+                    modified_flags=modified_flags,
                 )
 
         return JsonResponse(
