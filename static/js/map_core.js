@@ -32,7 +32,9 @@
 
   const TEKUIS_STYLE_CONFIG = {
     fillColor: 'rgba(72, 163, 133, 0.15)',
+    fillModified: 'rgba(239, 68, 68, 0.25)',
     pointFillColor: 'rgba(72, 163, 133, 0.6)',
+    pointFillModified: 'rgba(239, 68, 68, 0.7)',
     strokeDefault: '#4d9bb8',
     strokeModified: '#ef4444',
     strokeWidth: 2,
@@ -61,12 +63,12 @@
     return value === true;
   }
 
-  function buildTekuisStyle({ strokeColor, geomType }){
+  function buildTekuisStyle({ strokeColor, geomType, fillColor, pointFillColor }){
     if (geomType === 'Point') {
       return new ol.style.Style({
         image: new ol.style.Circle({
           radius: TEKUIS_STYLE_CONFIG.pointRadius,
-          fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.pointFillColor }),
+          fill: new ol.style.Fill({ color: pointFillColor ?? TEKUIS_STYLE_CONFIG.pointFillColor }),
           stroke: new ol.style.Stroke({ color: strokeColor, width: TEKUIS_STYLE_CONFIG.strokeWidth })
         })
       });
@@ -79,7 +81,7 @@
     }
 
     return new ol.style.Style({
-      fill: new ol.style.Fill({ color: TEKUIS_STYLE_CONFIG.fillColor }),
+      fill: new ol.style.Fill({ color: fillColor ?? TEKUIS_STYLE_CONFIG.fillColor }),
       stroke: new ol.style.Stroke({ color: strokeColor, width: TEKUIS_STYLE_CONFIG.strokeWidth })
     });
   }
@@ -87,22 +89,43 @@
   const tekuisStyleCache = {
     Point: {
       default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Point' }),
-      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Point' })
+      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Point' }),
+      modifiedCurrent: buildTekuisStyle({
+        strokeColor: TEKUIS_STYLE_CONFIG.strokeModified,
+        geomType: 'Point',
+        pointFillColor: TEKUIS_STYLE_CONFIG.pointFillModified
+      })
     },
     LineString: {
       default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'LineString' }),
-      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' })
+      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' }),
+      modifiedCurrent: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'LineString' })
     },
     Polygon: {
       default: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeDefault, geomType: 'Polygon' }),
-      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Polygon' })
+      modified: buildTekuisStyle({ strokeColor: TEKUIS_STYLE_CONFIG.strokeModified, geomType: 'Polygon' }),
+      modifiedCurrent: buildTekuisStyle({
+        strokeColor: TEKUIS_STYLE_CONFIG.strokeModified,
+        geomType: 'Polygon',
+        fillColor: TEKUIS_STYLE_CONFIG.fillModified
+      })
     }
 
   };
 
+  function isTekuisCurrentMode(){
+    const mode = window.TekuisSwitch?.getMode?.();
+    if (!mode) return true;
+    return mode === 'current';
+  }
+
+
   function getTekuisStyle(feature){
     const geomType = normalizeTekuisGeometryType(feature?.getGeometry?.().getType?.());
-    const variant = getTekuisModifiedFlag(feature) ? 'modified' : 'default';
+    const isModified = getTekuisModifiedFlag(feature);
+    const variant = isModified
+      ? (isTekuisCurrentMode() ? 'modifiedCurrent' : 'modified')
+      : 'default';
     return tekuisStyleCache[geomType][variant];
   }
 
