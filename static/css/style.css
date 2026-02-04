@@ -472,6 +472,25 @@ body, button, input, select, textarea {
 .icon-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 14px rgba(2,6,23,.12); }
 .icon-btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
 
+.icon-btn.svg-icon{
+  background-image:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.icon-btn.svg-icon::before{
+  content:"";
+  width:20px;
+  height:20px;
+  background-color:var(--icon-color, #0f172a);
+  mask:var(--icon-src) center/contain no-repeat;
+  -webkit-mask:var(--icon-src) center/contain no-repeat;
+}
+
+.icon-btn.tekuis-save{ --icon-src:url('/static/icons/images/save.svg'); --icon-color:#0f766e; }
+.icon-btn.tekuis-erase{ --icon-src:url('/static/icons/images/poygon-erase.svg'); --icon-color:#c2410c; }
+.icon-btn.tekuis-zoom{ --icon-src:url('/static/icons/images/zoom-in.svg'); --icon-color:#2563eb; }
+
 
 .ico-zoom   { background-image:url('/static/icons/images/zoom-in.png'); }
 .ico-erase  { background-image:url('/static/icons/images/poygon-erase.svg'); }
@@ -728,7 +747,7 @@ body, button, input, select, textarea {
   background-color: #4f81c7;
 }
 
-.ico-save   { background-image:url('/static/icons/images/save.png'); }
+.ico-save   { background-image:url('/static/icons/images/save.svg'); }
 
 
 
