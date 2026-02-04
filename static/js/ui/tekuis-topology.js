@@ -55,9 +55,9 @@ function getTekuisFeatureCollection() {
 
 // --- Topologiya ikonları (istəyə görə dəyişin)
 window.TOPO_ICONS = Object.assign({
-  zoom:     '/static/icons/images/visual.png',
+  zoom:     '/static/icons/images/visual.svg',
   close:    '/static/icons/images/close.png',
-  ignore:   '/static/icons/images/eye-off.png',
+  ignore:   '/static/icons/images/eye-off.svg',
   unignore: '/static/icons/images/undo.png'
 }, window.TOPO_ICONS || {});
 
@@ -93,7 +93,7 @@ function ensureTopologyModal(){
     .topo-section{border:1px solid #e6e6e6;border-radius:10px;padding:10px}
     .topo-section h4{margin:0 0 8px 0;font-size:14px}
     .topo-list{display:grid;gap:8px}
-    .topo-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border:1px dashed #d9d9d9;border-radius:8px}
+    .topo-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px dashed #d9d9d9;border-radius:10px;background:linear-gradient(180deg,#ffffff 0%,#f9fafb 100%)}
     .topo-actions{display:flex;gap:8px}
     .btn.link{background:transparent;border:0;color:#0b5ed7;text-decoration:underline}
     .topo-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid #eee}
@@ -116,6 +116,38 @@ function ensureTopologyModal(){
       line-height:1.2;
       cursor:pointer;
       transition:background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .topo-actions .btn.icon-only{
+      width:34px;height:34px;padding:0;justify-content:center;
+      border-radius:10px;
+      background:linear-gradient(180deg,#ffffff 0%,#eef2ff 100%);
+      box-shadow:0 6px 12px rgba(15,23,42,.08);
+    }
+    .topo-actions .btn.icon-only .ico,
+    .topo-actions .btn.icon-only svg{
+      width:18px;height:18px;
+    }
+    .topo-actions .btn.icon-only svg{
+      fill:currentColor;stroke:currentColor;
+    }
+    .topo-actions .btn.icon-only:active{
+      transform:translateY(1px);
+      box-shadow:0 4px 8px rgba(15,23,42,.12);
+    }
+    .topo-actions .btn.icon-only.topo-action-zoom{
+      color:#1d4ed8;
+      background:linear-gradient(180deg,#eef2ff 0%,#dbeafe 100%);
+      border-color:#bfdbfe;
+    }
+    .topo-actions .btn.icon-only.topo-action-toggle{
+      color:#0f766e;
+      background:linear-gradient(180deg,#ecfeff 0%,#ccfbf1 100%);
+      border-color:#99f6e4;
+    }
+    .topo-actions .btn.icon-only.topo-action-toggle.is-ignored{
+      color:#b45309;
+      background:linear-gradient(180deg,#fff7ed 0%,#ffedd5 100%);
+      border-color:#fed7aa;
     }
     .topo-actions .btn:hover,
     .topo-foot .btn:hover {
@@ -289,66 +321,6 @@ function buildIgnoredPayloadFromValidation(validation){
   };
 }
 
-
-// Kontekst menyusu
-function showTopoContextMenu(ev, kind, itemKey, isIgnored){
-  const { modal } = ensureTopologyModal();
-  let menu = modal.querySelector('.topo-ctx');
-  if (!menu){
-    menu = document.createElement('div');
-    menu.className = 'topo-ctx';
-    menu.style.cssText = 'position:absolute;z-index:10000;background:#fff;border:1px solid #eee;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:6px;display:none;';
-    modal.appendChild(menu);
-    // modal daxilində boş yerə klik → menyunu gizlət
-    modal.addEventListener('click', () => { menu.style.display = 'none'; }, true);
-    modal.addEventListener('contextmenu', (e) => {
-      // yalnız item-lərdə göstəririk; başqa yerdə sağ klik menyunu gizlət
-      if (!e.target.closest('.topo-item')) menu.style.display = 'none';
-    });
-  }
-  menu.innerHTML = '';
-  const btn = document.createElement('button');
-  btn.className = 'btn';
-  btn.style.width = '240px';
-  btn.innerHTML = isIgnored
-    ? `<img class="ico" src="${window.TOPO_ICONS.unignore}" alt=""> Xəta kimi qeyd et`
-    : `<img class="ico" src="${window.TOPO_ICONS.ignore}" alt="">`;
-
-    btn.addEventListener('click', () => {
-      const set = (kind === 'overlap') ? window._ignoredTopo.overlaps : window._ignoredTopo.gaps;
-      if (isIgnored) set.delete(itemKey); else set.add(itemKey);
-
-      // UI-ni yenilə
-      const el = modal.querySelector(`.topo-item[data-kind="${kind}"][data-key="${itemKey}"]`);
-      if (el) {
-        const on = !isIgnored;
-        el.classList.toggle('ignored', on);
-        el.querySelector('.badge-ignored')?.classList.toggle('hidden', !on);
-      }
-
-      // ✅ YENİ: Dərhal effektiv say yenilə
-      const v = window._lastTopoValidation || {};
-      const eff = computeEffective(v);
-      
-      if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
-        const fc = getTekuisFeatureCollection();
-        window._topoLastOk = { hash: fcHash(fc), ts: Date.now(), eff };
-      } else {
-        window._topoLastOk = null;
-      }
-
-      menu.style.display = 'none';
-    });
-  menu.appendChild(btn);
-
-  const r = modal.getBoundingClientRect();
-  const x = Math.min(ev.clientX - r.left, r.width - 230);
-  const y = Math.min(ev.clientY - r.top,  r.height - 60);
-  menu.style.left = x + 'px';
-  menu.style.top  = y + 'px';
-  menu.style.display = 'block';
-}
-
 // --- Drag (title-dan tutub sürüşdür) ---
 (() => {
   // modal/overlay DOM-da yoxdursa, yaradacaq; varsa, eyni obyektləri qaytaracaq
@@ -424,50 +396,13 @@ function openTopologyModal(validation){
           <span class="badge-ignored ${ignored ? '' : 'hidden'}">sayılmır</span>
         </div>
         <div class="topo-actions">
-          <button class="btn" data-act="zoom" title="Xəritədə göstər">
+          <button class="btn icon-only topo-action-zoom" data-act="zoom" title="Xəritədə göstər">
             <img class="ico" src="${window.TOPO_ICONS.zoom}" alt="">
           </button>
         </div>`;
       // Zoom
       el.querySelector('[data-act=zoom]')?.addEventListener('click', () => {
         zoomAndHighlightTopoGeometry(o.geom);
-      });
-      // Toggle ignore (sol düymə ilə)
-      el.querySelector('[data-act=toggleIgnore]')?.addEventListener('click', () => {
-        const set = window._ignoredTopo.overlaps;
-        const nowIgnored = set.has(key);
-        if (nowIgnored) set.delete(key); else set.add(key);
-        
-        // UI-ni yenilə
-        el.classList.toggle('ignored', !nowIgnored);
-        el.querySelector('.badge-ignored')?.classList.toggle('hidden', nowIgnored);
-        const btn = el.querySelector('[data-act=toggleIgnore]');
-        if (btn) {
-          btn.title = (!nowIgnored ? 'Xəta kimi qeyd et' : '');
-          btn.innerHTML = `
-            <img class="ico" src="${!nowIgnored ? window.TOPO_ICONS.unignore : window.TOPO_ICONS.ignore}" alt="">
-            ${!nowIgnored ? 'Xəta kimi qeyd et' : ''}
-          `;
-        }
-        
-        // ✅ YENİ: Dərhal effektiv say yenilə və OK bayrağını qoy
-        const v = window._lastTopoValidation || {};
-        const eff = computeEffective(v);
-        
-        if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
-          // Bütün xətalar ignore edilib → OK bayrağını qoy
-          const fc = getTekuisFeatureCollection();
-          window._topoLastOk = { hash: fcHash(fc), ts: Date.now(), eff };
-        } else {
-          // Hələ xətalar qalıb → sıfırla
-          window._topoLastOk = null;
-        }
-      });
-      // Sağ klik kontekst menyusu da işləsin
-      el.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const nowIgnored = window._ignoredTopo.overlaps.has(key);
-        showTopoContextMenu(e, 'overlap', key, nowIgnored);
       });
       ovList.appendChild(el);
     });
@@ -496,10 +431,10 @@ function openTopologyModal(validation){
           <span class="badge-ignored ${ignored ? '' : 'hidden'}">sayılmır</span>
         </div>
         <div class="topo-actions">
-          <button class="btn" data-act="zoom" title="Xəritədə göstər">
+         <button class="btn icon-only topo-action-zoom" data-act="zoom" title="Xəritədə göstər">
             <img class="ico" src="${window.TOPO_ICONS.zoom}" alt="">
           </button>
-          <button class="btn" data-act="toggleIgnore" title="${ignored ? 'Xəta kimi qeyd et' : ''}">
+          <button class="btn icon-only topo-action-toggle ${ignored ? 'is-ignored' : ''}" data-act="toggleIgnore" title="${ignored ? 'Xəta kimi qeyd et' : ''}">
             <img class="ico" src="${ignored ? window.TOPO_ICONS.unignore : window.TOPO_ICONS.ignore}" alt="">
             ${ignored ? 'Xəta kimi qeyd et' : ''}
           </button>
@@ -520,6 +455,7 @@ function openTopologyModal(validation){
         const btn = el.querySelector('[data-act=toggleIgnore]');
         if (btn) {
           btn.title = (!nowIgnored ? 'Xəta kimi qeyd et' : '');
+          btn.classList.toggle('is-ignored', !nowIgnored);
           btn.innerHTML = `
             <img class="ico" src="${!nowIgnored ? window.TOPO_ICONS.unignore : window.TOPO_ICONS.ignore}" alt="">
             ${!nowIgnored ? 'Xəta kimi qeyd et' : ''}
@@ -536,12 +472,6 @@ function openTopologyModal(validation){
         } else {
           window._topoLastOk = null;
         }
-      });
-      // Sağ klik kontekst menyusu da işləsin
-      el.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const nowIgnored = window._ignoredTopo.gaps.has(key);
-        showTopoContextMenu(e, 'gap', key, nowIgnored);
       });
       gpList.appendChild(el);
     });
