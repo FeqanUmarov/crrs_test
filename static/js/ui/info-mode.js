@@ -25,11 +25,9 @@ window.setupInfoMode = ({
   }
 
   function renderInfoPanelLoading(){
-    openPanel?.('Məlumatlar', `
-      <div class="card">
-        <div class="small">Məlumat yüklənir...</div>
-      </div>
-    `);
+    openPanel?.('Məlumatlar', wrapInfoPanel(`
+      <div class="info-panel__status">Məlumat yüklənir...</div>
+    `));
     setLeftButtonActiveForInfo();
   }
 
@@ -81,7 +79,9 @@ window.setupInfoMode = ({
 
   function renderTekuisInfo(props){
     if (!props) {
-      openPanel?.('Məlumatlar', `<div class="card"><div class="small">Məlumat tapılmadı.</div></div>`);
+      openPanel?.('Məlumatlar', wrapInfoPanel(`
+        <div class="info-panel__status">Məlumat tapılmadı.</div>
+      `));
       setLeftButtonActiveForInfo();
       return;
     }
@@ -94,15 +94,15 @@ window.setupInfoMode = ({
       return `<div class="k">${label}</div><div class="v">${String(v)}</div>`;
     }).join('');
 
-    openPanel?.('Məlumatlar', `
-      <div class="card">
+    openPanel?.('Məlumatlar', wrapInfoPanel(`
+      ${makeInfoCard(`
         <div class="kv">
           <div class="h">TEKUİS parsel məlumatları</div>
           <div class="sep"></div>
-          ${rows || '<div class="small">Bu parsel üçün göstəriləcək atribut yoxdur.</div>'}
+          ${rows || '<div class="info-panel__empty">Bu parsel üçün göstəriləcək atribut yoxdur.</div>'}
         </div>
-      </div>
-    `);
+      `)}
+    `));
     setLeftButtonActiveForInfo();
   }
 
@@ -114,7 +114,9 @@ window.setupInfoMode = ({
 
   function renderNecasInfo(props){
     if (!props){
-      openPanel?.('Məlumatlar', `<div class="card"><div class="small">Məlumat tapılmadı.</div></div>`);
+      openPanel?.('Məlumatlar', wrapInfoPanel(`
+        <div class="info-panel__status">Məlumat tapılmadı.</div>
+      `));
       setLeftButtonActiveForInfo();
       return;
     }
@@ -125,23 +127,23 @@ window.setupInfoMode = ({
       if (v===null || v===undefined || v==='') return '';
       return `<div class="k">${label}</div><div class="v">${String(v)}</div>`;
     }).join('');
-    openPanel?.('Məlumatlar', `
-      <div class="card">
+    openPanel?.('Məlumatlar', wrapInfoPanel(`
+      ${makeInfoCard(`
         <div class="kv">
           <div class="h">NECAS parsel məlumatları</div>
           <div class="sep"></div>
-          ${rows || '<div class="small">Bu parsel üçün atribut yoxdur.</div>'}
+          ${rows || '<div class="info-panel__empty">Bu parsel üçün atribut yoxdur.</div>'}
         </div>
-      </div>
-    `);
+      `)}
+    `));
     setLeftButtonActiveForInfo();
   }
 
   function renderInfoPanel(record, fk){
     if (!record || Object.keys(record).length === 0){
-      openPanel?.('Məlumatlar', `
-        <div class="card"><div class="small">Məlumat tapılmadı.</div></div>
-      `);
+      openPanel?.('Məlumatlar', wrapInfoPanel(`
+        <div class="info-panel__status">Məlumat tapılmadı.</div>
+      `));
       setLeftButtonActiveForInfo();
       return;
     }
@@ -169,9 +171,8 @@ window.setupInfoMode = ({
       `;
     }).join('');
 
-    openPanel?.('Məlumatlar', `
-      <div class="card">
-        <div class="small" style="margin-bottom:8px;"></div>
+    openPanel?.('Məlumatlar', wrapInfoPanel(`
+      ${makeInfoCard(`
 
         <div class="kv">
           <div class="h">Torpaq məlumatları</div>
@@ -179,7 +180,9 @@ window.setupInfoMode = ({
           ${singleRows}
         </div>
 
-        <div class="kv kv-pairs" style="margin-top:10px;">
+      `)}
+      ${makeInfoCard(`
+        <div class="kv kv-pairs info-panel__pairs">
           <div class="pairs-header">
             <div class="ph-label">Texniki göstəricilər</div>
             <div class="ph-col">Sənəd</div>
@@ -190,10 +193,26 @@ window.setupInfoMode = ({
             ${pairRows}
           </div>
         </div>
-      </div>
-    `);
+      `)}
+    `));
 
     setLeftButtonActiveForInfo();
+  }
+
+  function wrapInfoPanel(content){
+    return `
+      <div class="info-panel">
+        ${content}
+      </div>
+    `;
+  }
+
+  function makeInfoCard(content){
+    return `
+      <div class="info-card">
+        ${content}
+      </div>
+    `;
   }
 
   function getFkFromFeature(feature){
