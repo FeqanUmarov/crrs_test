@@ -82,11 +82,13 @@ function ensureTopologyModal(){
     }
     .topo-head{
       position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;
-      padding:12px 16px;background:#2e463c;color:#fff;border-top-left-radius:12px;border-top-right-radius:12px;
+      padding:12px 16px;background:#f3f4f6;color:#111827;border-top-left-radius:12px;border-top-right-radius:12px;
       cursor:move; user-select:none; /* başlıqdan tutub daşı */
+      border-bottom:1px solid #e5e7eb;
     }
     .topo-title{font-weight:600}
-    .topo-close{border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}
+    .topo-close{border:0;background:transparent;color:#374151;font-size:18px;cursor:pointer;border-radius:8px;padding:4px}
+    .topo-close:hover{background:#e5e7eb}
     .topo-body{padding:14px 16px;display:grid;gap:10px}
     .topo-section{border:1px solid #e6e6e6;border-radius:10px;padding:10px}
     .topo-section h4{margin:0 0 8px 0;font-size:14px}
@@ -102,14 +104,34 @@ function ensureTopologyModal(){
     .btn.icon-only .ico{ margin-right:0; }
     .topo-close.icon-only{ padding:6px; }
 
-    .topo-actions .btn {
-      background: transparent;
-      border: 1px solid #d1d5db;
-      color: #374151;
+    .topo-actions .btn,
+    .topo-foot .btn {
+      display:inline-flex;align-items:center;gap:6px;
+      background:#fff;
+      border:1px solid #d1d5db;
+      color:#111827;
+      padding:6px 10px;
+      border-radius:8px;
+      font-size:13px;
+      line-height:1.2;
+      cursor:pointer;
+      transition:background .15s ease, border-color .15s ease, box-shadow .15s ease;
     }
-    .topo-actions .btn:hover {
-      background: #f3f4f6;
-      border-color: #9ca3af;
+    .topo-actions .btn:hover,
+    .topo-foot .btn:hover {
+      background:#f3f4f6;
+      border-color:#9ca3af;
+    }
+    .topo-actions .btn:focus-visible,
+    .topo-foot .btn:focus-visible {
+      outline:2px solid #60a5fa;
+      outline-offset:2px;
+    }
+    .topo-foot .btn.primary{
+      background:#2563eb;border-color:#2563eb;color:#fff;
+    }
+    .topo-foot .btn.primary:hover{
+      background:#1d4ed8;border-color:#1d4ed8;
     }
 
     .swal2-container{ z-index:11000 !important; }
@@ -340,6 +362,8 @@ function showTopoContextMenu(ev, kind, itemKey, isIgnored){
     if (e.button !== 0) return;
     dragging = true;
     const rect = modal.getBoundingClientRect();
+    modal.style.left = `${rect.left}px`;
+    modal.style.top = `${rect.top}px`;
     sx = e.clientX; sy = e.clientY; sl = rect.left; st = rect.top;
     modal.style.transform = 'none';
     document.body.style.userSelect = 'none';
