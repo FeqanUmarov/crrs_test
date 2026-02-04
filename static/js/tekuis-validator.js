@@ -76,11 +76,16 @@
       const g = feat && feat.geometry;
       if (!g) return;
       if (g.type === "Polygon" || g.type === "MultiPolygon") {
+        const clean = turf.cleanCoords(feat, { mutate: false });
+        const normalized = turf.truncate(clean, { precision: 7, mutate: false });
+        const normalizedGeom = normalized && normalized.geometry ? normalized.geometry : g;
         out.push({
           type: "Feature",
           properties: Object.assign({}, feat.properties || {}),
           geometry:
-            g.type === "Polygon" ? g : turf.polygon(g.coordinates).geometry
+              normalizedGeom.type === "Polygon"
+              ? normalizedGeom
+              : turf.polygon(normalizedGeom.coordinates).geometry
         });
       }
     });
@@ -91,6 +96,14 @@
   function detectOverlaps(polyFC, turf, minAreaSqm) {
     const feats = polyFC.features || [];
     const out = [];
+    const epsilonMeters = 0.01;
+    const safeIntersect = (a, b) => {
+      try {
+        return turf.intersect(a, b);
+      } catch {
+        return null;
+      }
+    };
     for (let i = 0; i < feats.length; i++) {
       const a = feats[i];
       const bbxA = turf.bbox(a);
@@ -107,7 +120,27 @@
           continue;
         // dəqiq kəsişmə
         try {
-          const inter = turf.intersect(a, b);
+          let inter = safeIntersect(a, b);
+          if (!inter) {
+            let shouldBuffer = false;
+            try {
+              shouldBuffer =
+                turf.booleanOverlap(a, b) ||
+                turf.booleanContains(a, b) ||
+                turf.booleanContains(b, a);
+            } catch {
+              shouldBuffer = false;
+            }
+            if (shouldBuffer) {
+              try {
+                const aFixed = turf.buffer(a, epsilonMeters, { units: "meters" });
+                const bFixed = turf.buffer(b, epsilonMeters, { units: "meters" });
+                inter = safeIntersect(aFixed, bFixed);
+              } catch {
+                inter = null;
+              }
+            }
+          }
           if (!inter) continue;
 
           // Intersection nəticəsi MultiPolygon/Polygon/GeometryCollection ola bilər.
