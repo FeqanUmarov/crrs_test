@@ -485,7 +485,8 @@ function formatYMDToDMY(txt) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "rt-btn";
-    btn.title = "Tarixçə";
+    btn.classList.add("ui-tooltip", "tooltip-left");
+    btn.dataset.tooltip = "Tarixçə";
     btn.setAttribute("aria-label", "Tarixçə");
     btn.setAttribute("data-open-history", "1");
     btn.dataset.color = "history";

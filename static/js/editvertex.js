@@ -666,7 +666,9 @@
     const b = document.createElement('button');
     b.id = 'rtEditVertices';
     b.className = 'rt-btn';
-    b.title = 'TEKUİS parsellerin vertex redaktəsi';
+    b.classList.add('ui-tooltip', 'tooltip-left');
+    b.dataset.tooltip = 'TEKUİS parsellerin vertex redaktəsi';
+    b.setAttribute('aria-label', 'TEKUİS parsellerin vertex redaktəsi');
     b.dataset.color = 'edit';
 
     const iconUrl = (window.RT_ICONS && window.RT_ICONS.editVertices) || null;

@@ -707,7 +707,9 @@ async function _addTicketFeaturesToTekuis(tekuisSrc, ticketFeatures, gjFmt, temp
     const b = document.createElement('button');
     b.id = 'rtErase';
     b.className = 'rt-btn';
-    b.title = 'TEKUİS → Tədqiqat daxilini kəs və sil, Tədqiqat obyektlərini əlavə et';
+    b.classList.add('ui-tooltip', 'tooltip-left');
+    b.dataset.tooltip = 'TEKUİS → Tədqiqat daxilini kəs və sil, Tədqiqat obyektlərini əlavə et';
+    b.setAttribute('aria-label', 'TEKUİS → Tədqiqat daxilini kəs və sil, Tədqiqat obyektlərini əlavə et');
     b.innerHTML = `
       <svg class="rt-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M4 7l8 8M12 7L4 15" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>

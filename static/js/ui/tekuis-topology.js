@@ -207,7 +207,7 @@ function ensureTopologyModal(){
   modal.innerHTML = `
     <div class="topo-head">
       <div class="topo-title">Topologiya xətaları tapıldı</div>
-      <button class="topo-close" title="Bağla">✕</button>
+      <button class="topo-close ui-tooltip" data-tooltip="Bağla" aria-label="Bağla">✕</button>
     </div>
     <div class="topo-body">
       <div class="topo-section">
@@ -224,7 +224,7 @@ function ensureTopologyModal(){
       </div>
     </div>
     <div class="topo-foot">
-      <button class="btn icon-only topo-action-close" id="btnTopoClose" aria-label="Bağla">
+      <button class="btn icon-only topo-action-close ui-tooltip" id="btnTopoClose" data-tooltip="Bağla" aria-label="Bağla">
         <span class="ico">${TOPO_ICON_SVGS.close}</span>
       </button>
     </div>
@@ -423,7 +423,7 @@ function openTopologyModal(validation){
           <span class="badge-ignored ${ignored ? '' : 'hidden'}">sayılmır</span>
         </div>
         <div class="topo-actions">
-          <button class="btn icon-only topo-action-zoom" data-act="zoom" title="Xəritədə göstər">
+          <button class="btn icon-only topo-action-zoom ui-tooltip" data-act="zoom" data-tooltip="Xəritədə göstər" aria-label="Xəritədə göstər">
             <span class="ico">${TOPO_ICON_SVGS.zoom}</span>
           </button>
         </div>`;
@@ -458,10 +458,10 @@ function openTopologyModal(validation){
           <span class="badge-ignored ${ignored ? '' : 'hidden'}">sayılmır</span>
         </div>
         <div class="topo-actions">
-         <button class="btn icon-only topo-action-zoom" data-act="zoom" title="Xəritədə göstər">
+         <button class="btn icon-only topo-action-zoom ui-tooltip" data-act="zoom" data-tooltip="Xəritədə göstər" aria-label="Xəritədə göstər">
             <span class="ico">${TOPO_ICON_SVGS.zoom}</span>
           </button>
-          <button class="btn icon-only topo-action-toggle ${ignored ? 'is-ignored' : ''}" data-act="toggleIgnore" title="${ignored ? 'Xəta kimi qeyd et' : ''}">
+          <button class="btn icon-only topo-action-toggle ui-tooltip ${ignored ? 'is-ignored' : ''}" data-act="toggleIgnore" data-tooltip="${ignored ? 'Xəta kimi qeyd et' : 'Xətanı sayma'}" aria-label="${ignored ? 'Xəta kimi qeyd et' : 'Xətanı sayma'}">
             <span class="ico">${ignored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>
           </button>
         </div>`;
@@ -480,7 +480,9 @@ function openTopologyModal(validation){
         el.querySelector('.badge-ignored')?.classList.toggle('hidden', nowIgnored);
         const btn = el.querySelector('[data-act=toggleIgnore]');
         if (btn) {
-          btn.title = (!nowIgnored ? 'Xəta kimi qeyd et' : '');
+          const nextTooltip = (!nowIgnored ? 'Xəta kimi qeyd et' : 'Xətanı sayma');
+          btn.dataset.tooltip = nextTooltip;
+          btn.setAttribute('aria-label', nextTooltip);
           btn.classList.toggle('is-ignored', !nowIgnored);
           btn.innerHTML = `
             <span class="ico">${!nowIgnored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>

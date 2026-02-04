@@ -1264,12 +1264,23 @@ window.MainEditing.init = function initEditing(state = {}) {
     if (!host) return;
 
     // Köməkçi: PNG ikonlu rt-btn yarat
+    const applyTooltip = (btn, text) => {
+      if (!btn) return;
+      btn.classList.add('ui-tooltip', 'tooltip-left');
+      if (text) {
+        btn.dataset.tooltip = text;
+        btn.setAttribute('aria-label', text);
+      } else {
+        btn.removeAttribute('data-tooltip');
+      }
+      btn.removeAttribute('title');
+    };
     const mkBtn = (id, title, iconKey, colorKey = iconKey) => {
       if (document.getElementById(id)) return document.getElementById(id);
       const b = document.createElement('button');
       b.id = id;
       b.className = 'rt-btn';
-      b.title = title || '';
+      applyTooltip(b, title || '');
       if (colorKey) {
         b.dataset.color = colorKey;
       }
@@ -1387,7 +1398,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       const b = document.createElement('button');
       b.id = 'rtMove';
       b.className = 'rt-btn';
-      b.title = 'Obyekti sürüşdür (Move)';
+      applyTooltip(b, 'Obyekti sürüşdür (Move)');
       b.dataset.color = 'move';
       const img = document.createElement('img');
       img.className = 'rt-icon-img';
