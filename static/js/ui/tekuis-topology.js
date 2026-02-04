@@ -56,10 +56,36 @@ function getTekuisFeatureCollection() {
 // --- Topologiya ikonları (istəyə görə dəyişin)
 window.TOPO_ICONS = Object.assign({
   zoom:     '/static/icons/images/visual.svg',
-  close:    '/static/icons/images/close.png',
+  close:    '/static/icons/images/close.svg',
   ignore:   '/static/icons/images/eye-off.svg',
-  unignore: '/static/icons/images/undo.png'
+  unignore: '/static/icons/images/eye-off.svg'
 }, window.TOPO_ICONS || {});
+
+const TOPO_ICON_SVGS = {
+  zoom: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M3.587 13.779C5.366 15.548 8.47 18 12 18c3.531 0 6.634-2.452 8.413-4.221.469-.467.705-.701.854-1.159.107-.327.107-.914 0-1.241-.149-.458-.385-.692-.854-1.159C18.634 8.452 15.531 6 12 6c-3.53 0-6.634 2.452-8.413 4.221-.47.467-.705.701-.854 1.159-.107.327-.107.914 0 1.241.149.458.384.692.854 1.159z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 12a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `,
+  ignore: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M3.23 7.913 7.91 3.23c.15-.15.35-.23.57-.23h7.05c.21 0 .42.08.57.23l4.67 4.673c.15.15.23.35.23.57v7.054c0 .21-.08.42-.23.57L16.1 20.77c-.15.15-.35.23-.57.23H8.47a.81.81 0 0 1-.57-.23l-4.67-4.673a.793.793 0 0 1-.23-.57V8.473c0-.21.08-.42.23-.57v.01Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linejoin="round"/>
+      <path d="M12 16h.008M12 8v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round"/>
+    </svg>
+  `,
+  unignore: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M9 7H4v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 12a8 8 0 1 0 8-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `,
+  close: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+};
 
 
 // --- Modal UI (dinamik yaradılır) ------------------------------------------
@@ -100,7 +126,8 @@ function ensureTopologyModal(){
     .topo-item.ignored{ opacity:.55; }
     .badge-ignored{ margin-left:8px;padding:2px 6px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:12px; }
     .hidden{ display:none; }
-    .btn .ico{ width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:6px; }
+    .btn .ico{ width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin-right:6px; }
+    .btn .ico svg{ width:16px;height:16px;display:block; }
     .btn.icon-only .ico{ margin-right:0; }
     .topo-close.icon-only{ padding:6px; }
 
@@ -120,8 +147,8 @@ function ensureTopologyModal(){
     .topo-actions .btn.icon-only{
       width:34px;height:34px;padding:0;justify-content:center;
       border-radius:10px;
-      background:linear-gradient(180deg,#ffffff 0%,#eef2ff 100%);
-      box-shadow:0 6px 12px rgba(15,23,42,.08);
+      background:transparent;
+      box-shadow:none;
     }
     .topo-actions .btn.icon-only .ico,
     .topo-actions .btn.icon-only svg{
@@ -135,19 +162,19 @@ function ensureTopologyModal(){
       box-shadow:0 4px 8px rgba(15,23,42,.12);
     }
     .topo-actions .btn.icon-only.topo-action-zoom{
-      color:#1d4ed8;
-      background:linear-gradient(180deg,#eef2ff 0%,#dbeafe 100%);
-      border-color:#bfdbfe;
+      color:#2563eb;
     }
     .topo-actions .btn.icon-only.topo-action-toggle{
       color:#0f766e;
-      background:linear-gradient(180deg,#ecfeff 0%,#ccfbf1 100%);
-      border-color:#99f6e4;
     }
     .topo-actions .btn.icon-only.topo-action-toggle.is-ignored{
       color:#b45309;
-      background:linear-gradient(180deg,#fff7ed 0%,#ffedd5 100%);
-      border-color:#fed7aa;
+    }
+    .topo-foot .btn.icon-only{
+      width:36px;height:36px;padding:0;justify-content:center;
+    }
+    .topo-foot .btn.icon-only.topo-action-close{
+      color:#dc2626;
     }
     .topo-actions .btn:hover,
     .topo-foot .btn:hover {
@@ -197,8 +224,8 @@ function ensureTopologyModal(){
       </div>
     </div>
     <div class="topo-foot">
-      <button class="btn primary" id="btnTopoClose">
-        <img class="ico" src="${window.TOPO_ICONS.close}" alt=""> Bağla
+      <button class="btn icon-only topo-action-close" id="btnTopoClose" aria-label="Bağla">
+        <span class="ico">${TOPO_ICON_SVGS.close}</span>
       </button>
     </div>
   `;
@@ -397,7 +424,7 @@ function openTopologyModal(validation){
         </div>
         <div class="topo-actions">
           <button class="btn icon-only topo-action-zoom" data-act="zoom" title="Xəritədə göstər">
-            <img class="ico" src="${window.TOPO_ICONS.zoom}" alt="">
+            <span class="ico">${TOPO_ICON_SVGS.zoom}</span>
           </button>
         </div>`;
       // Zoom
@@ -432,11 +459,10 @@ function openTopologyModal(validation){
         </div>
         <div class="topo-actions">
          <button class="btn icon-only topo-action-zoom" data-act="zoom" title="Xəritədə göstər">
-            <img class="ico" src="${window.TOPO_ICONS.zoom}" alt="">
+            <span class="ico">${TOPO_ICON_SVGS.zoom}</span>
           </button>
           <button class="btn icon-only topo-action-toggle ${ignored ? 'is-ignored' : ''}" data-act="toggleIgnore" title="${ignored ? 'Xəta kimi qeyd et' : ''}">
-            <img class="ico" src="${ignored ? window.TOPO_ICONS.unignore : window.TOPO_ICONS.ignore}" alt="">
-            ${ignored ? 'Xəta kimi qeyd et' : ''}
+            <span class="ico">${ignored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>
           </button>
         </div>`;
       // Zoom
@@ -457,8 +483,7 @@ function openTopologyModal(validation){
           btn.title = (!nowIgnored ? 'Xəta kimi qeyd et' : '');
           btn.classList.toggle('is-ignored', !nowIgnored);
           btn.innerHTML = `
-            <img class="ico" src="${!nowIgnored ? window.TOPO_ICONS.unignore : window.TOPO_ICONS.ignore}" alt="">
-            ${!nowIgnored ? 'Xəta kimi qeyd et' : ''}
+            <span class="ico">${!nowIgnored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>
           `;
         }
         
