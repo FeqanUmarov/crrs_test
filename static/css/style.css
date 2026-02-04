@@ -204,23 +204,33 @@ body, button, input, select, textarea {
 
 #side-panel .info-panel .kv-pairs .pairs-header{
   display:grid;
-  grid-template-columns:1.1fr .9fr .9fr;
+  grid-template-columns:minmax(160px, 2fr) minmax(110px, 1fr) minmax(110px, 1fr);
   align-items:center;
   gap:6px 12px;
   padding:8px 10px;
   background:#f1f5f9;
   border-radius:10px;
 }
+#side-panel .info-panel .kv-pairs .pairs-header .ph-label,
+#side-panel .info-panel .kv-pairs .pairs-header .ph-col{
+  min-width:0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
 
 #side-panel .info-panel .kv-pairs .pairs-wrap{
   display:grid;
-  grid-template-columns:1.1fr .9fr .9fr;
+  grid-template-columns:minmax(160px, 2fr) minmax(110px, 1fr) minmax(110px, 1fr);
   gap:6px 12px;
 }
 
 #side-panel .info-panel .kv-pairs .pair-label{
   font-weight:600;
   color:#475569;
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
 }
 
 #side-panel .info-panel .kv-pairs .pair-val{
@@ -228,6 +238,7 @@ body, button, input, select, textarea {
   border:1px solid #e2e8f0;
   border-radius:8px;
   padding:6px 8px;
+  min-width:0;
 }
 
 /* Tabs */
