@@ -14,7 +14,8 @@
     startCoord: null,        // [x,y] - EPSG:3857
     pickedFeature: null,     // ol.Feature
     pickedLayer: null,       // ol.layer.Vector
-    originalGeom: null,      // ol.geom (backup)
+    originalGeom: null,
+    hasMoved: false,
     downKey: null,
     moveKey: null,
     upKey: null
@@ -139,6 +140,16 @@
     if (c === 'grabbing') target.classList.add('grabbing'); 
     else target.classList.remove('grabbing');
   }
+  function markFeatureModified(feature) {
+    if (!feature) return;
+    if (typeof window.markTekuisFeatureModified === 'function') {
+      window.markTekuisFeatureModified(feature);
+      return;
+    }
+    if (typeof feature.set === 'function') {
+      feature.set('is_modified', true);
+    }
+  }
 
   // ESC = ləğv et
   function cancelDrag(map) {
@@ -262,6 +273,7 @@
     MoveState.pickedFeature = feature;
     MoveState.pickedLayer = layer;
     MoveState.originalGeom = feature.getGeometry().clone();
+    MoveState.hasMoved = false;
 
     setViewportCursor('grabbing');
     evt.preventDefault();
@@ -287,6 +299,7 @@
     const base = MoveState.originalGeom.clone();
     base.translate(dx, dy);
     MoveState.pickedFeature.setGeometry(base);
+    MoveState.hasMoved = true;
 
     evt.preventDefault();
     try { evt.originalEvent && evt.originalEvent.preventDefault(); } catch {}
@@ -298,6 +311,10 @@
     MoveState.isDragging = false;
     MoveState.startCoord = null;
     MoveState.originalGeom = null;
+
+    if (MoveState.hasMoved) {
+      markFeatureModified(MoveState.pickedFeature);
+    }
 
     try {
       if (typeof flashFeature === 'function' && MoveState.pickedFeature) {
@@ -359,6 +376,7 @@
       const moved = translatePickedFeatureByPixels(map, dxPx, dyPx);
 
       if (moved) {
+        markFeatureModified(MoveState.pickedFeature);
         evt.preventDefault();
         evt.stopPropagation();
         
