@@ -247,6 +247,15 @@ def _collect_issues(cur, *, meta_id: int, ticket: str):
     rows = []
     for key, area, payload, status_code in cur.fetchall():
         item = payload or {}
+        if isinstance(item, str):
+            try:
+                item = json.loads(item)
+            except Exception:
+                item = {"payload_raw": item}
+        if not isinstance(item, dict):
+            item = {"payload": item}
+        else:
+            item = dict(item)
         item["key"] = key
         item["area_sqm"] = area
         item["status"] = status_code
@@ -399,4 +408,5 @@ def tekuis_validation_preflight(request):
             [meta_id, ticket, open_status],
         )
         blocking_count = cur.fetchone()[0]
+        
     return JsonResponse({"ok": bool(local_ok and remote_ok and blocking_count == 0), "local_ok": local_ok, "remote_ok": remote_ok, "blocking_count": blocking_count})
