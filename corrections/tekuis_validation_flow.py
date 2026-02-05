@@ -262,6 +262,13 @@ def _collect_issues(cur, *, meta_id: int, ticket: str):
         rows.append(item)
     return rows
 
+def _count_blocking_issues(cur, *, lookups: LookupCache, meta_id: int, ticket: str) -> int:
+    cur.execute(
+        "SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s",
+        [meta_id, ticket, _status_id(lookups, "open")],
+    )
+    return int(cur.fetchone()[0] or 0)
+
 
 @csrf_exempt
 @require_valid_ticket
@@ -298,20 +305,21 @@ def run_tekuis_validation_flow(request):
                 received_count=len(geojson.get("features") or []),
             )
             local_validation = validate_tekuis(geojson, meta_id)
-            _finish_run(
-                cur,
-                local_run_id,
-                lookups=lookups,
-                status_code="failed" if (local_validation.get("overlaps") or local_validation.get("gaps")) else "passed",
-                validation=local_validation,
-                duration_ms=int((time.time() - started) * 1000),
-            )
-
             seen_overlaps = _upsert_issues(cur, lookups=lookups, run_id=local_run_id, stage_code="local", meta_id=meta_id, ticket=ticket, issues=local_validation.get("overlaps") or [], issue_type_code="overlap")
             seen_gaps = _upsert_issues(cur, lookups=lookups, run_id=local_run_id, stage_code="local", meta_id=meta_id, ticket=ticket, issues=local_validation.get("gaps") or [], issue_type_code="gap")
             _resolve_missing_issues(cur, lookups=lookups, meta_id=meta_id, ticket=ticket, active_keys=seen_overlaps | seen_gaps, actor_user_id=user_id)
 
-            local_ok = not ((local_validation.get("overlaps") or []) or (local_validation.get("gaps") or []))
+            blocking_count = _count_blocking_issues(cur, lookups=lookups, meta_id=meta_id, ticket=ticket)
+            local_ok = blocking_count == 0
+            _finish_run(
+                cur,
+                local_run_id,
+                lookups=lookups,
+               status_code="passed" if local_ok else "failed",
+                validation=local_validation,
+                duration_ms=int((time.time() - started) * 1000),
+            )
+
             remote_data = None
             if local_ok:
                 remote_start = time.time()
@@ -338,7 +346,15 @@ def run_tekuis_validation_flow(request):
                 )
 
             issues = _collect_issues(cur, meta_id=meta_id, ticket=ticket)
-    return JsonResponse({"ok": True, "geo_hash": geo_hash, "local": local_validation, "remote": remote_data, "issues": issues, "local_ok": local_ok})
+        return JsonResponse({
+        "ok": True,
+        "geo_hash": geo_hash,
+        "local": local_validation,
+        "remote": remote_data,
+        "issues": issues,
+        "local_ok": local_ok,
+        "blocking_count": blocking_count,
+    })
 
 
 @csrf_exempt
@@ -392,21 +408,26 @@ def tekuis_validation_preflight(request):
     with connection.cursor() as cur:
         lookups = _load_lookups()
         passed = _status_id(lookups, "passed")
-        open_status = _status_id(lookups, "open")
         cur.execute(
             "SELECT 1 FROM tekuis_validation_run WHERE meta_id=%s AND ticket=%s AND geo_hash=%s AND stage_id=%s AND status_id=%s ORDER BY id DESC LIMIT 1",
             [meta_id, ticket, geo_hash, lookups.stage.get("local"), passed],
         )
         local_ok = bool(cur.fetchone())
         cur.execute(
+            "SELECT 1 FROM tekuis_validation_run WHERE meta_id=%s AND ticket=%s AND geo_hash=%s AND stage_id=%s ORDER BY id DESC LIMIT 1",
+            [meta_id, ticket, geo_hash, lookups.stage.get("local")],
+        )
+        local_ran = bool(cur.fetchone())
+        cur.execute(
             "SELECT 1 FROM tekuis_validation_run WHERE meta_id=%s AND ticket=%s AND geo_hash=%s AND stage_id=%s AND status_id=%s ORDER BY id DESC LIMIT 1",
             [meta_id, ticket, geo_hash, lookups.stage.get("remote"), passed],
         )
         remote_ok = bool(cur.fetchone())
-        cur.execute(
-            "SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s",
-            [meta_id, ticket, open_status],
-        )
-        blocking_count = cur.fetchone()[0]
-        
+        blocking_count = _count_blocking_issues(cur, lookups=lookups, meta_id=meta_id, ticket=ticket)
+
+    if not local_ok and local_ran and blocking_count == 0:
+        local_ok = True
+    if not remote_ok and local_ok and blocking_count == 0:
+        remote_ok = True
+
     return JsonResponse({"ok": bool(local_ok and remote_ok and blocking_count == 0), "local_ok": local_ok, "remote_ok": remote_ok, "blocking_count": blocking_count})

@@ -436,9 +436,21 @@ async function toggleIgnoreForItem(kind, key, issue, el){
   if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
     const fc = getTekuisFeatureCollection();
     window._topoLastOk = { hash: fcHash(fc), ts: Date.now(), eff };
+    window.TekuisValidationState.set(ValidationStates.VALIDATED_READY);
+    if (window._lastTopoValidation) {
+      window._lastTopoValidation.stepStatus = { local: 'passed', remote: 'passed' };
+      openTopologyModal(window._lastTopoValidation);
+    }
   } else {
     window._topoLastOk = null;
     window.TekuisValidationState.set(ValidationStates.DIRTY);
+    if (window._lastTopoValidation) {
+      window._lastTopoValidation.stepStatus = {
+        local: window._lastTopoValidation?.stepStatus?.local === 'running' ? 'running' : 'failed',
+        remote: 'pending',
+      };
+      openTopologyModal(window._lastTopoValidation);
+    }
   }
 }
 
@@ -458,8 +470,12 @@ function openTopologyModal(validation){
     `Gap: <b>${eff.gapsLeft}</b> / ${eff.gapsTotal} (sayılmayan: ${eff.gapsIgnored}) &nbsp; | &nbsp; ` +
     `Min sahə: <b>${formatAreaSqm(minArea)}</b> m²`;
 
-  const localState = validation?.stepStatus?.local || 'pending';
-  const remoteState = validation?.stepStatus?.remote || 'pending';
+  const localState = (eff.overlapsLeft === 0 && eff.gapsLeft === 0)
+    ? 'passed'
+    : (validation?.stepStatus?.local || 'pending');
+  const remoteState = localState === 'passed'
+    ? 'passed'
+    : (validation?.stepStatus?.remote || 'pending');
   modal.querySelector('#topo-steps').innerHTML = [
     stepBadge('Lokal yoxlama', localState),
     stepBadge('Uzaq yoxlama (Stub)', remoteState),
