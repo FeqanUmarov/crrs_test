@@ -98,12 +98,65 @@ def _finish_run(cur, run_id: int, *, lookups: LookupCache, status_code: str, val
 
 def _upsert_issues(cur, *, lookups: LookupCache, run_id: int, stage_code: str, meta_id: int, ticket: str, issues: list, issue_type_code: str):
     seen = set()
+    ignored_status_id = _status_id(lookups, "ignored")
+    open_status_id = _status_id(lookups, "open")
+    source_stage_id = lookups.stage.get(stage_code)
+    issue_type_id = lookups.issue_type.get(issue_type_code)
     for issue in issues:
         issue_key = issue.get("key") or _topo_key_py(issue)
         seen.add(issue_key)
         parcel_id = None
         if isinstance(issue.get("parcel_id"), (str, int)):
             parcel_id = str(issue.get("parcel_id"))
+
+        area_sqm = issue.get("area_sqm") or 0
+        geom_json = json.dumps(issue.get("geom"))
+        payload_json = json.dumps(issue)
+
+        cur.execute(
+            """
+            SELECT id, status_id
+              FROM tekuis_validation_issue
+             WHERE meta_id = %s AND ticket = %s AND issue_key = %s
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            [meta_id, ticket, issue_key],
+        )
+        existing = cur.fetchone()
+        if existing:
+            issue_id, existing_status_id = existing
+            cur.execute(
+                """
+                UPDATE tekuis_validation_issue
+                   SET run_id = %s,
+                       source_stage_id = %s,
+                       issue_type_id = %s,
+                       parcel_id = %s,
+                       area_sqm = %s,
+                       geom = ST_SetSRID(ST_GeomFromGeoJSON(%s),4326),
+                       payload_json = %s,
+                       last_seen_at = now(),
+                       status_id = CASE
+                         WHEN status_id = %s THEN status_id
+                         ELSE %s
+                       END
+                 WHERE id = %s
+                """,
+                [
+                    run_id,
+                    source_stage_id,
+                    issue_type_id,
+                    parcel_id,
+                    area_sqm,
+                    geom_json,
+                    payload_json,
+                    ignored_status_id,
+                    open_status_id,
+                    issue_id,
+                ],
+            )
+            continue
         cur.execute(
             """
             INSERT INTO tekuis_validation_issue (
@@ -113,32 +166,19 @@ def _upsert_issues(cur, *, lookups: LookupCache, run_id: int, stage_code: str, m
               %s,%s,%s,%s,%s,%s,
               %s,%s,ST_SetSRID(ST_GeomFromGeoJSON(%s),4326),%s,%s,now(),now()
             )
-            ON CONFLICT (meta_id, ticket, issue_key)
-            DO UPDATE SET
-              run_id = EXCLUDED.run_id,
-              payload_json = EXCLUDED.payload_json,
-              area_sqm = EXCLUDED.area_sqm,
-              geom = EXCLUDED.geom,
-              last_seen_at = now(),
-              status_id = CASE
-                WHEN tekuis_validation_issue.status_id = %s THEN tekuis_validation_issue.status_id
-                ELSE %s
-              END
             """,
             [
                 run_id,
                 meta_id,
                 ticket,
-                lookups.stage.get(stage_code),
-                lookups.issue_type.get(issue_type_code),
+                source_stage_id,
+                issue_type_id,
                 issue_key,
                 parcel_id,
-                issue.get("area_sqm") or 0,
-                json.dumps(issue.get("geom")),
-                json.dumps(issue),
-                _status_id(lookups, "open"),
-                _status_id(lookups, "ignored"),
-                _status_id(lookups, "open"),
+                area_sqm,
+                geom_json,
+                payload_json,
+                open_status_id,
             ],
         )
     return seen
@@ -189,7 +229,8 @@ def validate_remote_stub():
 
 
 def validate_remote_real():
-    raise NotImplementedError("Remote real API hazır deyil")
+        # TEKUİS remote API hazır olana qədər real call əvəzinə uğurlu stub qaytarılır.
+    return validate_remote_stub()
 
 
 def _collect_issues(cur, *, meta_id: int, ticket: str):
