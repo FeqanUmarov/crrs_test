@@ -1112,6 +1112,46 @@ def save_tekuis_parcels(request):
         return JsonResponse({"ok": False, "error": "Boş original FeatureCollection"}, status=400)
 
     skip_validation = bool(data.get("skip_validation", False))
+    from corrections.tekuis_validation_flow import _geo_hash, _load_lookups, _status_id # bunu en yuxari elave et
+
+    geo_hash = _geo_hash(fc)
+
+    with connection.cursor() as pre_cur:
+        lookups = _load_lookups()
+        passed_status_id = _status_id(lookups, "passed")
+        open_status_id = _status_id(lookups, "open")
+        pre_cur.execute(
+            "SELECT 1 FROM tekuis_validation_run WHERE meta_id=%s AND ticket=%s AND geo_hash=%s AND stage_id=%s AND status_id=%s ORDER BY id DESC LIMIT 1",
+            [int(meta_id), ticket, geo_hash, lookups.stage.get("local"), passed_status_id],
+        )
+        local_passed = bool(pre_cur.fetchone())
+        pre_cur.execute(
+            "SELECT 1 FROM tekuis_validation_run WHERE meta_id=%s AND ticket=%s AND geo_hash=%s AND stage_id=%s AND status_id=%s ORDER BY id DESC LIMIT 1",
+            [int(meta_id), ticket, geo_hash, lookups.stage.get("remote"), passed_status_id],
+        )
+        remote_passed = bool(pre_cur.fetchone())
+        pre_cur.execute(
+            "SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s",
+            [int(meta_id), ticket, open_status_id],
+        )
+        blocking_count = pre_cur.fetchone()[0]
+
+    if not (local_passed and remote_passed and blocking_count == 0):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Validation preflight failed",
+                "code": "VALIDATION_MISMATCH",
+                "preflight": {
+                    "local_passed": local_passed,
+                    "remote_passed": remote_passed,
+                    "blocking_count": blocking_count,
+                },
+            },
+            status=422,
+        )
+
+
     if not skip_validation:
         min_ov = float(
             getattr(settings, "TEKUIS_VALIDATION_MIN_OVERLAP_SQM", getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))

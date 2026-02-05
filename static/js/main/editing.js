@@ -131,6 +131,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       window._topoLastOk = null;
       window._lastTopoValidation = null;
       window._ignoredTopo = { overlaps: new Set(), gaps: new Set() };
+      window.TekuisValidationState?.markDirty?.();
     });
   });
 
