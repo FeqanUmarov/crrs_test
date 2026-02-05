@@ -14,6 +14,7 @@
     }
   };
 
+
   function setTekuisMode(mode){
     if (mode === 'old') {
       TEKUIS_MODE = 'old';

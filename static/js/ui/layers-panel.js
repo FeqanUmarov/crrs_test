@@ -186,9 +186,9 @@ function setupLayersPanel({
         </div>
 
         <div class="card-actions">
-          <button id="btnSaveTekuis" class="icon-btn svg-icon tekuis-save ui-tooltip tooltip-left" data-tooltip="TEKUİS parsellərini yadda saxla" aria-label="TEKUİS parsellərini yadda saxla"></button>
-          <button id="btnEraseTekuisInsideTicket" class="icon-btn svg-icon tekuis-erase ui-tooltip tooltip-left" data-tooltip="Tədqiqat daxilini kəs & sil" aria-label="Tədqiqat daxilini kəs & sil"></button>
-          <button id="btnZoomTekuis" class="icon-btn svg-icon tekuis-zoom zoombtn ui-tooltip tooltip-left" data-tooltip="Laya yaxınlaşdır" aria-label="Laya yaxınlaşdır"></button>
+          <button id="btnSaveTekuis"               class="icon-btn ico-save" title="TEKUİS parsellərini yadda saxla"></button>
+          <button id="btnEraseTekuisInsideTicket"  class="icon-btn ico-erase" title="Tədqiqat daxilini kəs & sil"></button>
+          <button id="btnZoomTekuis"               class="icon-btn ico-zoom zoombtn"  title="Laya yaxınlaşdır"></button>
         </div>
       </div>
       <div class="small" style="color:#6b7280;">Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.</div>
