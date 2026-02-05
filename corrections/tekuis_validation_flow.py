@@ -290,6 +290,7 @@ def validate_remote_real():
 
 
 def _collect_issues(cur, *, meta_id: int, ticket: str):
+    active_status_filter = _active_status_filter(cur, "tekuis_validation_issue", "i")
     cur.execute(
         f"""
         SELECT i.issue_key, i.area_sqm, i.payload_json, s.code
