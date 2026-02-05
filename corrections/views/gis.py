@@ -16,6 +16,26 @@ TEKUIS_PARCEL_TABLE = "public.tekuis_parcel"
 TEKUIS_PARCEL_OLD_TABLE = "public.tekuis_parcel_old"
 GIS_DATA_TABLE = "public.gis_data"
 ATTACH_FILE_TABLE = "public.attach_file"
+TOPOLOGY_RUN_TABLE = "public.tekuis_validation_run"
+TOPOLOGY_ISSUE_TABLE = "public.tekuis_validation_issue"
+TOPOLOGY_ACTION_TABLE = "public.tekuis_validation_issue_action"
+TOPOLOGY_IGNORE_TABLE = "public.tekuis_validation_ignore"
+
+
+def _table_has_status_column(cur, table_name: str) -> bool:
+    bare_name = (table_name or "").split(".")[-1]
+    cur.execute(
+        """
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = %s
+           AND column_name = 'status'
+         LIMIT 1
+        """,
+        [bare_name],
+    )
+    return bool(cur.fetchone())
 
 
 def _soft_delete_table_by_meta_id(cur, table_name, meta_column, meta_id, *, touch_last_edited=False):
@@ -48,6 +68,69 @@ def _soft_delete_tekuis_current(cur, meta_id):
         [meta_id],
     )
     return [row[0] for row in cur.fetchall()]
+
+
+def _soft_delete_topology_rows(cur, meta_id: int):
+    affected = {
+        "topology_run": 0,
+        "topology_issue": 0,
+        "topology_issue_action": 0,
+        "topology_ignore": 0,
+    }
+
+    if _table_has_status_column(cur, TOPOLOGY_RUN_TABLE):
+        cur.execute(
+            f"""
+            UPDATE {TOPOLOGY_RUN_TABLE}
+               SET status = 0
+             WHERE meta_id = %s::int
+               AND COALESCE(status, 1) <> 0
+            """,
+            [meta_id],
+        )
+        affected["topology_run"] = cur.rowcount or 0
+
+    if _table_has_status_column(cur, TOPOLOGY_ISSUE_TABLE):
+        cur.execute(
+            f"""
+            UPDATE {TOPOLOGY_ISSUE_TABLE}
+               SET status = 0
+             WHERE meta_id = %s::int
+               AND COALESCE(status, 1) <> 0
+            """,
+            [meta_id],
+        )
+        affected["topology_issue"] = cur.rowcount or 0
+
+    if _table_has_status_column(cur, TOPOLOGY_ACTION_TABLE):
+        cur.execute(
+            f"""
+            UPDATE {TOPOLOGY_ACTION_TABLE}
+               SET status = 0
+             WHERE issue_id IN (
+                SELECT id
+                  FROM {TOPOLOGY_ISSUE_TABLE}
+                 WHERE meta_id = %s::int
+             )
+               AND COALESCE(status, 1) <> 0
+            """,
+            [meta_id],
+        )
+        affected["topology_issue_action"] = cur.rowcount or 0
+
+    if _table_has_status_column(cur, TOPOLOGY_IGNORE_TABLE):
+        cur.execute(
+            f"""
+            UPDATE {TOPOLOGY_IGNORE_TABLE}
+               SET status = 0
+             WHERE meta_id = %s::int
+               AND COALESCE(status, 1) <> 0
+            """,
+            [meta_id],
+        )
+        affected["topology_ignore"] = cur.rowcount or 0
+
+    return affected
 
 
 # ==========================
@@ -245,6 +328,7 @@ def soft_delete_gis_by_ticket(request):
                 "meta_id",
                 meta_id_int,
             )
+            topology_affected = _soft_delete_topology_rows(cur, meta_id_int)
 
         try:
             objectid_nullified = _mssql_clear_objectid(meta_id_int)
@@ -259,6 +343,7 @@ def soft_delete_gis_by_ticket(request):
             "affected_parcel_old": affected_parcel_old,
             "affected_gis": affected_gis,
             "affected_attach": affected_attach,
+            "affected_topology": topology_affected,
             "objectid_nullified": bool(objectid_nullified),
             "debug_tekuis_ids": updated_rows,
         }

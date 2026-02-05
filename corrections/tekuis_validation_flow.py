@@ -50,19 +50,50 @@ def _load_lookups() -> LookupCache:
 def _status_id(lookups: LookupCache, code: str, fallback: str = "failed"):
     return lookups.status.get(code) or lookups.status.get(fallback)
 
+def _table_has_status_column(cur, table_name: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = %s
+           AND column_name = 'status'
+         LIMIT 1
+        """,
+        [table_name],
+    )
+    return bool(cur.fetchone())
+
+def _active_status_filter(cur, table_name: str, alias: str = "") -> str:
+    if not _table_has_status_column(cur, table_name):
+        return ""
+    prefix = f"{alias}." if alias else ""
+    return f" AND COALESCE({prefix}status, 1) = 1"
+
 
 def _insert_run(cur, *, lookups: LookupCache, stage_code: str, meta_id: int, ticket: str, user_id, user_full_name, geo_hash: str, received_count: int):
     status_id = _status_id(lookups, "running")
     raw = None if lookups.status.get("running") else json.dumps({"started_state": "running"})
-    cur.execute(
-        """
-        INSERT INTO tekuis_validation_run (
+    has_row_status = _table_has_status_column(cur, "tekuis_validation_run")
+    insert_columns = """
           stage_id, status_id, meta_id, ticket, user_id, user_full_name, geo_hash,
           started_at, received_feature_count, raw_response_json
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,now(),%s,%s)
+    """
+    insert_values = [lookups.stage.get(stage_code), status_id, meta_id, ticket, user_id, user_full_name, geo_hash, received_count, raw]
+    insert_placeholders = "%s,%s,%s,%s,%s,%s,%s,now(),%s,%s"
+    if has_row_status:
+        insert_columns += ", status"
+        insert_placeholders += ", %s"
+        insert_values.append(1)
+
+    cur.execute(
+        f"""
+        INSERT INTO tekuis_validation_run (
+          {insert_columns}
+        ) VALUES ({insert_placeholders})
         RETURNING id
         """,
-        [lookups.stage.get(stage_code), status_id, meta_id, ticket, user_id, user_full_name, geo_hash, received_count, raw],
+        insert_values,
     )
     return cur.fetchone()[0]
 
@@ -113,11 +144,13 @@ def _upsert_issues(cur, *, lookups: LookupCache, run_id: int, stage_code: str, m
         geom_json = json.dumps(issue.get("geom"))
         payload_json = json.dumps(issue)
 
+        issue_active_filter = _active_status_filter(cur, "tekuis_validation_issue")
         cur.execute(
-            """
+            f"""
             SELECT id, status_id
               FROM tekuis_validation_issue
              WHERE meta_id = %s AND ticket = %s AND issue_key = %s
+             {issue_active_filter}
              ORDER BY id DESC
              LIMIT 1
             """,
@@ -157,40 +190,55 @@ def _upsert_issues(cur, *, lookups: LookupCache, run_id: int, stage_code: str, m
                 ],
             )
             continue
-        cur.execute(
-            """
-            INSERT INTO tekuis_validation_issue (
+        has_issue_row_status = _table_has_status_column(cur, "tekuis_validation_issue")
+        issue_columns = """
               run_id, meta_id, ticket, source_stage_id, issue_type_id, issue_key,
               parcel_id, area_sqm, geom, payload_json, status_id, first_seen_at, last_seen_at
-            ) VALUES (
+        """
+        issue_values = [
+            run_id,
+            meta_id,
+            ticket,
+            source_stage_id,
+            issue_type_id,
+            issue_key,
+            parcel_id,
+            area_sqm,
+            geom_json,
+            payload_json,
+            open_status_id,
+        ]
+        issue_placeholders = """
               %s,%s,%s,%s,%s,%s,
               %s,%s,ST_SetSRID(ST_GeomFromGeoJSON(%s),4326),%s,%s,now(),now()
+        """
+        if has_issue_row_status:
+            issue_columns += ", status"
+            issue_placeholders += ", %s"
+            issue_values.append(1)
+
+        cur.execute(
+            f"""
+            INSERT INTO tekuis_validation_issue (
+              {issue_columns}
+            ) VALUES (
+              {issue_placeholders}
             )
             """,
-            [
-                run_id,
-                meta_id,
-                ticket,
-                source_stage_id,
-                issue_type_id,
-                issue_key,
-                parcel_id,
-                area_sqm,
-                geom_json,
-                payload_json,
-                open_status_id,
-            ],
+            issue_values,
         )
     return seen
 
 
 def _resolve_missing_issues(cur, *, lookups: LookupCache, meta_id: int, ticket: str, active_keys: set, actor_user_id=None):
+    issue_active_filter = _active_status_filter(cur, "tekuis_validation_issue")
     cur.execute(
-        """
+        f"""
         SELECT id, issue_key
           FROM tekuis_validation_issue
          WHERE meta_id = %s AND ticket = %s
            AND status_id IN (%s, %s)
+           {issue_active_filter}
         """,
         [meta_id, ticket, _status_id(lookups, "open"), _status_id(lookups, "ignored")],
     )
@@ -207,20 +255,28 @@ def _resolve_missing_issues(cur, *, lookups: LookupCache, meta_id: int, ticket: 
             """,
             [_status_id(lookups, "resolved_fixed"), issue_id],
         )
+        has_action_row_status = _table_has_status_column(cur, "tekuis_validation_issue_action")
+        action_columns = "issue_id, action_id, actor_user_id, actor_name, note, action_payload_json, created_at"
+        action_placeholders = "%s,%s,%s,%s,%s,%s,now()"
+        action_values = [
+            issue_id,
+            lookups.action.get("resolved_fixed_auto"),
+            actor_user_id,
+            "system",
+            "Local validate zamanı artıq tapılmadı",
+            json.dumps({"issue_key": issue_key}),
+        ]
+        if has_action_row_status:
+            action_columns += ", status"
+            action_placeholders += ", %s"
+            action_values.append(1)
         cur.execute(
-            """
+            f"""
             INSERT INTO tekuis_validation_issue_action (
-              issue_id, action_id, actor_user_id, actor_name, note, action_payload_json, created_at
-            ) VALUES (%s,%s,%s,%s,%s,%s,now())
+              {action_columns}
+            ) VALUES ({action_placeholders})
             """,
-            [
-                issue_id,
-                lookups.action.get("resolved_fixed_auto"),
-                actor_user_id,
-                "system",
-                "Local validate zamanı artıq tapılmadı",
-                json.dumps({"issue_key": issue_key}),
-            ],
+            action_values,
         )
 
 
@@ -235,11 +291,12 @@ def validate_remote_real():
 
 def _collect_issues(cur, *, meta_id: int, ticket: str):
     cur.execute(
-        """
+        f"""
         SELECT i.issue_key, i.area_sqm, i.payload_json, s.code
           FROM tekuis_validation_issue i
           JOIN tekuis_validation_status_lu s ON s.id = i.status_id
          WHERE i.meta_id = %s AND i.ticket = %s
+         {active_status_filter}
          ORDER BY i.last_seen_at DESC
         """,
         [meta_id, ticket],
@@ -263,8 +320,9 @@ def _collect_issues(cur, *, meta_id: int, ticket: str):
     return rows
 
 def _count_blocking_issues(cur, *, lookups: LookupCache, meta_id: int, ticket: str) -> int:
+    active_status_filter = _active_status_filter(cur, "tekuis_validation_issue")
     cur.execute(
-        "SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s",
+        f"SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s{active_status_filter}",
         [meta_id, ticket, _status_id(lookups, "open")],
     )
     return int(cur.fetchone()[0] or 0)
@@ -374,7 +432,8 @@ def toggle_tekuis_issue_ignore(request):
     with transaction.atomic():
         with connection.cursor() as cur:
             lookups = _load_lookups()
-            cur.execute("SELECT id, status_id FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND issue_key=%s LIMIT 1", [meta_id, ticket, issue_key])
+            issue_active_filter = _active_status_filter(cur, "tekuis_validation_issue")
+            cur.execute(f"SELECT id, status_id FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND issue_key=%s{issue_active_filter} LIMIT 1", [meta_id, ticket, issue_key])
             row = cur.fetchone()
             if not row:
                 return JsonResponse({"ok": False, "error": "issue tapılmadı"}, status=404)
@@ -383,12 +442,20 @@ def toggle_tekuis_issue_ignore(request):
             new_status_code = "open" if is_ignored else "ignored"
             action_code = "unignored" if is_ignored else "ignored"
             cur.execute("UPDATE tekuis_validation_issue SET status_id=%s, last_seen_at=now() WHERE id=%s", [_status_id(lookups, new_status_code), issue_id])
+            has_action_row_status = _table_has_status_column(cur, "tekuis_validation_issue_action")
+            action_columns = "issue_id, action_id, actor_user_id, actor_name, action_payload_json, created_at"
+            action_placeholders = "%s,%s,%s,%s,%s,now()"
+            action_values = [issue_id, lookups.action.get(action_code), user_id, actor_name, json.dumps({"issue_key": issue_key, "mode": new_status_code})]
+            if has_action_row_status:
+                action_columns += ", status"
+                action_placeholders += ", %s"
+                action_values.append(1)
             cur.execute(
-                """
-                INSERT INTO tekuis_validation_issue_action (issue_id, action_id, actor_user_id, actor_name, action_payload_json, created_at)
-                VALUES (%s,%s,%s,%s,%s,now())
+                f"""
+                INSERT INTO tekuis_validation_issue_action ({action_columns})
+                VALUES ({action_placeholders})
                 """,
-                [issue_id, lookups.action.get(action_code), user_id, actor_name, json.dumps({"issue_key": issue_key, "mode": new_status_code})],
+                action_values,
             )
     return JsonResponse({"ok": True, "status": new_status_code})
 

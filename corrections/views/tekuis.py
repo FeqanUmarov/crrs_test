@@ -1112,7 +1112,7 @@ def save_tekuis_parcels(request):
         return JsonResponse({"ok": False, "error": "Boş original FeatureCollection"}, status=400)
 
     skip_validation = bool(data.get("skip_validation", False))
-    from corrections.tekuis_validation_flow import _geo_hash, _load_lookups, _status_id # bunu en yuxari elave et
+    from corrections.tekuis_validation_flow import _geo_hash, _load_lookups, _status_id, _table_has_status_column # bunu en yuxari elave et
 
     geo_hash = _geo_hash(fc)
 
@@ -1130,8 +1130,11 @@ def save_tekuis_parcels(request):
             [int(meta_id), ticket, geo_hash, lookups.stage.get("remote"), passed_status_id],
         )
         remote_passed = bool(pre_cur.fetchone())
+        issue_active_filter = ""
+        if _table_has_status_column(pre_cur, "tekuis_validation_issue"):
+            issue_active_filter = " AND COALESCE(status, 1) = 1"
         pre_cur.execute(
-            "SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s",
+            f"SELECT COUNT(1) FROM tekuis_validation_issue WHERE meta_id=%s AND ticket=%s AND status_id=%s{issue_active_filter}",
             [int(meta_id), ticket, open_status_id],
         )
         blocking_count = pre_cur.fetchone()[0]

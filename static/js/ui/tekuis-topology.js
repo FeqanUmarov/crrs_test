@@ -680,7 +680,7 @@ function resolveOriginalTekuis({ fallbackFc } = {}){
 
 
 // --- Serverdə yadda saxla ---------------------------------------------------
-async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, originalGeojson } = {}) {
+async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, originalGeojson, validationHash } = {}) {
   // Lokal header-lar
   const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
@@ -700,6 +700,7 @@ async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, 
 
   const body = { geojson: featureCollection, original_geojson: originalFc, ticket };
   if (Number.isFinite(metaInt)) body.meta_id = metaInt;
+  if (validationHash) body.geo_hash = validationHash;
 
   // Eyni geometriyadırsa serverdə də validasiyanı ötür
   if (skipValidation) body.skip_validation = true;
@@ -825,7 +826,7 @@ async function tryValidateAndSaveTekuis(){
   const src = getTekuisSourceSmart();
   const feats = src?.getFeatures?.() || [];
   const fc = getTekuisFeatureCollection();
-  const curHash = window._topoLastOk?.hash || fcHash(fc).replace(/^h/, '');
+  const curHash = String(window._topoLastOk?.hash || fcHash(fc)).replace(/^h/, '');
 
   try {
     const pre = await fetch('/api/tekuis/validation/preflight/', {
@@ -851,7 +852,7 @@ async function tryValidateAndSaveTekuis(){
 
 
   try {
-    const s = await saveTekuisOnServer(fc, { ignored: ignoredPayload, skipValidation: false, originalGeojson: originalFc });
+    const s = await saveTekuisOnServer(fc, { ignored: ignoredPayload, skipValidation: false, originalGeojson: originalFc, validationHash: curHash });
 
     if (!s.ok){
       if (s.status === 422){
