@@ -30,7 +30,6 @@ from .views import (
 from .necas_api import necas_parcels_by_bbox, necas_parcels_by_geom
 from .tekuis_parcel_db import tekuis_parcels_by_db
 from .history_api import history_status
-from .tekuis_validation_flow import run_tekuis_validation_flow, toggle_tekuis_issue_ignore, tekuis_validation_preflight
 
 
 
@@ -74,10 +73,6 @@ urlpatterns = [
 
     path("tekuis/validate/", validate_tekuis_parcels, name="validate_tekuis_parcels"),
     path("tekuis/validate/ignore-gap/", ignore_tekuis_gap, name="ignore_tekuis_gap"),
-
-    path("tekuis/validation/run/", run_tekuis_validation_flow, name="run_tekuis_validation_flow"),
-    path("tekuis/validation/issue/toggle-ignore/", toggle_tekuis_issue_ignore, name="toggle_tekuis_issue_ignore"),
-    path("tekuis/validation/preflight/", tekuis_validation_preflight, name="tekuis_validation_preflight"),
 
     path("history/status/", history_status, name="history_status"),
 

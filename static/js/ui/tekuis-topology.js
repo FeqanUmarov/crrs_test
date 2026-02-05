@@ -206,13 +206,13 @@ function ensureTopologyModal(){
   modal.className = 'topo-modal';
   modal.innerHTML = `
     <div class="topo-head">
-      <div class="topo-title">TEKUİS Parsellər layı – Validasiya nəticəsi</div>
+      <div class="topo-title">Topologiya xətaları tapıldı</div>
       <button class="topo-close ui-tooltip" data-tooltip="Bağla" aria-label="Bağla">✕</button>
     </div>
     <div class="topo-body">
       <div class="topo-section">
         <h4>Ümumi məlumat</h4>
-        <div id="topo-summary"></div><div id="topo-steps" style="margin-top:8px;display:grid;gap:4px;"></div>
+        <div id="topo-summary"></div>
       </div>
       <div class="topo-section" id="topo-overlaps-sec" style="display:none">
         <h4>Kəsişmələr (overlap)</h4>
@@ -388,73 +388,6 @@ function buildIgnoredPayloadFromValidation(validation){
   });
 })();
 
-const ValidationStates = {
-  DIRTY: 'DIRTY', VALIDATING_LOCAL: 'VALIDATING_LOCAL', LOCAL_FAILED: 'LOCAL_FAILED',
-  VALIDATING_REMOTE: 'VALIDATING_REMOTE', REMOTE_FAILED: 'REMOTE_FAILED',
-  VALIDATED_READY: 'VALIDATED_READY', SAVING: 'SAVING', SAVE_FAILED: 'SAVE_FAILED', SAVED: 'SAVED'
-};
-window.TekuisValidationState = window.TekuisValidationState || {
-  current: ValidationStates.DIRTY,
-  set(next){
-    this.current = next;
-    const btnSave = document.getElementById('btnSaveTekuis');
-    if (btnSave) btnSave.disabled = !(next === ValidationStates.VALIDATED_READY || next === ValidationStates.SAVED);
-  },
-  markDirty(){ this.set(ValidationStates.DIRTY); window._topoLastOk = null; }
-};
-
-function stepBadge(name, state){
-  const m = { pending:'#9ca3af', running:'#2563eb', passed:'#16a34a', failed:'#dc2626' };
-  return `<div style="display:flex;justify-content:space-between;"><span>${name}</span><b style="color:${m[state]||m.pending}">${state}</b></div>`;
-}
-
-async function toggleIgnoreForItem(kind, key, issue, el){
-  const set = kind === 'gap' ? window._ignoredTopo.gaps : window._ignoredTopo.overlaps;
-  const nowIgnored = set.has(key);
-  if (nowIgnored) set.delete(key); else set.add(key);
-
-  el.classList.toggle('ignored', !nowIgnored);
-  el.querySelector('.badge-ignored')?.classList.toggle('hidden', nowIgnored);
-  const btn = el.querySelector('[data-act=toggleIgnore]');
-  if (btn) {
-    const nextTooltip = (!nowIgnored ? 'Xəta kimi qeyd et' : 'Xətanı sayma');
-    btn.dataset.tooltip = nextTooltip;
-    btn.setAttribute('aria-label', nextTooltip);
-    btn.classList.toggle('is-ignored', !nowIgnored);
-    btn.innerHTML = `<span class="ico">${!nowIgnored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>`;
-  }
-
-  try {
-    await fetch('/api/tekuis/validation/issue/toggle-ignore/', {
-      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify({ issue_key:key, ticket: PAGE_TICKET, issue })
-    });
-  } catch (e){ console.warn('ignore action yazılmadı', e); }
-
-  const v = window._lastTopoValidation || {};
-  const eff = computeEffective(v);
-  if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
-    const fc = getTekuisFeatureCollection();
-    window._topoLastOk = { hash: fcHash(fc), ts: Date.now(), eff };
-    window.TekuisValidationState.set(ValidationStates.VALIDATED_READY);
-    if (window._lastTopoValidation) {
-      window._lastTopoValidation.stepStatus = { local: 'passed', remote: 'passed' };
-      openTopologyModal(window._lastTopoValidation);
-    }
-  } else {
-    window._topoLastOk = null;
-    window.TekuisValidationState.set(ValidationStates.DIRTY);
-    if (window._lastTopoValidation) {
-      window._lastTopoValidation.stepStatus = {
-        local: window._lastTopoValidation?.stepStatus?.local === 'running' ? 'running' : 'failed',
-        remote: 'pending',
-      };
-      openTopologyModal(window._lastTopoValidation);
-    }
-  }
-}
-
-
 
 
 function openTopologyModal(validation){
@@ -469,17 +402,6 @@ function openTopologyModal(validation){
     `Overlap: <b>${eff.overlapsLeft}</b> / ${eff.overlapsTotal} (sayılmayan: ${eff.overlapsIgnored}) &nbsp; | &nbsp; ` +
     `Gap: <b>${eff.gapsLeft}</b> / ${eff.gapsTotal} (sayılmayan: ${eff.gapsIgnored}) &nbsp; | &nbsp; ` +
     `Min sahə: <b>${formatAreaSqm(minArea)}</b> m²`;
-
-  const localState = (eff.overlapsLeft === 0 && eff.gapsLeft === 0)
-    ? 'passed'
-    : (validation?.stepStatus?.local || 'pending');
-  const remoteState = localState === 'passed'
-    ? 'passed'
-    : (validation?.stepStatus?.remote || 'pending');
-  modal.querySelector('#topo-steps').innerHTML = [
-    stepBadge('Lokal yoxlama', localState),
-    stepBadge('Uzaq yoxlama (Stub)', remoteState),
-  ].join('');
 
 // Overlaps
   const ovSec  = modal.querySelector('#topo-overlaps-sec');
@@ -504,16 +426,10 @@ function openTopologyModal(validation){
           <button class="btn icon-only topo-action-zoom ui-tooltip" data-act="zoom" data-tooltip="Xəritədə göstər" aria-label="Xəritədə göstər">
             <span class="ico">${TOPO_ICON_SVGS.zoom}</span>
           </button>
-            <button class="btn icon-only topo-action-toggle ui-tooltip ${ignored ? 'is-ignored' : ''}" data-act="toggleIgnore" data-tooltip="${ignored ? 'Xəta kimi qeyd et' : 'Xətanı sayma'}" aria-label="${ignored ? 'Xəta kimi qeyd et' : 'Xətanı sayma'}">
-            <span class="ico">${ignored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>
-          </button>
         </div>`;
       // Zoom
       el.querySelector('[data-act=zoom]')?.addEventListener('click', () => {
         zoomAndHighlightTopoGeometry(o.geom);
-      });
-      el.querySelector('[data-act=toggleIgnore]')?.addEventListener('click', async () => {
-        await toggleIgnoreForItem('overlap', key, o, el);
       });
       ovList.appendChild(el);
     });
@@ -553,8 +469,36 @@ function openTopologyModal(validation){
       el.querySelector('[data-act=zoom]')?.addEventListener('click', () => {
         zoomAndHighlightTopoGeometry(g.geom);
       });
-      el.querySelector('[data-act=toggleIgnore]')?.addEventListener('click', async () => {
-        await toggleIgnoreForItem('gap', key, g, el);
+      // Gaps bölməsində
+      el.querySelector('[data-act=toggleIgnore]')?.addEventListener('click', () => {
+        const set = window._ignoredTopo.gaps;
+        const nowIgnored = set.has(key);
+        if (nowIgnored) set.delete(key); else set.add(key);
+        
+        // UI-ni yenilə
+        el.classList.toggle('ignored', !nowIgnored);
+        el.querySelector('.badge-ignored')?.classList.toggle('hidden', nowIgnored);
+        const btn = el.querySelector('[data-act=toggleIgnore]');
+        if (btn) {
+          const nextTooltip = (!nowIgnored ? 'Xəta kimi qeyd et' : 'Xətanı sayma');
+          btn.dataset.tooltip = nextTooltip;
+          btn.setAttribute('aria-label', nextTooltip);
+          btn.classList.toggle('is-ignored', !nowIgnored);
+          btn.innerHTML = `
+            <span class="ico">${!nowIgnored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>
+          `;
+        }
+        
+        // ✅ YENİ: Dərhal effektiv say yenilə və OK bayrağını qoy
+        const v = window._lastTopoValidation || {};
+        const eff = computeEffective(v);
+        
+        if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
+          const fc = getTekuisFeatureCollection();
+          window._topoLastOk = { hash: fcHash(fc), ts: Date.now(), eff };
+        } else {
+          window._topoLastOk = null;
+        }
       });
       gpList.appendChild(el);
     });
@@ -680,7 +624,7 @@ function resolveOriginalTekuis({ fallbackFc } = {}){
 
 
 // --- Serverdə yadda saxla ---------------------------------------------------
-async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, originalGeojson, validationHash } = {}) {
+async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, originalGeojson } = {}) {
   // Lokal header-lar
   const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
@@ -700,7 +644,6 @@ async function saveTekuisOnServer(featureCollection, { ignored, skipValidation, 
 
   const body = { geojson: featureCollection, original_geojson: originalFc, ticket };
   if (Number.isFinite(metaInt)) body.meta_id = metaInt;
-  if (validationHash) body.geo_hash = validationHash;
 
   // Eyni geometriyadırsa serverdə də validasiyanı ötür
   if (skipValidation) body.skip_validation = true;
@@ -764,122 +707,157 @@ function getTekuisSourceSmart() {
 
 
 
-async function runTekuisValidationFlow(){
-  const src = getTekuisSourceSmart();
-  const feats = src?.getFeatures?.() || [];
-  if (!feats.length) {
-    Swal.fire('Info', 'TEKUİS Parsellər layında yoxlanacaq parsel yoxdur.', 'info');
-    return;
+async function tryValidateAndSaveTekuis(){
+  if (!window.EDIT_ALLOWED) { 
+    Swal.fire('Diqqət', 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'warning');
+    return; 
   }
 
   // ✅ YENİ: Attributes panel məlumatlarını feature-ə tətbiq et
-  const fc = getTekuisFeatureCollection();
-  window.TekuisValidationState.set(ValidationStates.VALIDATING_LOCAL);
-  const runningValidation = { stats: { n_features: feats.length }, overlaps: [], gaps: [], stepStatus: { local: 'running', remote: 'pending' } };
-  openTopologyModal(runningValidation);
-
-  let data;
   try {
-    const resp = await fetch('/api/tekuis/validation/run/', {
-      method: 'POST', headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
-      body: JSON.stringify({ geojson: fc, ticket: PAGE_TICKET, remote_mode: 'stub' })
-    });
-    data = await resp.json();
-    if (!resp.ok || !data.ok) throw new Error(data.error || 'Validation xətası');
-
+    if (window.AttributesPanel && typeof window.AttributesPanel.applyUIToSelectedFeature === 'function') {
+      const applied = window.AttributesPanel.applyUIToSelectedFeature();
+      if (applied) {
+        console.log('✅ Attributes panel dəyişiklikləri feature-ə tətbiq edildi');
+      }
+    }
   } catch (e) {
-    window.TekuisValidationState.set(ValidationStates.LOCAL_FAILED);
-    Swal.fire('Xəta', e.message || 'Validasiya zamanı texniki xəta baş verdi', 'error');
-    return;
+    console.warn('Attributes panel sync xətası (davam edirik):', e);
   }
 
   // Yenilənmiş feature-ləri LocalStorage-ə yaz
-  window._lastTopoValidation = {
-    ...(data.local || {}),
-    overlaps: (data.local?.overlaps || []).map(o => ({ ...o, status: (data.issues || []).find(i => i.key === (o.key || topoKey(o)))?.status })),
-    gaps: (data.local?.gaps || []).map(g => ({ ...g, status: (data.issues || []).find(i => i.key === (g.key || topoKey(g)))?.status })),
-    stepStatus: {
-      local: data.local_ok ? 'passed' : 'failed',
-      remote: data.local_ok ? ((data.remote?.ok) ? 'passed' : 'failed') : 'pending'
+  try { saveTekuisToLocal(); } catch {}
+
+  console.log('tryValidateAndSaveTekuis başladı, _topoLastOk:', window._topoLastOk);
+
+  if (window._lastTopoValidation) {
+    const eff = computeEffective(window._lastTopoValidation);
+    if (eff.overlapsLeft > 0 || eff.gapsLeft > 0) {
+      window._topoLastOk = null; // Məcburi yenidən yoxlama
     }
-  };
-  const eff = computeEffective(window._lastTopoValidation);
-  const hasIssues = eff.overlapsLeft > 0 || eff.gapsLeft > 0;
-  if (!data.local_ok || hasIssues) {
-    window.TekuisValidationState.set(ValidationStates.LOCAL_FAILED);
-  } else if (!data.remote?.ok) {
-    window.TekuisValidationState.set(ValidationStates.REMOTE_FAILED);
-  } else {
-    window.TekuisValidationState.set(ValidationStates.VALIDATED_READY);
-    window._topoLastOk = { hash: data.geo_hash, ts: Date.now(), eff };
   }
   
-  openTopologyModal(window._lastTopoValidation);
-}
-
-async function tryValidateAndSaveTekuis(){
-  if (window.TekuisValidationState.current !== ValidationStates.VALIDATED_READY && window.TekuisValidationState.current !== ValidationStates.SAVED) {
-    Swal.fire('Diqqət', 'Əvvəlcə TEKUİS Parsellər layı üçün validate edin.', 'warning');
+  if (!PAGE_TICKET || !String(PAGE_TICKET).trim()){
+    Swal.fire('Diqqət','Ticket tapılmadı. Node tətbiqindən yenidən "Xəritəyə keç" edin.','warning');
     return;
   }
+
 
   const src = getTekuisSourceSmart();
   const feats = src?.getFeatures?.() || [];
-  const fc = getTekuisFeatureCollection();
-  const curHash = String(window._topoLastOk?.hash || fcHash(fc)).replace(/^h/, '');
-
-  try {
-    const pre = await fetch('/api/tekuis/validation/preflight/', {
-      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify({ ticket: PAGE_TICKET, geo_hash: curHash })
-    }).then(r => r.json());
-
-    if (!pre.ok) {
-      window.TekuisValidationState.set(ValidationStates.SAVE_FAILED);
-      openTopologyModal({ ...(window._lastTopoValidation || {}), stepStatus: { local: pre.local_ok ? 'passed' : 'failed', remote: pre.remote_ok ? 'passed' : 'failed' } });
-      return;
-    }
-    
-  } catch (e) {
-    window.TekuisValidationState.set(ValidationStates.SAVE_FAILED);
-    Swal.fire('Xəta', 'Preflight check alınmadı', 'error');
+  if (feats.length === 0){
+    Swal.fire('Info', 'Yadda saxlanacaq TEKUİS parseli yoxdur.', 'info');
     return;
   }
 
-  window.TekuisValidationState.set(ValidationStates.SAVING);
-  const originalFc = resolveOriginalTekuis({ fallbackFc: fc });
-  const ignoredPayload = buildIgnoredPayloadFromValidation(window._lastTopoValidation || {});
+  const currentFc = getTekuisFeatureCollection();
+  const originalFc = resolveOriginalTekuis({ fallbackFc: currentFc });
+  if (!isValidFeatureCollection(originalFc)) {
+    Swal.fire('Xəta', 'Köhnə TEKUİS məlumatı tapılmadı. Zəhmət olmasa tekuis_parcel_old məlumatını yeniləyin.', 'error');
+    return;
+  }
 
+  const fc = currentFc;
+  const curHash = fcHash(fc);
 
+  let validationResult = null;
+  let shouldSkipValidation = false;
+  
+// 1) Əgər _topoLastOk varsa və hash eynidir → validasiya SKIP et
+  if (window._topoLastOk && window._topoLastOk.hash === curHash) {
+    console.debug('✅ Topo skip: eyni geometriya, əvvəlki yoxlama OK idi');
+    shouldSkipValidation = true;
+    validationResult = window._lastTopoValidation || { stats: {}, overlaps: [], gaps: [] };
+    
+    // ✅ YENİ: Skip olunduqda da effektiv sayı yenilə (ignore dəyişə biləcəyi üçün)
+    const eff = computeEffective(validationResult);
+    
+    // Əgər ignore-lardan sonra xəta qalıbsa, yenidən yoxla
+    if (eff.overlapsLeft > 0 || eff.gapsLeft > 0) {
+      console.warn('⚠️ Skip ediləcəkdi, amma ignore dəyişiklik var - yenidən yoxlanır');
+      shouldSkipValidation = false; // Məcburi yoxlama
+      window._topoLastOk = null;    // Köhnə hash sıfırla
+    }
+  }
+  
+  // 2) Skip edilməzsə → yenidən validate et
+  if (!shouldSkipValidation) {
+    syncTopoMinArea();
+    const res = await validateTekuisLocal(fc);
+    validationResult = res?.validation || {};
+    window._lastTopoValidation = validationResult;
+    
+    const eff = computeEffective(validationResult);
+    const hasErr = (eff.overlapsLeft > 0) || (eff.gapsLeft > 0);
+
+    if (hasErr){
+      openTopologyModal(validationResult);
+      return;
+    }
+    
+    // Xəta yoxdur → hash saxla
+    window._topoLastOk = { hash: curHash, ts: Date.now(), eff };
+  }
+
+  // ===== TƏSDIQ =====
+  const ask = await Swal.fire({
+    title: 'Əminsiniz?',
+    html: `<b>${feats.length}</b> TEKUİS parseli bazaya yazılacaq.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Bəli, yadda saxla',
+    cancelButtonText: 'İmtina'
+  });
+  
+  if (!ask.isConfirmed) return;
+
+  const ignoredPayload = buildIgnoredPayloadFromValidation(validationResult || {});
+
+  // ===== SERVER SAVE =====
   try {
-    const s = await saveTekuisOnServer(fc, { ignored: ignoredPayload, skipValidation: false, originalGeojson: originalFc, validationHash: curHash });
+    const s = await saveTekuisOnServer(fc, {
+      ignored: ignoredPayload,
+      skipValidation: shouldSkipValidation,
+      originalGeojson: originalFc
+    });
 
     if (!s.ok){
-      if (s.status === 422){
-        window.TekuisValidationState.set(ValidationStates.SAVE_FAILED);
-        openTopologyModal({ ...(s.data?.validation || window._lastTopoValidation || {}), stepStatus: { local: 'failed', remote: 'failed' } });
+      if (s.status === 422 && s.data?.validation){
+        openTopologyModal(s.data.validation);
         return;
       }
-      throw new Error(s.data?.error || 'Save xətası');
+      Swal.fire('Xəta', s.data?.error || 'TEKUİS parsellərini yadda saxlanılıb', 'error');
+      return;
     }
 
     closeTopologyModal();
     clearTekuisCache();
     window.tekuisNecasApi?.markTekuisSaved?.(true);
-
+    
+    // State təmizlə
     window._ignoredTopo = { overlaps: new Set(), gaps: new Set() };
     window._topoLastOk = null;
     window._lastTopoValidation = null;
 
-    window.TekuisValidationState.set(ValidationStates.SAVED);
-    Swal.fire('Uğurlu', `${s.data?.saved_count ?? feats.length} TEKUİS Parsellər layı parseli bazaya yazıldı.`, 'success');
-  } catch (e) {
-    window.TekuisValidationState.set(ValidationStates.SAVE_FAILED);
+    if (s.data?.meta_id != null) {
+      window.CURRENT_META_ID = s.data.meta_id;
+    }
+
+    try {
+      const metaId = s.data?.meta_id ?? window.CURRENT_META_ID ?? null;
+      await window.TekuisSwitch?.showSource?.('current', metaId);
+    } catch (e) {
+      console.warn('TEKUİS cari mənbə yenilənmədi:', e);
+    }
+    
+    Swal.fire('Uğurlu', `${s.data?.saved_count ?? feats.length} TEKUİS parseli bazaya yazıldı.`, 'success');
+    
+  } catch(e) {
+    console.error('Save error:', e);
     Swal.fire('Xəta', e.message || 'Şəbəkə xətası baş verdi.', 'error');
   }
 }
 
-window.runTekuisValidationFlow = runTekuisValidationFlow;
 window.tryValidateAndSaveTekuis = tryValidateAndSaveTekuis;
 
 })();
