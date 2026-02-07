@@ -368,19 +368,19 @@ def record_topology_validation(
 def record_tekuis_validation(meta_id: int) -> None:
     """Record TEKUİS validation state.
 
-    The topology_validation table enforces a strict check constraint on
-    error_type values. Since the TEKUİS workflow is not a topology error and
-    the check constraint does not accept the "tekuis" value, we avoid writing
-    a synthetic row that would violate the constraint.
+    The topology_validation table requires a non-null error_type value with a
+    strict check constraint. TEKUİS is not a topology error, so we store a
+    benign, allowed placeholder to satisfy the constraint while still marking
+    the TEKUİS validation as final.
     """
     with connection.cursor() as cur:
         cur.execute(
             """
             INSERT INTO topology_validation
-              (meta_id, validation_type, status, is_final)
-            VALUES (%s, %s, %s, %s)
+              (meta_id, error_type, validation_type, status, is_final)
+            VALUES (%s, %s, %s, %s, %s)
             """,
-            [int(meta_id), "TEKUIS", 1, 1],
+            [int(meta_id), "gap", "TEKUIS", 1, 1],
         )
     return None
 
