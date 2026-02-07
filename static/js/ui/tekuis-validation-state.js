@@ -80,8 +80,6 @@
     state.tekuisOk = false;
     state.lastHash = null;
     state.lastValidation = null;
-    state.serverLocalFinal = false;
-    state.serverTekuisFinal = false;
   }
 
   function reset(){
@@ -161,5 +159,5 @@
     setServerFinal,
     isServerFinalReady
   };
-  
+
 })();
