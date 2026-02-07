@@ -2,7 +2,7 @@
   "use strict";
 
   const API = {
-    validate: "/api/tekuis/validate"
+    validate: "/api/tekuis/validate/"
   };
 
   async function validateTopology({ geojson, ticket = "", metaId = null, ignoredGapKeys = [] } = {}){
