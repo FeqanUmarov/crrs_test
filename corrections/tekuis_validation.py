@@ -299,7 +299,7 @@ def validate_tekuis(
     result["stats"]["overlap_count"] = len(result["overlaps"])
     result["stats"]["gap_count"] = len(result["gaps"])
     return result
-    
+
 
 def reset_topology_validation_status(meta_id: int) -> None:
     with connection.cursor() as cur:
@@ -364,8 +364,8 @@ def record_tekuis_validation(meta_id: int) -> None:
         cur.execute(
             """
             INSERT INTO topology_validation
-              (meta_id, validation_type, status, is_final)
-            VALUES (%s, 'TEKUİS', 1, 1)
+              (meta_id, error_type, validation_type, is_ignored, status, is_final)
+            VALUES (%s, 'tekuis', 'TEKUİS', 0, 1, 1)
             """,
             [int(meta_id)],
         )
