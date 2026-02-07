@@ -274,10 +274,21 @@
   
   function bindButtons(){
     const btnValidate = document.getElementById('btnValidateTekuis');
-    if (btnValidate) {
+    if (btnValidate && btnValidate.dataset.boundTekuisValidate !== 'true') {
+      btnValidate.dataset.boundTekuisValidate = 'true';
       btnValidate.addEventListener('click', runTekuisValidation);
+      updateSaveButtonState();
     }
-    
+    if (!btnValidate && !window.__tekuisValidateObserver) {
+      const observer = new MutationObserver(() => {
+        const found = document.getElementById('btnValidateTekuis');
+        if (found) {
+          bindButtons();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.__tekuisValidateObserver = observer;
+    }
   }
 
   function initModal(){
