@@ -52,8 +52,8 @@ function setupTekuisSave({ tekuisSource } = {}){
       window.TekuisValidationState?.clearIgnored?.();
       const btnValidateTekuis = document.getElementById('btnValidateTekuis');
       if (btnValidateTekuis) {
-        const isFinal = window.TekuisValidationState?.isServerFinalReady?.();
-        btnValidateTekuis.disabled = !window.EDIT_ALLOWED || !!isFinal;
+        const shouldDisable = window.TekuisValidationState?.shouldDisableValidateButton?.();
+        btnValidateTekuis.disabled = !window.EDIT_ALLOWED || !!shouldDisable;
       }
       syncSaveState();
       window.refreshTekuisValidationFinalState?.();

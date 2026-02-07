@@ -124,14 +124,18 @@
   function applyFinalStateToButtons(){
     const btnValidateTekuis = document.getElementById('btnValidateTekuis');
     if (!btnValidateTekuis) return;
-    const allFinal = window.TekuisValidationState?.isServerFinalReady?.();
-    btnValidateTekuis.disabled = !window.EDIT_ALLOWED || !!allFinal;
+    const shouldDisable = window.TekuisValidationState?.shouldDisableValidateButton?.();
+    btnValidateTekuis.disabled = !window.EDIT_ALLOWED || !!shouldDisable;
   }
 
   async function refreshValidationFinalState(){
     if (typeof window.TekuisValidationService?.fetchFinalState !== 'function') {
+      window.TekuisValidationState?.setServerFinalLoaded?.(true);
+      applyFinalStateToButtons();
       return;
     }
+    window.TekuisValidationState?.setServerFinalLoaded?.(false);
+    applyFinalStateToButtons();
     const resp = await window.TekuisValidationService.fetchFinalState({
       ticket: PAGE_TICKET || '',
       metaId: window.META_ID ?? null
@@ -143,6 +147,9 @@
       });
       applyFinalStateToButtons();
       updateSaveButtonState();
+      } else {
+      window.TekuisValidationState?.setServerFinalLoaded?.(true);
+      applyFinalStateToButtons();
     }
   }
   async function runTekuisValidation(){

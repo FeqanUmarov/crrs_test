@@ -10,7 +10,8 @@
     lastMetaId: null,
     ignoredGaps: new Set(),
     serverLocalFinal: false,
-    serverTekuisFinal: false
+    serverTekuisFinal: false,
+    serverFinalLoaded: false
   };
 
   function _djb2(str){ let h=5381,i=str.length; while(i) h=(h*33) ^ str.charCodeAt(--i); return (h>>>0).toString(36); }
@@ -92,6 +93,7 @@
     state.ignoredGaps = new Set();
     state.serverLocalFinal = false;
     state.serverTekuisFinal = false;
+    state.serverFinalLoaded = false;
   }
 
   function isSaveAllowed(currentHash){
@@ -135,6 +137,18 @@
   function setServerFinal({ localFinal, tekuisFinal } = {}){
     if (typeof localFinal === "boolean") state.serverLocalFinal = localFinal;
     if (typeof tekuisFinal === "boolean") state.serverTekuisFinal = tekuisFinal;
+    if (typeof localFinal === "boolean" || typeof tekuisFinal === "boolean") {
+      state.serverFinalLoaded = true;
+    }
+  }
+
+  function setServerFinalLoaded(val){
+    if (typeof val === "boolean") state.serverFinalLoaded = val;
+  }
+
+  function shouldDisableValidateButton(){
+    if (!state.serverFinalLoaded) return true;
+    return !!(state.serverLocalFinal && state.serverTekuisFinal);
   }
 
   function isServerFinalReady(){
@@ -157,7 +171,9 @@
     getIgnoredGapKeys,
     getState,
     setServerFinal,
-    isServerFinalReady
+    isServerFinalReady,
+    setServerFinalLoaded,
+    shouldDisableValidateButton
   };
 
 })();
