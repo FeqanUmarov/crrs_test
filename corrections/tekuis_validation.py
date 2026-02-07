@@ -28,6 +28,9 @@ MIN_AREA_SQM = float(getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
 GAP_SIG_BOUNDS_DECIMALS = int(getattr(settings, "TEKUIS_GAP_SIG_BOUNDS_DECIMALS", 7))
 GAP_SIG_AREA_DECIMALS = int(getattr(settings, "TEKUIS_GAP_SIG_AREA_DECIMALS", 3))
 
+
+VALIDATION_TYPE_LOCAL = "LOCAL"
+VALIDATION_TYPE_TEKUIS = "TEKUİS"
 # Proyeksiya çeviriciləri
 # (Daxilə 4326 gəlir; hesablamalar 3857-də aparılır; çıxış 4326 qayıdır)
 _to_3857 = Transformer.from_crs(4326, 3857, always_xy=True).transform
@@ -331,11 +334,11 @@ def record_topology_validation(
     rows: List[Tuple[Any, ...]] = []
     final_flag = 0 if has_real_errors else 1
     for _ in overlaps:
-        rows.append((int(meta_id), "overlap", "LOCAL", 0, 1, final_flag))
+        rows.append((int(meta_id), "overlap", VALIDATION_TYPE_LOCAL, 0, 1, final_flag))
 
     for g in gaps:
         ignored = 1 if gap_is_ignored(g) else 0
-        rows.append((int(meta_id), "gap", "LOCAL", ignored, 1, final_flag))
+        rows.append((int(meta_id), "gap", VALIDATION_TYPE_LOCAL, ignored, 1, final_flag))
 
     with connection.cursor() as cur:
         if rows:
@@ -354,7 +357,7 @@ def record_topology_validation(
                   (meta_id, validation_type, status, is_final)
                 VALUES (%s, %s, %s, %s)
                 """,
-                [int(meta_id), "LOCAL", 1, 1],
+                [int(meta_id), VALIDATION_TYPE_LOCAL, 1, 1],
             )
 
     return {
@@ -380,27 +383,27 @@ def record_tekuis_validation(meta_id: int) -> None:
               (meta_id, error_type, validation_type, status, is_final)
             VALUES (%s, %s, %s, %s, %s)
             """,
-            [int(meta_id), "gap", "TEKUIS", 1, 1],
+            [int(meta_id), "gap", VALIDATION_TYPE_TEKUIS, 1, 1],
         )
     return None
 
 
 def get_validation_final_state(meta_id: int) -> Dict[str, bool]:
-    final_state = {"LOCAL": False, "TEKUIS": False}
+    final_state = {VALIDATION_TYPE_LOCAL: False, VALIDATION_TYPE_TEKUIS: False}
     with connection.cursor() as cur:
         cur.execute(
             """
             SELECT validation_type, MAX(CASE WHEN is_final = 1 THEN 1 ELSE 0 END) AS has_final
             FROM topology_validation
-            WHERE meta_id = %s AND status = 1 AND validation_type IN ('LOCAL', 'TEKUIS')
+            WHERE meta_id = %s AND status = 1 AND validation_type IN (%s, %s)
             GROUP BY validation_type
             """,
-            [int(meta_id)],
+            [int(meta_id), VALIDATION_TYPE_LOCAL, VALIDATION_TYPE_TEKUIS],
         )
         for validation_type, has_final in cur.fetchall():
             if validation_type in final_state:
                 final_state[validation_type] = bool(has_final)
     return {
-        "local_final": final_state["LOCAL"],
-        "tekuis_final": final_state["TEKUIS"],
+        "local_final": final_state[VALIDATION_TYPE_LOCAL],
+        "tekuis_final": final_state[VALIDATION_TYPE_TEKUIS],
     }
