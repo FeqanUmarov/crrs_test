@@ -39,6 +39,10 @@ function setupTekuisSave({ tekuisSource } = {}){
     const markDirty = () => {
       window.TekuisValidationState?.markDirty?.();
       window.TekuisValidationState?.clearIgnored?.();
+      const btnValidateTekuis = document.getElementById('btnValidateTekuis');
+      if (btnValidateTekuis) {
+        btnValidateTekuis.disabled = !window.EDIT_ALLOWED;
+      }
       syncSaveState();
     };
     tekuisSource.on('addfeature', markDirty);

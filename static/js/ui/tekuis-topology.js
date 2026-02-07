@@ -252,6 +252,10 @@
 
       window.TekuisValidationState?.reset?.();
       updateSaveButtonState();
+      const btnValidateTekuis = document.getElementById('btnValidateTekuis');
+      if (btnValidateTekuis) {
+        btnValidateTekuis.disabled = true;
+      }
 
       if (s.data?.meta_id != null) {
         window.CURRENT_META_ID = s.data.meta_id;
