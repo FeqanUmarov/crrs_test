@@ -20,6 +20,7 @@ from corrections.tekuis_validation import (
     record_tekuis_validation,
     record_topology_validation,
     reset_topology_validation_status,
+    get_validation_final_state,
     validate_tekuis,
 )
 
@@ -1032,6 +1033,22 @@ def validate_tekuis_parcels(request):
     if looks_dissolved:
         out["warning"] = "features_look_dissolved"  # Fronta göstərə bilərsən
     return JsonResponse(out)
+
+@csrf_exempt
+def tekuis_validation_state(request):
+    if request.method not in ("GET", "POST"):
+        return JsonResponse({"ok": False, "error": "GET or POST only"}, status=405)
+    meta_id = _meta_id_from_request(request)
+    final_state = get_validation_final_state(meta_id)
+    return JsonResponse(
+        {
+            "ok": True,
+            "meta_id": meta_id,
+            "local_final": final_state["local_final"],
+            "tekuis_final": final_state["tekuis_final"],
+            "all_final": final_state["local_final"] and final_state["tekuis_final"],
+        }
+    )
 
 
 @csrf_exempt

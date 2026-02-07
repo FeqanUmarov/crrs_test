@@ -329,19 +329,16 @@ def record_topology_validation(
     has_real_errors = has_real_overlaps or has_real_gaps
 
     rows: List[Tuple[Any, ...]] = []
+    final_flag = 0 if has_real_errors else 1
     for _ in overlaps:
-        rows.append((int(meta_id), "overlap", "LOCAL", 0, 1, 1 if has_real_errors else 0))
+        rows.append((int(meta_id), "overlap", "LOCAL", 0, 1, final_flag))
 
     for g in gaps:
         ignored = 1 if gap_is_ignored(g) else 0
-        if has_real_errors:
-            is_final = 1 if ignored == 0 else 0
-        else:
-            is_final = 1 if ignored == 1 else 0
-        rows.append((int(meta_id), "gap", "LOCAL", ignored, 1, is_final))
+        rows.append((int(meta_id), "gap", "LOCAL", ignored, 1, final_flag))
 
-    if rows:
-        with connection.cursor() as cur:
+    with connection.cursor() as cur:
+        if rows:
             cur.executemany(
                 """
                 INSERT INTO topology_validation
@@ -349,6 +346,15 @@ def record_topology_validation(
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 rows,
+            )
+        elif not has_real_errors:
+            cur.execute(
+                """
+                INSERT INTO topology_validation
+                  (meta_id, validation_type, status, is_final)
+                VALUES (%s, %s, %s, %s)
+                """,
+                [int(meta_id), "LOCAL", 1, 1],
             )
 
     return {
@@ -367,4 +373,34 @@ def record_tekuis_validation(meta_id: int) -> None:
     the check constraint does not accept the "tekuis" value, we avoid writing
     a synthetic row that would violate the constraint.
     """
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO topology_validation
+              (meta_id, validation_type, status, is_final)
+            VALUES (%s, %s, %s, %s)
+            """,
+            [int(meta_id), "TEKUIS", 1, 1],
+        )
     return None
+
+
+def get_validation_final_state(meta_id: int) -> Dict[str, bool]:
+    final_state = {"LOCAL": False, "TEKUIS": False}
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT validation_type, MAX(CASE WHEN is_final = 1 THEN 1 ELSE 0 END) AS has_final
+            FROM topology_validation
+            WHERE meta_id = %s AND status = 1 AND validation_type IN ('LOCAL', 'TEKUIS')
+            GROUP BY validation_type
+            """,
+            [int(meta_id)],
+        )
+        for validation_type, has_final in cur.fetchall():
+            if validation_type in final_state:
+                final_state[validation_type] = bool(has_final)
+    return {
+        "local_final": final_state["LOCAL"],
+        "tekuis_final": final_state["TEKUIS"],
+    }

@@ -21,6 +21,7 @@ from .tekuis import (
     tekuis_validate_ignore_gap_view,
     tekuis_validate_view,
     validate_tekuis_parcels,
+    tekuis_validation_state,
 )
 from .uploads import upload_points, upload_shp
 
@@ -51,6 +52,7 @@ __all__ = [
     "tekuis_parcels_by_geom",
     "tekuis_validate_ignore_gap_view",
     "tekuis_validate_view",
+    "tekuis_validation_state",
     "ticket_status",
     "upload_points",
     "upload_shp",

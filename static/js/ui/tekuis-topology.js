@@ -121,6 +121,30 @@
     const currentHash = window.TekuisValidationState?.fcHash?.(fc);
     btnSaveTekuis.disabled = !window.TekuisValidationState?.isSaveAllowed?.(currentHash);
   }
+  function applyFinalStateToButtons(){
+    const btnValidateTekuis = document.getElementById('btnValidateTekuis');
+    if (!btnValidateTekuis) return;
+    const allFinal = window.TekuisValidationState?.isServerFinalReady?.();
+    btnValidateTekuis.disabled = !window.EDIT_ALLOWED || !!allFinal;
+  }
+
+  async function refreshValidationFinalState(){
+    if (typeof window.TekuisValidationService?.fetchFinalState !== 'function') {
+      return;
+    }
+    const resp = await window.TekuisValidationService.fetchFinalState({
+      ticket: PAGE_TICKET || '',
+      metaId: window.META_ID ?? null
+    });
+    if (resp?.ok) {
+      window.TekuisValidationState?.setServerFinal?.({
+        localFinal: resp.localFinal,
+        tekuisFinal: resp.tekuisFinal
+      });
+      applyFinalStateToButtons();
+      updateSaveButtonState();
+    }
+  }
   async function runTekuisValidation(){
     if (!window.EDIT_ALLOWED) {
       Swal.fire('Diqqət', 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'warning');
@@ -188,12 +212,18 @@
       hash,
       metaId: resp.metaId ?? window.META_ID
     });
+    window.TekuisValidationState?.setServerFinal?.({
+      localFinal: resp.localOk,
+      tekuisFinal: resp.tekuisOk
+    });
     window.TekuisValidationModal?.open?.(validation);
     updateSaveButtonState();
+    applyFinalStateToButtons();
 
     if (resp.localOk && resp.tekuisOk){
       window.showToast?.('Topologiya yoxlanıldı. Yadda saxlaya bilərsiniz.');
     }
+    await refreshValidationFinalState();
   }
   async function tryValidateAndSaveTekuis(){
     if (!window.EDIT_ALLOWED) {
@@ -256,6 +286,7 @@
       if (btnValidateTekuis) {
         btnValidateTekuis.disabled = true;
       }
+      await refreshValidationFinalState();
 
       if (s.data?.meta_id != null) {
         window.CURRENT_META_ID = s.data.meta_id;
@@ -282,6 +313,8 @@
       btnValidate.dataset.boundTekuisValidate = 'true';
       btnValidate.addEventListener('click', runTekuisValidation);
       updateSaveButtonState();
+      applyFinalStateToButtons();
+      refreshValidationFinalState();
     }
     if (!btnValidate && !window.__tekuisValidateObserver) {
       const observer = new MutationObserver(() => {
@@ -314,4 +347,5 @@
   window.runTekuisValidation = runTekuisValidation;
   window.tryGetTekuisFeatureCollection = getTekuisFeatureCollection;
   window.tryValidateAndSaveTekuis = tryValidateAndSaveTekuis;
+  window.refreshTekuisValidationFinalState = refreshValidationFinalState;
 })();

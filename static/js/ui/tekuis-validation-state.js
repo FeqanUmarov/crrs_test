@@ -8,7 +8,9 @@
     tekuisOk: false,
     lastHash: null,
     lastMetaId: null,
-    ignoredGaps: new Set()
+    ignoredGaps: new Set(),
+    serverLocalFinal: false,
+    serverTekuisFinal: false
   };
 
   function _djb2(str){ let h=5381,i=str.length; while(i) h=(h*33) ^ str.charCodeAt(--i); return (h>>>0).toString(36); }
@@ -78,6 +80,8 @@
     state.tekuisOk = false;
     state.lastHash = null;
     state.lastValidation = null;
+    state.serverLocalFinal = false;
+    state.serverTekuisFinal = false;
   }
 
   function reset(){
@@ -88,12 +92,15 @@
     state.lastHash = null;
     state.lastMetaId = null;
     state.ignoredGaps = new Set();
+    state.serverLocalFinal = false;
+    state.serverTekuisFinal = false;
   }
 
   function isSaveAllowed(currentHash){
-    if (state.status !== "success" || !state.localOk || !state.tekuisOk) return false;
+    if (!state.serverLocalFinal || !state.serverTekuisFinal) return false;
     if (currentHash && state.lastHash && currentHash !== state.lastHash) return false;
-    return true;
+    if (state.status === "success" && state.localOk && state.tekuisOk) return true;
+    return state.lastHash == null;
   }
 
   function toggleGapIgnored(key){
@@ -127,6 +134,14 @@
   function getState(){
     return { ...state, ignoredGaps: new Set(state.ignoredGaps) };
   }
+  function setServerFinal({ localFinal, tekuisFinal } = {}){
+    if (typeof localFinal === "boolean") state.serverLocalFinal = localFinal;
+    if (typeof tekuisFinal === "boolean") state.serverTekuisFinal = tekuisFinal;
+  }
+
+  function isServerFinalReady(){
+    return !!(state.serverLocalFinal && state.serverTekuisFinal);
+  }
 
   window.TekuisValidationState = {
     topoKey,
@@ -142,6 +157,9 @@
     isGapIgnored,
     clearIgnored,
     getIgnoredGapKeys,
-    getState
+    getState,
+    setServerFinal,
+    isServerFinalReady
   };
+  
 })();

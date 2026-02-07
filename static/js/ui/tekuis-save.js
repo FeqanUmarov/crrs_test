@@ -26,7 +26,18 @@ function setupTekuisSave({ tekuisSource } = {}){
   }
 
   async function onSaveTekuisClick(){
-      if (typeof window.tryValidateAndSaveTekuis === 'function') {
+    const fc = window.tryGetTekuisFeatureCollection?.() || null;
+    const hash = window.TekuisValidationState?.fcHash?.(fc);
+    if (!window.TekuisValidationState?.isSaveAllowed?.(hash)) {
+      await window.refreshTekuisValidationFinalState?.();
+      const recheck = window.TekuisValidationState?.isSaveAllowed?.(hash);
+      if (!recheck) {
+        Swal.fire('Diqqət', 'Yadda saxlamaq üçün həm LOCAL, həm də TEKUİS validasiya tamamlanmalıdır.', 'warning');
+        return;
+      }
+    }
+
+    if (typeof window.tryValidateAndSaveTekuis === 'function') {
       await window.tryValidateAndSaveTekuis();
       return;
     }
@@ -44,6 +55,7 @@ function setupTekuisSave({ tekuisSource } = {}){
         btnValidateTekuis.disabled = !window.EDIT_ALLOWED;
       }
       syncSaveState();
+      window.refreshTekuisValidationFinalState?.();
     };
     tekuisSource.on('addfeature', markDirty);
     tekuisSource.on('removefeature', markDirty);
@@ -53,6 +65,7 @@ function setupTekuisSave({ tekuisSource } = {}){
   }
 
   syncSaveState();
+  window.refreshTekuisValidationFinalState?.();
 }
 
 window.setupTekuisSave = setupTekuisSave;
