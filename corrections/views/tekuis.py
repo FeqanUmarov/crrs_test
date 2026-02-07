@@ -941,7 +941,9 @@ def _meta_id_from_request(request):
     for m in (meta_hdr, meta_qs, meta_bd):
         if m is not None:
             try:
-                return int(m)
+                meta_id = int(m)
+                if meta_id > 0:
+                    return meta_id
             except Exception:
                 pass
 
@@ -955,6 +957,10 @@ def _meta_id_from_request(request):
         or ""
     )
     ticket = str(ticket).strip()
+    if ticket:
+        fk = _redeem_ticket(ticket)
+        if fk:
+            return int(fk)
     return int(zlib.crc32(ticket.encode("utf-8")) & 0x7FFFFFFF)
 
 

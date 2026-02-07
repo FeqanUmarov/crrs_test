@@ -24,6 +24,10 @@
   }
 
   function topoKey(obj){
+    const hash = obj?.hash;
+    if (hash !== undefined && hash !== null && String(hash).trim() !== '') {
+      return String(hash);
+    }
     try {
       const g = obj?.geom ?? obj;
       const norm = JSON.stringify(roundDeep(g, 6));

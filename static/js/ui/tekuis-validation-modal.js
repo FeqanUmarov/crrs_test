@@ -274,6 +274,7 @@
         el.className = 'topo-item' + (ignored ? ' ignored' : '');
         el.dataset.kind = 'gap';
         el.dataset.key  = key;
+        el.dataset.hash = g?.hash ? String(g.hash) : '';
         el.innerHTML = `
           <div>
             #${i+1} — boşluq sahəsi: <b>${formatAreaSqm(g.area_sqm)}</b> m²
@@ -290,18 +291,38 @@
         el.querySelector('[data-act=zoom]')?.addEventListener('click', () => {
           state.context.zoomAndHighlightTopoGeometry?.(g.geom);
         });
-        el.querySelector('[data-act=toggleIgnore]')?.addEventListener('click', () => {
-          const nowIgnored = window.TekuisValidationState?.toggleGapIgnored?.(key);
+        el.querySelector('[data-act=toggleIgnore]')?.addEventListener('click', async () => {
+          const isCurrentlyIgnored = window.TekuisValidationState?.isGapIgnored?.(key);
+          const nowIgnored = !isCurrentlyIgnored;
+          window.TekuisValidationState?.setGapIgnored?.(key, nowIgnored);
           window.TekuisValidationState?.markDirty?.();
-          el.classList.toggle('ignored', nowIgnored);
-          el.querySelector('.badge-ignored')?.classList.toggle('hidden', !nowIgnored);
-          const btn = el.querySelector('[data-act=toggleIgnore]');
-          if (btn) {
-            const nextTooltip = (nowIgnored ? 'Xəta kimi qeyd et' : 'Xətanı sayma');
-            btn.dataset.tooltip = nextTooltip;
-            btn.setAttribute('aria-label', nextTooltip);
-            btn.classList.toggle('is-ignored', nowIgnored);
-            btn.innerHTML = `<span class="ico">${nowIgnored ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>`;
+          const applyIgnoreUi = (ignoredState) => {
+            el.classList.toggle('ignored', ignoredState);
+            el.querySelector('.badge-ignored')?.classList.toggle('hidden', !ignoredState);
+            const btn = el.querySelector('[data-act=toggleIgnore]');
+            if (btn) {
+              const nextTooltip = (ignoredState ? 'Xəta kimi qeyd et' : 'Xətanı sayma');
+              btn.dataset.tooltip = nextTooltip;
+              btn.setAttribute('aria-label', nextTooltip);
+              btn.classList.toggle('is-ignored', ignoredState);
+              btn.innerHTML = `<span class="ico">${ignoredState ? TOPO_ICON_SVGS.unignore : TOPO_ICON_SVGS.ignore}</span>`;
+            }
+          };
+          applyIgnoreUi(nowIgnored);
+          if (nowIgnored && g?.hash) {
+            const ticket = window.PAGE_TICKET || '';
+            const metaId = window.META_ID ?? null;
+            const resp = await window.TekuisValidationService?.ignoreGap?.({
+              hash: g.hash,
+              geom: g.geom,
+              ticket,
+              metaId
+            });
+            if (!resp?.ok) {
+              window.TekuisValidationState?.setGapIgnored?.(key, false);
+              applyIgnoreUi(false);
+              window.showToast?.('Xəta: seçilən boşluğu saymama qeydi saxlanmadı.');
+            }
           }
           if (typeof state.context.onIgnoredChange === 'function') {
             state.context.onIgnoredChange();
