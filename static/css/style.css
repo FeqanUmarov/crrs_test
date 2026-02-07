@@ -732,6 +732,7 @@ body, button, input, select, textarea {
 }
 
 .ico-save   { background-image:url('/static/icons/images/save.svg'); }
+.ico-validate   { background-image:url('/static/icons/images/validate.svg'); }
 
 
 

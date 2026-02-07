@@ -175,7 +175,8 @@ def validate_tekuis(
     meta_id: int,
     *,
     min_overlap_sqm: Optional[float] = None,
-    min_gap_sqm: Optional[float] = None
+    min_gap_sqm: Optional[float] = None,
+    ignored_gap_hashes: Optional[Set[str]] = None
 ) -> Dict[str, Any]:
     """
     Giriş GeoJSON-u (4326) **ekrandakı cari vəziyyət** kimi qəbul edir.
@@ -190,6 +191,7 @@ def validate_tekuis(
     """
     MIN_OV = float(min_overlap_sqm if min_overlap_sqm is not None else MIN_AREA_SQM)
     MIN_GA = float(min_gap_sqm     if min_gap_sqm     is not None else MIN_AREA_SQM)
+    ignored_gap_hashes = set(map(str, ignored_gap_hashes or []))
 
     polys = _collect_polys_from_geojson_3857(geojson)  # 3857-də siyahı
     n = len(polys)
@@ -282,13 +284,13 @@ def validate_tekuis(
                 continue
             gg4326 = shp_transform(_to_4326, gg)
             h = _gap_signature(gg4326)
-            if _is_gap_ignored(meta_id, h):
-                continue
+            is_ignored = h in ignored_gap_hashes or _is_gap_ignored(meta_id, h)
             rep = gg4326.representative_point()
             result["gaps"].append({
                 "hash": h,
                 "area_sqm": round(a, 2),
                 "geom": mapping(gg4326),
+                "is_ignored": bool(is_ignored),
                 "centroid": [float(rep.x), float(rep.y)],
                 "bbox": list(gg4326.bounds)
             })
@@ -297,4 +299,73 @@ def validate_tekuis(
     result["stats"]["overlap_count"] = len(result["overlaps"])
     result["stats"]["gap_count"] = len(result["gaps"])
     return result
+    
 
+def reset_topology_validation_status(meta_id: int) -> None:
+    with connection.cursor() as cur:
+        cur.execute(
+            "UPDATE topology_validation SET status = 0 WHERE meta_id = %s AND status = 1",
+            [int(meta_id)],
+        )
+
+
+def record_topology_validation(
+    meta_id: int,
+    validation: Dict[str, Any],
+    ignored_gap_hashes: Optional[Set[str]] = None,
+) -> Dict[str, Any]:
+    ignored_gap_hashes = set(map(str, ignored_gap_hashes or []))
+    overlaps = validation.get("overlaps") or []
+    gaps = validation.get("gaps") or []
+
+    def gap_is_ignored(gap: Dict[str, Any]) -> bool:
+        if gap.get("is_ignored") is True:
+            return True
+        h = gap.get("hash")
+        return str(h) in ignored_gap_hashes if h is not None else False
+
+    has_real_overlaps = len(overlaps) > 0
+    has_real_gaps = any(not gap_is_ignored(g) for g in gaps)
+    has_real_errors = has_real_overlaps or has_real_gaps
+
+    rows: List[Tuple[Any, ...]] = []
+    for _ in overlaps:
+        rows.append((int(meta_id), "overlap", "LOCAL", 0, 1, 1 if has_real_errors else 0))
+
+    for g in gaps:
+        ignored = 1 if gap_is_ignored(g) else 0
+        if has_real_errors:
+            is_final = 1 if ignored == 0 else 0
+        else:
+            is_final = 1 if ignored == 1 else 0
+        rows.append((int(meta_id), "gap", "LOCAL", ignored, 1, is_final))
+
+    if rows:
+        with connection.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO topology_validation
+                  (meta_id, error_type, validation_type, is_ignored, status, is_final)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                rows,
+            )
+
+    return {
+        "rows": len(rows),
+        "has_real_errors": has_real_errors,
+        "real_overlaps": len(overlaps),
+        "real_gaps": len([g for g in gaps if not gap_is_ignored(g)]),
+    }
+
+
+def record_tekuis_validation(meta_id: int) -> None:
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO topology_validation
+              (meta_id, validation_type, status, is_final)
+            VALUES (%s, 'TEKUİS', 1, 1)
+            """,
+            [int(meta_id)],
+        )

@@ -15,7 +15,13 @@ from shapely.geometry import mapping, shape as shapely_shape
 from .attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_zip_file, _smb_net_use
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
-from corrections.tekuis_validation import ignore_gap, validate_tekuis
+from corrections.tekuis_validation import (
+    ignore_gap,
+    record_tekuis_validation,
+    record_topology_validation,
+    reset_topology_validation_status,
+    validate_tekuis,
+)
 
 TEKUIS_ATTRS = (
     "ID",
@@ -972,13 +978,51 @@ def validate_tekuis_parcels(request):
     min_overlap = data.get("min_overlap_sqm")
     min_gap = data.get("min_gap_sqm")
 
+    ignored_payload = data.get("ignored") or {}
+    ignored_gap_keys = (
+        ignored_payload.get("gap_keys")
+        or ignored_payload.get("gaps")
+        or ignored_payload.get("gap_hashes")
+        or []
+    )
+    ignored_gap_keys = set(map(str, ignored_gap_keys))
+
     # Dissolve olunmuş kimi görünürmü? (tək Polygon/MultiPolygon gəlibsə)
     feats = (gj or {}).get("features", [])
     looks_dissolved = len(feats) == 1 and ((feats[0].get("geometry") or {}).get("type") in ("Polygon", "MultiPolygon"))
 
-    res = validate_tekuis(gj, meta_id, min_overlap_sqm=min_overlap, min_gap_sqm=min_gap)
+    res = validate_tekuis(
+        gj,
+        meta_id,
+        min_overlap_sqm=min_overlap,
+        min_gap_sqm=min_gap,
+        ignored_gap_hashes=ignored_gap_keys,
+    )
 
-    out = {"ok": True, "validation": res}
+    overlaps = res.get("overlaps") or []
+    gaps = res.get("gaps") or []
+    has_overlap = len(overlaps) > 0
+    has_gap = any(not g.get("is_ignored") and str(g.get("hash")) not in ignored_gap_keys for g in gaps)
+    local_ok = not has_overlap and not has_gap
+
+    reset_topology_validation_status(meta_id)
+    record_topology_validation(meta_id, res, ignored_gap_hashes=ignored_gap_keys)
+
+    tekuis_resp = None
+    tekuis_ok = False
+    if local_ok:
+        tekuis_resp = {"ok": True, "saved": 1, "skipped": 0, "errors": []}
+        tekuis_ok = True
+        record_tekuis_validation(meta_id)
+
+    out = {
+        "ok": bool(local_ok and tekuis_ok),
+        "meta_id": meta_id,
+        "validation": res,
+        "local_ok": local_ok,
+        "tekuis_ok": tekuis_ok,
+        "tekuis": tekuis_resp,
+    }
     if looks_dissolved:
         out["warning"] = "features_look_dissolved"  # Fronta göstərə bilərsən
     return JsonResponse(out)
