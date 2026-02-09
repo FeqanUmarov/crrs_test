@@ -121,6 +121,17 @@
     };
   }
 
+  async function fetchSavedTekuisState() {
+    const api = window.tekuisNecasApi;
+    if (!api || typeof api.getTekuisSavedState !== "function") return false;
+    try {
+      return await api.getTekuisSavedState({ force: true });
+    } catch (e) {
+      console.warn("TEKUİS saved check xətası:", e);
+      return false;
+    }
+  }
+
   function buildFeatureCollection(source) {
     const features = source?.getFeatures?.() || [];
     const formatter = new ol.format.GeoJSON();
@@ -235,7 +246,19 @@
     },
 
     async handleValidateClick({ trigger = "card" } = {}) {
-      if (!this.service || this.state.validating || this.state.saved) return;
+      if (!this.service || this.state.validating) return;
+      const savedFromDb = await fetchSavedTekuisState();
+      if (savedFromDb || this.state.saved) {
+        this.state.saved = true;
+        this.state.needsValidation = false;
+        applyButtonState(this.state);
+        Swal.fire(
+          "Diqqət",
+          "TEKUİS Parselləri yadda saxlanılıb. Topologiya yoxlaya bilməzsiniz!",
+          "warning"
+        );
+        return;
+      }
       if (!window.EDIT_ALLOWED) {
         Swal.fire("Diqqət", "Bu əməliyyatlar yalnız redaktə və ya qaralama rejimində mümkündür.", "warning");
         return;
