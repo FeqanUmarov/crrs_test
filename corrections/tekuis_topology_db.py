@@ -99,7 +99,7 @@ def insert_success_record(meta_id: int, validation_type: str) -> None:
     insert_validation_rows(
         meta_id=meta_id,
         validation_type=validation_type,
-        rows=[{"error_type": "success", "is_ignored": 0, "is_final": 1}],
+        rows=[{"error_type": None, "is_ignored": 0, "is_final": 1}],
     )
 
 
