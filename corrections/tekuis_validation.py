@@ -28,9 +28,6 @@ MIN_AREA_SQM = float(getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
 GAP_SIG_BOUNDS_DECIMALS = int(getattr(settings, "TEKUIS_GAP_SIG_BOUNDS_DECIMALS", 7))
 GAP_SIG_AREA_DECIMALS = int(getattr(settings, "TEKUIS_GAP_SIG_AREA_DECIMALS", 3))
 
-
-VALIDATION_TYPE_LOCAL = "LOCAL"
-VALIDATION_TYPE_TEKUIS = "TEKUİS"
 # Proyeksiya çeviriciləri
 # (Daxilə 4326 gəlir; hesablamalar 3857-də aparılır; çıxış 4326 qayıdır)
 _to_3857 = Transformer.from_crs(4326, 3857, always_xy=True).transform
@@ -178,8 +175,7 @@ def validate_tekuis(
     meta_id: int,
     *,
     min_overlap_sqm: Optional[float] = None,
-    min_gap_sqm: Optional[float] = None,
-    ignored_gap_hashes: Optional[Set[str]] = None
+    min_gap_sqm: Optional[float] = None
 ) -> Dict[str, Any]:
     """
     Giriş GeoJSON-u (4326) **ekrandakı cari vəziyyət** kimi qəbul edir.
@@ -194,7 +190,6 @@ def validate_tekuis(
     """
     MIN_OV = float(min_overlap_sqm if min_overlap_sqm is not None else MIN_AREA_SQM)
     MIN_GA = float(min_gap_sqm     if min_gap_sqm     is not None else MIN_AREA_SQM)
-    ignored_gap_hashes = set(map(str, ignored_gap_hashes or []))
 
     polys = _collect_polys_from_geojson_3857(geojson)  # 3857-də siyahı
     n = len(polys)
@@ -287,13 +282,13 @@ def validate_tekuis(
                 continue
             gg4326 = shp_transform(_to_4326, gg)
             h = _gap_signature(gg4326)
-            is_ignored = h in ignored_gap_hashes or _is_gap_ignored(meta_id, h)
+            if _is_gap_ignored(meta_id, h):
+                continue
             rep = gg4326.representative_point()
             result["gaps"].append({
                 "hash": h,
                 "area_sqm": round(a, 2),
                 "geom": mapping(gg4326),
-                "is_ignored": bool(is_ignored),
                 "centroid": [float(rep.x), float(rep.y)],
                 "bbox": list(gg4326.bounds)
             })
@@ -303,107 +298,3 @@ def validate_tekuis(
     result["stats"]["gap_count"] = len(result["gaps"])
     return result
 
-
-def reset_topology_validation_status(meta_id: int) -> None:
-    with connection.cursor() as cur:
-        cur.execute(
-            "UPDATE topology_validation SET status = 0 WHERE meta_id = %s AND status = 1",
-            [int(meta_id)],
-        )
-
-
-def record_topology_validation(
-    meta_id: int,
-    validation: Dict[str, Any],
-    ignored_gap_hashes: Optional[Set[str]] = None,
-) -> Dict[str, Any]:
-    ignored_gap_hashes = set(map(str, ignored_gap_hashes or []))
-    overlaps = validation.get("overlaps") or []
-    gaps = validation.get("gaps") or []
-
-    def gap_is_ignored(gap: Dict[str, Any]) -> bool:
-        if gap.get("is_ignored") is True:
-            return True
-        h = gap.get("hash")
-        return str(h) in ignored_gap_hashes if h is not None else False
-
-    has_real_overlaps = len(overlaps) > 0
-    has_real_gaps = any(not gap_is_ignored(g) for g in gaps)
-    has_real_errors = has_real_overlaps or has_real_gaps
-
-    rows: List[Tuple[Any, ...]] = []
-    final_flag = 0 if has_real_errors else 1
-    for _ in overlaps:
-        rows.append((int(meta_id), "overlap", VALIDATION_TYPE_LOCAL, 0, 1, final_flag))
-
-    for g in gaps:
-        ignored = 1 if gap_is_ignored(g) else 0
-        rows.append((int(meta_id), "gap", VALIDATION_TYPE_LOCAL, ignored, 1, final_flag))
-
-    with connection.cursor() as cur:
-        if rows:
-            cur.executemany(
-                """
-                INSERT INTO topology_validation
-                  (meta_id, error_type, validation_type, is_ignored, status, is_final)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                rows,
-            )
-        elif not has_real_errors:
-            cur.execute(
-                """
-                INSERT INTO topology_validation
-                  (meta_id, validation_type, status, is_final)
-                VALUES (%s, %s, %s, %s)
-                """,
-                [int(meta_id), VALIDATION_TYPE_LOCAL, 1, 1],
-            )
-
-    return {
-        "rows": len(rows),
-        "has_real_errors": has_real_errors,
-        "real_overlaps": len(overlaps),
-        "real_gaps": len([g for g in gaps if not gap_is_ignored(g)]),
-    }
-
-
-def record_tekuis_validation(meta_id: int) -> None:
-    """Record TEKUİS validation state.
-
-    The topology_validation table requires a non-null error_type value with a
-    strict check constraint. TEKUİS is not a topology error, so we store a
-    benign, allowed placeholder to satisfy the constraint while still marking
-    the TEKUİS validation as final.
-    """
-    with connection.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO topology_validation
-              (meta_id, error_type, validation_type, status, is_final)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            [int(meta_id), "gap", VALIDATION_TYPE_TEKUIS, 1, 1],
-        )
-    return None
-
-
-def get_validation_final_state(meta_id: int) -> Dict[str, bool]:
-    final_state = {VALIDATION_TYPE_LOCAL: False, VALIDATION_TYPE_TEKUIS: False}
-    with connection.cursor() as cur:
-        cur.execute(
-            """
-            SELECT validation_type, MAX(CASE WHEN is_final = 1 THEN 1 ELSE 0 END) AS has_final
-            FROM topology_validation
-            WHERE meta_id = %s AND status = 1 AND validation_type IN (%s, %s)
-            GROUP BY validation_type
-            """,
-            [int(meta_id), VALIDATION_TYPE_LOCAL, VALIDATION_TYPE_TEKUIS],
-        )
-        for validation_type, has_final in cur.fetchall():
-            if validation_type in final_state:
-                final_state[validation_type] = bool(has_final)
-    return {
-        "local_final": final_state[VALIDATION_TYPE_LOCAL],
-        "tekuis_final": final_state[VALIDATION_TYPE_TEKUIS],
-    }

@@ -127,9 +127,10 @@ window.MainEditing.init = function initEditing(state = {}) {
   ['addfeature','removefeature','changefeature'].forEach(ev => {
     tekuisSource?.on?.(ev, () => {
       window.saveTekuisToLS?.();
-      // Geometriya dəyişdi → validate nəticəsi etibarsız olsun
-      window.TekuisValidationState?.markDirty?.();
-      window.TekuisValidationState?.clearIgnored?.();
+      // Geometriya dəyişdi → həm OK, həm də əvvəlki ignore-ları sıfırla
+      window._topoLastOk = null;
+      window._lastTopoValidation = null;
+      window._ignoredTopo = { overlaps: new Set(), gaps: new Set() };
     });
   });
 

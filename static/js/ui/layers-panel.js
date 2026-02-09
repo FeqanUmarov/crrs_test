@@ -186,8 +186,7 @@ function setupLayersPanel({
         </div>
 
         <div class="card-actions">
-          <button id="btnValidateTekuis"           class="icon-btn ico-validate" title="Topologiyanı yoxla"></button>
-          <button id="btnSaveTekuis"               class="icon-btn ico-save" title="TEKUİS parsellərini yadda saxla" disabled></button>
+          <button id="btnSaveTekuis"               class="icon-btn ico-save" title="TEKUİS parsellərini yadda saxla"></button>
           <button id="btnEraseTekuisInsideTicket"  class="icon-btn ico-erase" title="Tədqiqat daxilini kəs & sil"></button>
           <button id="btnZoomTekuis"               class="icon-btn ico-zoom zoombtn"  title="Laya yaxınlaşdır"></button>
         </div>
@@ -241,7 +240,22 @@ function setupLayersPanel({
     const chkTicket = document.getElementById('chkTicketLayer');
     const btnZoomTicket = document.getElementById('btnZoomTicket');
 
-    // === TEKUİS: event listener-lar tekuis-topology və tekuis-save fayllarındadır
+    // === TEKUİS: "Yadda saxla" → əvvəl topologiya, sonra save
+    const btnSaveTekuis = document.getElementById('btnSaveTekuis');
+    if (btnSaveTekuis) {
+      btnSaveTekuis.addEventListener('click', async () => {
+        // ✅ Attributes panel sinxi
+        try {
+          if (window.AttributesPanel && typeof window.AttributesPanel.applyUIToSelectedFeature === 'function') {
+            window.AttributesPanel.applyUIToSelectedFeature();
+          }
+        } catch (e) {
+          console.warn('Attributes sync:', e);
+        }
+
+        await tryValidateAndSaveTekuis?.();
+      });
+    }
 
     (async () => {
       const alreadyLoaded = !!getTicketLayerSource?.();

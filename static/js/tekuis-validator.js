@@ -7,7 +7,7 @@
      ========================================================= */
   // API yollarınızı öz proyektinizə görə düzəldin:
   const API = {
-    validate: "/api/tekuis/validate/",
+    validate: "/api/tekuis/validate",
     ignoreGap: "/api/tekuis/validate/ignore-gap", // (istəyə görə) @require_valid_ticket
     save: "/save-tekuis-parcels/"
   };

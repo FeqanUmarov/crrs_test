@@ -19,7 +19,6 @@ from .views import (
     save_tekuis_parcels,
     validate_tekuis_parcels,
     ignore_tekuis_gap,
-    tekuis_validation_state,
     tekuis_exists_by_ticket,
     attributes_options,
     kateqoriya_name_by_tekuis_code,
@@ -74,7 +73,6 @@ urlpatterns = [
 
     path("tekuis/validate/", validate_tekuis_parcels, name="validate_tekuis_parcels"),
     path("tekuis/validate/ignore-gap/", ignore_tekuis_gap, name="ignore_tekuis_gap"),
-    path("tekuis/validate/state/", tekuis_validation_state, name="tekuis_validation_state"),
 
     path("history/status/", history_status, name="history_status"),
 
