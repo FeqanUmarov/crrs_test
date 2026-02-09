@@ -5,6 +5,9 @@ from typing import Iterable, Optional
 
 from django.db import connection
 
+VALIDATION_TYPE_LOCAL = "LOCAL"
+VALIDATION_TYPE_TEKUIS = "TEKUİS"
+
 VALIDATION_TABLE = "topology_validation"
 
 
@@ -32,8 +35,19 @@ def ensure_topology_validation_table() -> None:
         )
 
 
+def normalize_validation_type(value: str) -> str:
+    normalized = str(value or "").strip()
+    upper = normalized.upper()
+    if upper == "TEKUIS" or normalized == VALIDATION_TYPE_TEKUIS:
+        return VALIDATION_TYPE_TEKUIS
+    if upper == VALIDATION_TYPE_LOCAL:
+        return VALIDATION_TYPE_LOCAL
+    return normalized
+
+
 def reset_latest_status(meta_id: int, validation_type: str) -> None:
     ensure_topology_validation_table()
+    validation_type = normalize_validation_type(validation_type)
     with connection.cursor() as cur:
         cur.execute(
             f"""
@@ -57,6 +71,7 @@ def insert_validation_rows(
     if not rows:
         return
     ensure_topology_validation_table()
+    validation_type = normalize_validation_type(validation_type)
     with connection.cursor() as cur:
         cur.executemany(
             f"""
@@ -80,6 +95,7 @@ def insert_validation_rows(
 
 def mark_final_for_ignored_gaps(meta_id: int, validation_type: str) -> None:
     ensure_topology_validation_table()
+    validation_type = normalize_validation_type(validation_type)
     with connection.cursor() as cur:
         cur.execute(
             f"""
@@ -98,7 +114,7 @@ def mark_final_for_ignored_gaps(meta_id: int, validation_type: str) -> None:
 def insert_success_record(meta_id: int, validation_type: str) -> None:
     insert_validation_rows(
         meta_id=meta_id,
-        validation_type=validation_type,
+        validation_type=normalize_validation_type(validation_type),
         rows=[{"error_type": None, "is_ignored": 0, "is_final": 1}],
     )
 
@@ -113,18 +129,24 @@ def get_validation_state(meta_id: int) -> dict[str, bool]:
                 SELECT 1
                   FROM {VALIDATION_TABLE}
                  WHERE meta_id = %s
-                   AND validation_type = 'LOCAL'
+                   AND validation_type = %s
                    AND is_final = 1
               ) AS local_final,
               EXISTS(
                 SELECT 1
                   FROM {VALIDATION_TABLE}
                  WHERE meta_id = %s
-                   AND validation_type = 'TEKUIS'
+                   AND validation_type = %s
                    AND is_final = 1
               ) AS tekuis_final
             """,
-            [int(meta_id), int(meta_id)],
+            [
+                int(meta_id),
+                VALIDATION_TYPE_LOCAL,
+                int(meta_id),
+                VALIDATION_TYPE_TEKUIS,
+            ],
         )
         row = cur.fetchone() or (False, False)
+        
     return {"local_final": bool(row[0]), "tekuis_final": bool(row[1])}

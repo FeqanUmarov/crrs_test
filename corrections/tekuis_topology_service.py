@@ -4,6 +4,8 @@ from __future__ import annotations
 from typing import Iterable
 
 from corrections.tekuis_topology_db import (
+    VALIDATION_TYPE_LOCAL,
+    VALIDATION_TYPE_TEKUIS,
     get_validation_state,
     insert_success_record,
     insert_validation_rows,
@@ -101,7 +103,7 @@ def run_tekuis_validation(
 
     local_result = _apply_validation_results(
         meta_id=meta_id,
-        validation_type="LOCAL",
+        validation_type=VALIDATION_TYPE_LOCAL,
         overlaps=overlaps,
         gaps=gaps,
         ignored_gap_keys=ignored_set,
@@ -111,7 +113,7 @@ def run_tekuis_validation(
         tekuis_validation = _simulate_tekuis_validation()
         _apply_validation_results(
             meta_id=meta_id,
-            validation_type="TEKUIS",
+            validation_type=VALIDATION_TYPE_TEKUIS,
             overlaps=tekuis_validation.get("overlaps") or [],
             gaps=tekuis_validation.get("gaps") or [],
             ignored_gap_keys=set(),
