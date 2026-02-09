@@ -102,14 +102,15 @@
   }
 
   function resolveSavedState(metaId, payloadSaved) {
+    const isReload = shouldRefreshState();
     const stored = readStoredState(metaId);
-    if (stored && !shouldRefreshState()) {
-      return stored.saved;
+    if (isReload || !stored) {
+      if (Number.isFinite(+metaId)) {
+        writeStoredState(metaId, payloadSaved);
+      }
+      return Boolean(payloadSaved);
     }
-    if (Number.isFinite(+metaId)) {
-      writeStoredState(metaId, payloadSaved);
-    }
-    return Boolean(payloadSaved);
+    return stored.saved;
   }
 
   function normalizeValidationState(payload = {}) {
@@ -373,6 +374,7 @@
         this.state.saved = true;
         this.state.needsValidation = false;
         writeStoredState(this.state.metaId, true);
+        applyButtonState(this.state);
 
         Swal.fire(
           "Uğurlu",
