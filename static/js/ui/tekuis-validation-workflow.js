@@ -223,7 +223,6 @@
         if (nextState.metaId) this.state.metaId = nextState.metaId;
 
         applyButtonState(this.state);
-
         const hasErrors =
           (validation.overlaps || []).length > 0 || (validation.gaps || []).length > 0;
         if (!this.state.localFinal && hasErrors) {
