@@ -42,26 +42,14 @@
   }
 
   function applyButtonState(state) {
-    const { validateCard, validateModal, save } = getButtons();
+    const { validateModal } = getButtons();
     if (!state.loaded) {
-      setDisabled(validateCard, true);
       setDisabled(validateModal, true);
-      setDisabled(save, true);
       return;
     }
 
     const validateDisabled = state.validating || state.saving || state.saved;
-    setDisabled(validateCard, validateDisabled);
     setDisabled(validateModal, validateDisabled);
-
-    const saveEnabled =
-      state.localFinal &&
-      state.tekuisFinal &&
-      !state.needsValidation &&
-      !state.validating &&
-      !state.saving &&
-      !state.saved;
-    setDisabled(save, !saveEnabled);
   }
   function getStorageKey(metaId) {
     if (!Number.isFinite(+metaId)) return null;
