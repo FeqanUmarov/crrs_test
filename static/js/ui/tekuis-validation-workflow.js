@@ -93,12 +93,24 @@
   }
 
   function readInitialState() {
-    const payload = window.TEKUIS_VALIDATION_STATE || {};
+    const payload = window.TEKUIS_VALIDATION_STATE;
+    if (!payload || typeof payload !== "object") {
+      return {
+        loaded: false,
+        localFinal: false,
+        tekuisFinal: false,
+        metaId: Number.isFinite(+window.META_ID) ? +window.META_ID : null
+      };
+    }
     return {
       loaded: true,
       localFinal: Boolean(payload.local_final),
       tekuisFinal: Boolean(payload.tekuis_final),
-      metaId: Number.isFinite(+payload.meta_id) ? +payload.meta_id : null
+      metaId: Number.isFinite(+payload.meta_id)
+        ? +payload.meta_id
+        : Number.isFinite(+window.META_ID)
+          ? +window.META_ID
+          : null
     };
   }
 

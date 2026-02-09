@@ -22,8 +22,11 @@
   </script>
 
 {{ validation_state|json_script:"tekuis-validation-state" }}
+{{ meta_id|json_script:"tekuis-meta-id" }}
   <script>
-    window.META_ID = {{ meta_id|default:"null" }};
+    window.META_ID = JSON.parse(
+      document.getElementById("tekuis-meta-id").textContent || "null"
+    );
     window.TEKUIS_VALIDATION_STATE = JSON.parse(
       document.getElementById("tekuis-validation-state").textContent || "{}"
     );

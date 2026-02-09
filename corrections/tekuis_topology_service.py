@@ -63,15 +63,19 @@ def _apply_validation_results(
     )
 
     non_ignored_gaps = _count_non_ignored_gaps(gaps, ignored_gap_keys)
-    local_success = overlaps_count == 0 and non_ignored_gaps == 0
+    stage_success = overlaps_count == 0 and non_ignored_gaps == 0
 
-    if local_success:
+    if stage_success:
         if gaps_count > 0:
             mark_final_for_ignored_gaps(meta_id, validation_type)
         else:
             insert_success_record(meta_id, validation_type)
 
-    return {"local_success": local_success}
+    return {"stage_success": stage_success}
+
+
+def _simulate_tekuis_validation() -> dict[str, list[dict]]:
+    return {"overlaps": [], "gaps": []}
 
 
 def run_tekuis_validation(
@@ -103,9 +107,15 @@ def run_tekuis_validation(
         ignored_gap_keys=ignored_set,
     )
 
-    if local_result["local_success"]:
-        reset_latest_status(meta_id, "TEKUIS")
-        insert_success_record(meta_id, "TEKUIS")
+    if local_result["stage_success"]:
+        tekuis_validation = _simulate_tekuis_validation()
+        _apply_validation_results(
+            meta_id=meta_id,
+            validation_type="TEKUIS",
+            overlaps=tekuis_validation.get("overlaps") or [],
+            gaps=tekuis_validation.get("gaps") or [],
+            ignored_gap_keys=set(),
+        )
 
     state = get_validation_state(meta_id)
 
