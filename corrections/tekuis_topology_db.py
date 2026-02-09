@@ -52,7 +52,8 @@ def reset_latest_status(meta_id: int, validation_type: str) -> None:
         cur.execute(
             f"""
             UPDATE {VALIDATION_TABLE}
-               SET status = 0
+               SET status = 0,
+                   is_final = 0
              WHERE meta_id = %s
                AND validation_type = %s
                AND status = 1
@@ -130,6 +131,7 @@ def get_validation_state(meta_id: int) -> dict[str, bool]:
                   FROM {VALIDATION_TABLE}
                  WHERE meta_id = %s
                    AND validation_type = %s
+                   AND status = 1
                    AND is_final = 1
               ) AS local_final,
               EXISTS(
@@ -137,6 +139,7 @@ def get_validation_state(meta_id: int) -> dict[str, bool]:
                   FROM {VALIDATION_TABLE}
                  WHERE meta_id = %s
                    AND validation_type = %s
+                   AND status = 1
                    AND is_final = 1
               ) AS tekuis_final
             """,
@@ -148,5 +151,5 @@ def get_validation_state(meta_id: int) -> dict[str, bool]:
             ],
         )
         row = cur.fetchone() or (False, False)
-        
+
     return {"local_final": bool(row[0]), "tekuis_final": bool(row[1])}

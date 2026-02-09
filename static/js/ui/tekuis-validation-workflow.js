@@ -6,7 +6,8 @@
     metaId: null,
     validating: false,
     saving: false,
-    saved: false
+    saved: false,
+    needsValidation: false
   };
 
   function createState(initial = {}) {
@@ -15,7 +16,8 @@
       loaded: Boolean(initial.loaded),
       localFinal: Boolean(initial.localFinal),
       tekuisFinal: Boolean(initial.tekuisFinal),
-      metaId: Number.isFinite(+initial.metaId) ? +initial.metaId : null
+      metaId: Number.isFinite(+initial.metaId) ? +initial.metaId : null,
+      needsValidation: Boolean(initial.needsValidation)
     };
   }
 
@@ -46,12 +48,12 @@
       return;
     }
 
-    const validateDisabled = state.validating || state.saving || state.saved;
+    const validateDisabled = state.validating || state.saving;
     setDisabled(validateCard, validateDisabled);
     setDisabled(validateModal, validateDisabled);
 
     const saveEnabled =
-      state.localFinal && state.tekuisFinal && !state.validating && !state.saving && !state.saved;
+      state.localFinal && state.tekuisFinal && !state.needsValidation && !state.validating && !state.saving;
     setDisabled(save, !saveEnabled);
   }
 
@@ -99,13 +101,15 @@
         loaded: false,
         localFinal: false,
         tekuisFinal: false,
-        metaId: Number.isFinite(+window.META_ID) ? +window.META_ID : null
+        metaId: Number.isFinite(+window.META_ID) ? +window.META_ID : null,
+        needsValidation: false
       };
     }
     return {
       loaded: true,
       localFinal: Boolean(payload.local_final),
       tekuisFinal: Boolean(payload.tekuis_final),
+      needsValidation: false,
       metaId: Number.isFinite(+payload.meta_id)
         ? +payload.meta_id
         : Number.isFinite(+window.META_ID)
@@ -159,6 +163,7 @@
         this.state.localFinal = false;
         this.state.tekuisFinal = false;
         this.state.saved = false;
+        this.state.needsValidation = true;
         window.TekuisTopologyUI?.resetIgnored?.();
         applyButtonState(this.state);
       };
@@ -210,6 +215,7 @@
         this.state.loaded = true;
         this.state.localFinal = nextState.localFinal;
         this.state.tekuisFinal = nextState.tekuisFinal;
+        this.state.needsValidation = false;
         if (nextState.metaId) this.state.metaId = nextState.metaId;
 
         applyButtonState(this.state);
@@ -230,7 +236,11 @@
     },
 
     async handleSaveClick() {
-      if (!this.service || this.state.saving || this.state.validating || this.state.saved) return;
+      if (!this.service || this.state.saving || this.state.validating) return;
+      if (this.state.needsValidation) {
+        Swal.fire("Diqqət", "Yadda saxlamadan əvvəl dəyişikliklər üçün yenidən TEKUİS doğrulaması tələb olunur.", "warning");
+        return;
+      }
       if (!(this.state.localFinal && this.state.tekuisFinal)) {
         Swal.fire("Diqqət", "Saxlama üçün əvvəlcə LOCAL və TEKUİS doğrulaması tamamlanmalıdır.", "warning");
         return;
@@ -287,9 +297,6 @@
         if (response.data?.meta_id != null) {
           window.CURRENT_META_ID = response.data.meta_id;
         }
-
-        this.state.saved = true;
-        applyButtonState(this.state);
 
         Swal.fire(
           "Uğurlu",
