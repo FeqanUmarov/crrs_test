@@ -16,6 +16,7 @@ from .attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
 from corrections.tekuis_validation import ignore_gap, validate_tekuis
+from corrections.topology_validation_service import run_two_stage_validation, validate_save_allowed
 
 TEKUIS_ATTRS = (
     "ID",
@@ -969,18 +970,21 @@ def validate_tekuis_parcels(request):
     # ⬅️ meta_id-ni həmişə eyni qaydada götür (CRC32 və ya header/query)
     meta_id = _meta_id_from_request(request)
 
-    min_overlap = data.get("min_overlap_sqm")
-    min_gap = data.get("min_gap_sqm")
+    ignored_gap_keys = data.get("ignored_gap_keys") or data.get("ignored_gaps") or []
 
-    # Dissolve olunmuş kimi görünürmü? (tək Polygon/MultiPolygon gəlibsə)
-    feats = (gj or {}).get("features", [])
-    looks_dissolved = len(feats) == 1 and ((feats[0].get("geometry") or {}).get("type") in ("Polygon", "MultiPolygon"))
+    validation = run_two_stage_validation(
+        geojson=gj,
+        meta_id=meta_id,
+        ignored_gap_keys=ignored_gap_keys,
+    )
 
-    res = validate_tekuis(gj, meta_id, min_overlap_sqm=min_overlap, min_gap_sqm=min_gap)
-
-    out = {"ok": True, "validation": res}
-    if looks_dissolved:
-        out["warning"] = "features_look_dissolved"  # Fronta göstərə bilərsən
+    out = {
+        "ok": True,
+        "meta_id": validation["meta_id"],
+        "local_final": validation["local_final"],
+        "tekuis_final": validation["tekuis_final"],
+        "validation": validation["validation"],
+    }
     return JsonResponse(out)
 
 
@@ -1111,48 +1115,16 @@ def save_tekuis_parcels(request):
     if not original_features:
         return JsonResponse({"ok": False, "error": "Boş original FeatureCollection"}, status=400)
 
-    skip_validation = bool(data.get("skip_validation", False))
-    if not skip_validation:
-        min_ov = float(
-            getattr(settings, "TEKUIS_VALIDATION_MIN_OVERLAP_SQM", getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
+    validation_allowed, validation_state = validate_save_allowed(int(meta_id))
+    if not validation_allowed:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "validation_required",
+                "validation_state": validation_state,
+            },
+            status=409,
         )
-        min_ga = float(
-            getattr(settings, "TEKUIS_VALIDATION_MIN_GAP_SQM", getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
-        )
-
-        v = validate_tekuis(fc, int(meta_id), min_overlap_sqm=min_ov, min_gap_sqm=min_ga)
-
-        # ignored-ları müxtəlif formatlarda dəstəklə
-        def _collect_ignored_keys(payload_ignored: dict):
-            ov = (
-                payload_ignored.get("overlap_keys")
-                or payload_ignored.get("overlaps")
-                or payload_ignored.get("overlap_hashes")
-                or payload_ignored.get("ignored_overlap_keys")
-                or []
-            )
-            gp = (
-                payload_ignored.get("gap_keys")
-                or payload_ignored.get("gaps")
-                or payload_ignored.get("gap_hashes")
-                or payload_ignored.get("ignored_gap_keys")
-                or []
-            )
-            return set(map(str, ov)), set(map(str, gp))
-
-        ignored = data.get("ignored") or {}
-        ignored_overlap_keys, ignored_gap_keys = _collect_ignored_keys(ignored)
-
-        def _eff_key(obj):
-            if isinstance(obj, dict) and (obj.get("key") or obj.get("hash")):
-                return str(obj.get("key") or obj.get("hash"))
-            return _topo_key_py(obj)
-
-        effective_overlaps = [o for o in (v.get("overlaps") or []) if _eff_key(o) not in ignored_overlap_keys]
-        effective_gaps = [g for g in (v.get("gaps") or []) if _eff_key(g) not in ignored_gap_keys]
-
-        if effective_overlaps or effective_gaps:
-            return JsonResponse({"ok": False, "validation": v}, status=422)
 
     try:
         uid = getattr(request, "user_id_from_token", None)
@@ -1213,40 +1185,6 @@ def save_tekuis_parcels(request):
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
-def _topo_key_py(obj):
-    """
-    JavaScript topoKey() funksiyasının server tərəfi ekvivalenti.
-    Əgər obyektin içində 'key' və ya 'hash' varsa, birbaşa onu istifadə edirik ki,
-    Frontend-lə eyni identifikator alınsın. Əks halda geometriyadan açar yaradırıq.
-    """
-    import hashlib
-    import random
-
-    try:
-        if isinstance(obj, dict):
-            k = obj.get("key") or obj.get("hash")
-            if isinstance(k, str) and k:
-                return k
-            g = obj.get("geom")
-        else:
-            g = obj
-        norm = json.dumps(_round_deep_py(g, 6), sort_keys=True)
-        return "k" + hashlib.md5(norm.encode()).hexdigest()[:12]
-    except Exception:
-        return "k" + "".join(random.choices("0123456789abcdef", k=12))
-
-
-def _round_deep_py(x, d=6):
-    """Rekursiv olaraq ədədləri yuvarlaqlaqlaşdır"""
-    if isinstance(x, list):
-        return [_round_deep_py(v, d) for v in x]
-    if isinstance(x, float):
-        return round(x, d)
-    if isinstance(x, dict):
-        return {k: _round_deep_py(v, d) for k, v in sorted(x.items())}
-    return x
-
-
 __all__ = [
     "_has_active_tekuis",
     "ignore_tekuis_gap",
@@ -1257,4 +1195,5 @@ __all__ = [
     "tekuis_validate_ignore_gap_view",
     "tekuis_validate_view",
     "validate_tekuis_parcels",
+    
 ]

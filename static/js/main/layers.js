@@ -82,11 +82,6 @@ window.MainLayers.init = function initLayers(state = {}) {
     saveTekuisToLS,
     loadTekuisFromLS
   });
-
-  // === Topologiya Modalı + TEKUİS: validate → (modal) → save =================
-
-  const tryValidateAndSaveTekuis = (...args) => window.tryValidateAndSaveTekuis?.(...args);
-
   /* =========================
      Laylar paneli
      ========================= */
@@ -458,7 +453,6 @@ window.MainLayers.init = function initLayers(state = {}) {
     refreshTekuisFromAttachIfAny: state.refreshTekuisFromAttachIfAny,
     refreshNecasFromAttachIfAny: state.refreshNecasFromAttachIfAny,
     clearTekuisCache: state.clearTekuisCache,
-    tryValidateAndSaveTekuis,
     getTicketLayer: () => ticketLayer,
     getTicketLayerSource: () => ticketLayerSource,
     getTicketLayerCount: () => ticketLayerCount,

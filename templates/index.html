@@ -20,6 +20,11 @@
   <script>
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
   </script>
+  <script>
+    window.TEKUIS_VALIDATION_STATE = {{ validation_state_json|default:'{}'|safe }};
+  </script>
+
+  
 
 
   <script src="{% static 'js/tekuis-validator.js' %}?v=1" defer></script>
@@ -50,6 +55,8 @@
   <script src="{% static 'js/main/layers.js' %}?v=20251024.2" defer></script>
   <script src="{% static 'js/main.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/ui/tekuis-topology.js' %}?v=20250925.1" defer></script>
+  <script src="{% static 'js/services/tekuis-validation-api.js' %}?v=20251024.1" defer></script>
+  <script src="{% static 'js/ui/tekuis-validation-ui.js' %}?v=20251024.1" defer></script>
   <script src="{% static 'js/attributes_panel.js' %}?v=1" defer></script>
   <script src="{% static 'js/tekuis_erase.js' %}?v=1" defer></script>
   <script src="{% static 'js/editvertex.js' %}?v=1" defer></script>
