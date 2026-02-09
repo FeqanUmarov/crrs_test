@@ -179,6 +179,10 @@
         Swal.fire("Diqqət", "Bu əməliyyatlar yalnız redaktə və ya qaralama rejimində mümkündür.", "warning");
         return;
       }
+      if (!this.state.needsValidation && this.state.localFinal && this.state.tekuisFinal) {
+        Swal.fire("Uğurlu", "Xəta qalmayıb. Artıq yadda saxlaya bilərsiniz.", "success");
+        return;
+      }
 
       syncAttributesPanel();
 
