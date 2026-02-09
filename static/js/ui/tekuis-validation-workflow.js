@@ -9,6 +9,7 @@
     saved: false,
     needsValidation: false
   };
+  const STORAGE_KEY_PREFIX = "tekuis-validation-state";
 
   function createState(initial = {}) {
     return {
@@ -17,6 +18,7 @@
       localFinal: Boolean(initial.localFinal),
       tekuisFinal: Boolean(initial.tekuisFinal),
       metaId: Number.isFinite(+initial.metaId) ? +initial.metaId : null,
+      saved: Boolean(initial.saved),
       needsValidation: Boolean(initial.needsValidation)
     };
   }
@@ -48,13 +50,66 @@
       return;
     }
 
-    const validateDisabled = state.validating || state.saving;
+    const validateDisabled = state.validating || state.saving || state.saved;
     setDisabled(validateCard, validateDisabled);
     setDisabled(validateModal, validateDisabled);
 
     const saveEnabled =
-      state.localFinal && state.tekuisFinal && !state.needsValidation && !state.validating && !state.saving;
+      state.localFinal &&
+      state.tekuisFinal &&
+      !state.needsValidation &&
+      !state.validating &&
+      !state.saving &&
+      !state.saved;
     setDisabled(save, !saveEnabled);
+  }
+  function getStorageKey(metaId) {
+    if (!Number.isFinite(+metaId)) return null;
+    return `${STORAGE_KEY_PREFIX}:${metaId}`;
+  }
+
+  function readStoredState(metaId) {
+    const key = getStorageKey(metaId);
+    if (!key) return null;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return { saved: Boolean(parsed.saved) };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeStoredState(metaId, saved) {
+    const key = getStorageKey(metaId);
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({ saved: Boolean(saved), updatedAt: Date.now() }));
+    } catch (e) {
+      /* ignore storage errors */
+    }
+  }
+
+  function shouldRefreshState() {
+    try {
+      const nav = performance.getEntriesByType?.("navigation")?.[0];
+      return nav?.type === "reload";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function resolveSavedState(metaId, payloadSaved) {
+    const stored = readStoredState(metaId);
+    if (stored && !shouldRefreshState()) {
+      return stored.saved;
+    }
+    if (Number.isFinite(+metaId)) {
+      writeStoredState(metaId, payloadSaved);
+    }
+    return Boolean(payloadSaved);
   }
 
   function normalizeValidationState(payload = {}) {
@@ -102,19 +157,23 @@
         localFinal: false,
         tekuisFinal: false,
         metaId: Number.isFinite(+window.META_ID) ? +window.META_ID : null,
+        saved: resolveSavedState(Number.isFinite(+window.META_ID) ? +window.META_ID : null, false),
         needsValidation: false
       };
     }
+    const metaId = Number.isFinite(+payload.meta_id)
+      ? +payload.meta_id
+      : Number.isFinite(+window.META_ID)
+        ? +window.META_ID
+        : null;
+    const saved = resolveSavedState(metaId, payload.tekuis_saved);
     return {
       loaded: true,
       localFinal: Boolean(payload.local_final),
       tekuisFinal: Boolean(payload.tekuis_final),
       needsValidation: false,
-      metaId: Number.isFinite(+payload.meta_id)
-        ? +payload.meta_id
-        : Number.isFinite(+window.META_ID)
-          ? +window.META_ID
-          : null
+      metaId,
+      saved
     };
   }
 
@@ -165,6 +224,7 @@
         this.state.saved = false;
         this.state.needsValidation = true;
         window.TekuisTopologyUI?.resetIgnored?.();
+        writeStoredState(this.state.metaId, false);
         applyButtonState(this.state);
       };
 
@@ -308,7 +368,11 @@
 
         if (response.data?.meta_id != null) {
           window.CURRENT_META_ID = response.data.meta_id;
+          this.state.metaId = response.data.meta_id;
         }
+        this.state.saved = true;
+        this.state.needsValidation = false;
+        writeStoredState(this.state.metaId, true);
 
         Swal.fire(
           "Uğurlu",

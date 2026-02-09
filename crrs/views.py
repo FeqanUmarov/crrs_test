@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect
 
 from corrections.tekuis_topology_db import get_validation_state
+from corrections.views.tekuis import _has_active_tekuis
 
 from corrections.views import _redeem_ticket_with_token
 
@@ -29,6 +30,7 @@ def index(request):
 
     validation_state = get_validation_state(int(fk))
     validation_state["meta_id"] = int(fk)
+    validation_state["tekuis_saved"] = _has_active_tekuis(int(fk))
     return render(
         request,
         "index.html",
