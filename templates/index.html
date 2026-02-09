@@ -21,6 +21,14 @@
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
   </script>
 
+{{ validation_state|json_script:"tekuis-validation-state" }}
+  <script>
+    window.META_ID = {{ meta_id|default:"null" }};
+    window.TEKUIS_VALIDATION_STATE = JSON.parse(
+      document.getElementById("tekuis-validation-state").textContent || "{}"
+    );
+  </script>
+
 
   <script src="{% static 'js/tekuis-validator.js' %}?v=1" defer></script>
   <script src="{% static 'js/rtLoading.js' %}?v=1" defer></script>
@@ -41,6 +49,8 @@
   <script src="{% static 'js/ui/basemaps-panel.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/ui/layers-panel.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/ui/tekuis-save.js' %}?v=20250925.1" defer></script>
+  <script src="{% static 'js/services/tekuis-validation-service.js' %}?v=20251101.1" defer></script>
+  <script src="{% static 'js/ui/tekuis-validation-workflow.js' %}?v=20251101.1" defer></script>
   <script src="{% static 'js/ui/info-mode.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/layer_colors.js' %}?v=1" defer></script>
   <script src="{% static 'js/map_core.js' %}?v=20250925.1" defer></script>

@@ -1,6 +1,8 @@
 # crrs/views.py
 from django.shortcuts import render, redirect
 
+from corrections.tekuis_topology_db import get_validation_state
+
 from corrections.views import _redeem_ticket_with_token
 
 
@@ -25,4 +27,10 @@ def index(request):
     if not (fk and tok):
         return redirect(LOGIN_URL)
 
-    return render(request, "index.html", {"ticket": ticket})
+    validation_state = get_validation_state(int(fk))
+    validation_state["meta_id"] = int(fk)
+    return render(
+        request,
+        "index.html",
+        {"ticket": ticket, "meta_id": fk, "validation_state": validation_state},
+    )

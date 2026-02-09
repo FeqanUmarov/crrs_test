@@ -479,6 +479,7 @@ body, button, input, select, textarea {
 .ico-zoom   { background-image:url('/static/icons/images/zoom-in.png'); }
 .ico-erase  { background-image:url('/static/icons/images/poygon-erase.svg'); }
 .ico-delete { background-image:url('/static/icons/images/cancel.png'); }
+.ico-validate { background-image:url('/static/icons/images/validate.svg'); }
 
 
 

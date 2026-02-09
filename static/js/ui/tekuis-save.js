@@ -3,15 +3,12 @@ function setupTekuisSave(){
   if (!btnSaveTekuis) return;
 
   async function onSaveTekuisClick(){
-      if (typeof window.tryValidateAndSaveTekuis === 'function') {
-      await window.tryValidateAndSaveTekuis();
-
+    if (typeof window.TekuisValidationWorkflow?.handleSaveClick === 'function') {
+      await window.TekuisValidationWorkflow.handleSaveClick();
       return;
     }
 
-    window.showToast?.('Topologiya modulu yüklənməyib. Səhifəni yeniləyin.');
-
-
+    window.showToast?.('Validasiya modulu yüklənməyib. Səhifəni yeniləyin.');
   }
 
   btnSaveTekuis.addEventListener('click', onSaveTekuisClick);

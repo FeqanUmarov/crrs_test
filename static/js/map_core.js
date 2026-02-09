@@ -29,6 +29,7 @@
   const tekuisSource = new ol.source.Vector();
   trackFeatureOwnership?.(tekuisSource);
   window.setupTekuisSave?.({ tekuisSource, ticket: window.PAGE_TICKET || '' });
+  window.setupTekuisValidationWorkflow?.({ tekuisSource, ticket: window.PAGE_TICKET || '' });
 
   const TEKUIS_STYLE_CONFIG = {
     fillColor: 'rgba(72, 163, 133, 0.15)',

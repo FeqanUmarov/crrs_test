@@ -15,6 +15,8 @@ from shapely.geometry import mapping, shape as shapely_shape
 from .attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_zip_file, _smb_net_use
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
+from corrections.tekuis_topology_db import get_validation_state
+from corrections.tekuis_topology_service import run_tekuis_validation
 from corrections.tekuis_validation import ignore_gap, validate_tekuis
 
 TEKUIS_ATTRS = (
@@ -976,9 +978,24 @@ def validate_tekuis_parcels(request):
     feats = (gj or {}).get("features", [])
     looks_dissolved = len(feats) == 1 and ((feats[0].get("geometry") or {}).get("type") in ("Polygon", "MultiPolygon"))
 
-    res = validate_tekuis(gj, meta_id, min_overlap_sqm=min_overlap, min_gap_sqm=min_gap)
+    ignored_gap_keys = data.get("ignored_gap_keys") or data.get("ignored_gap_hashes") or []
 
-    out = {"ok": True, "validation": res}
+    res = run_tekuis_validation(
+        geojson=gj,
+        meta_id=meta_id,
+        min_overlap_sqm=min_overlap,
+        min_gap_sqm=min_gap,
+        ignored_gap_keys=ignored_gap_keys,
+    )
+
+    out = {
+        "ok": True,
+        "validation": res.get("validation"),
+        "meta_id": res.get("meta_id"),
+        "local_final": res.get("local_final"),
+        "tekuis_final": res.get("tekuis_final"),
+        "stats": (res.get("validation") or {}).get("stats", {}),
+    }
     if looks_dissolved:
         out["warning"] = "features_look_dissolved"  # Fronta göstərə bilərsən
     return JsonResponse(out)
@@ -1111,49 +1128,12 @@ def save_tekuis_parcels(request):
     if not original_features:
         return JsonResponse({"ok": False, "error": "Boş original FeatureCollection"}, status=400)
 
-    skip_validation = bool(data.get("skip_validation", False))
-    if not skip_validation:
-        min_ov = float(
-            getattr(settings, "TEKUIS_VALIDATION_MIN_OVERLAP_SQM", getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
+    validation_state = get_validation_state(int(meta_id))
+    if not (validation_state.get("local_final") and validation_state.get("tekuis_final")):
+        return JsonResponse(
+            {"ok": False, "error": "validation_required", "message": "LOCAL və TEKUİS mərhələləri tamamlanmayıb"},
+            status=409,
         )
-        min_ga = float(
-            getattr(settings, "TEKUIS_VALIDATION_MIN_GAP_SQM", getattr(settings, "TEKUIS_VALIDATION_MIN_AREA_SQM", 1.0))
-        )
-
-        v = validate_tekuis(fc, int(meta_id), min_overlap_sqm=min_ov, min_gap_sqm=min_ga)
-
-        # ignored-ları müxtəlif formatlarda dəstəklə
-        def _collect_ignored_keys(payload_ignored: dict):
-            ov = (
-                payload_ignored.get("overlap_keys")
-                or payload_ignored.get("overlaps")
-                or payload_ignored.get("overlap_hashes")
-                or payload_ignored.get("ignored_overlap_keys")
-                or []
-            )
-            gp = (
-                payload_ignored.get("gap_keys")
-                or payload_ignored.get("gaps")
-                or payload_ignored.get("gap_hashes")
-                or payload_ignored.get("ignored_gap_keys")
-                or []
-            )
-            return set(map(str, ov)), set(map(str, gp))
-
-        ignored = data.get("ignored") or {}
-        ignored_overlap_keys, ignored_gap_keys = _collect_ignored_keys(ignored)
-
-        def _eff_key(obj):
-            if isinstance(obj, dict) and (obj.get("key") or obj.get("hash")):
-                return str(obj.get("key") or obj.get("hash"))
-            return _topo_key_py(obj)
-
-        effective_overlaps = [o for o in (v.get("overlaps") or []) if _eff_key(o) not in ignored_overlap_keys]
-        effective_gaps = [g for g in (v.get("gaps") or []) if _eff_key(g) not in ignored_gap_keys]
-
-        if effective_overlaps or effective_gaps:
-            return JsonResponse({"ok": False, "validation": v}, status=422)
-
     try:
         uid = getattr(request, "user_id_from_token", None)
         ufn = getattr(request, "user_full_name_from_token", None)

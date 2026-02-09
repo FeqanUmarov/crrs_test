@@ -175,7 +175,8 @@ def validate_tekuis(
     meta_id: int,
     *,
     min_overlap_sqm: Optional[float] = None,
-    min_gap_sqm: Optional[float] = None
+    min_gap_sqm: Optional[float] = None,
+    use_ignored_table: bool = True,
 ) -> Dict[str, Any]:
     """
     Giriş GeoJSON-u (4326) **ekrandakı cari vəziyyət** kimi qəbul edir.
@@ -282,7 +283,7 @@ def validate_tekuis(
                 continue
             gg4326 = shp_transform(_to_4326, gg)
             h = _gap_signature(gg4326)
-            if _is_gap_ignored(meta_id, h):
+            if use_ignored_table and _is_gap_ignored(meta_id, h):
                 continue
             rep = gg4326.representative_point()
             result["gaps"].append({
@@ -297,4 +298,3 @@ def validate_tekuis(
     result["stats"]["overlap_count"] = len(result["overlaps"])
     result["stats"]["gap_count"] = len(result["gaps"])
     return result
-
