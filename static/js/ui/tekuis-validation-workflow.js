@@ -140,11 +140,11 @@
       const { validateCard, validateModal, save } = getButtons();
       if (validateCard && !validateCard.dataset.bound) {
         validateCard.dataset.bound = "true";
-        validateCard.addEventListener("click", () => this.handleValidateClick());
+        validateCard.addEventListener("click", () => this.handleValidateClick({ trigger: "card" }));
       }
       if (validateModal && !validateModal.dataset.bound) {
         validateModal.dataset.bound = "true";
-        validateModal.addEventListener("click", () => this.handleValidateClick());
+        validateModal.addEventListener("click", () => this.handleValidateClick({ trigger: "modal" }));
       }
       if (save && !save.dataset.bound) {
         save.dataset.bound = "true";
@@ -173,7 +173,7 @@
       source.on?.("changefeature", markDirty);
     },
 
-    async handleValidateClick() {
+    async handleValidateClick({ trigger = "card" } = {}) {
       if (!this.service || this.state.validating || this.state.saved) return;
       if (!window.EDIT_ALLOWED) {
         Swal.fire("Diqqət", "Bu əməliyyatlar yalnız redaktə və ya qaralama rejimində mümkündür.", "warning");
@@ -226,6 +226,15 @@
           window.TekuisTopologyUI?.openModal?.(validation);
         } else {
           window.TekuisTopologyUI?.closeModal?.();
+        }
+        if (trigger === "modal") {
+          if (hasErrors) {
+            Swal.fire("Diqqət", "Xətalar hələ də qalır. Zəhmət olmasa düzəliş edin.", "warning");
+          } else {
+            Swal.fire("Uğurlu", "Xəta qalmayıb. Artıq yadda saxlaya bilərsiniz.", "success");
+          }
+        } else if (!hasErrors) {
+          Swal.fire("Uğurlu", "Xəta qalmayıb. Artıq yadda saxlaya bilərsiniz.", "success");
         }
       } catch (e) {
         Swal.fire("Xəta", e.message || "Şəbəkə xətası baş verdi.", "error");
