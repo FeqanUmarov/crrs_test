@@ -15,6 +15,7 @@ from shapely.geometry import mapping, shape as shapely_shape
 from .attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_zip_file, _smb_net_use
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
+from .mssql import PYODBC_AVAILABLE, _mssql_set_objectid
 from corrections.tekuis_topology_db import get_validation_state
 from corrections.tekuis_topology_service import run_tekuis_validation
 from corrections.tekuis_validation import ignore_gap, validate_tekuis
@@ -810,6 +811,7 @@ def _insert_tekuis_rows(
 ):
     saved = 0
     skipped = 0
+    inserted_ids = []
 
     for idx, f in enumerate(features or []):
         geom = f.get("geometry") or {}
@@ -910,10 +912,10 @@ def _insert_tekuis_rows(
                 ],
             )
 
-        _ = cur.fetchone()[0]  # lazım olsa istifadə et
+        inserted_ids.append(cur.fetchone()[0])
         saved += 1
 
-    return {"saved": saved, "skipped": skipped}
+    return {"saved": saved, "skipped": skipped, "ids": inserted_ids}
 
 
 def _json_body(request):
@@ -1176,6 +1178,13 @@ def save_tekuis_parcels(request):
                     modified_flags=modified_flags,
                 )
 
+        mssql_objectid_updated = False
+        try:
+            if PYODBC_AVAILABLE and res.get("ids"):
+                mssql_objectid_updated = _mssql_set_objectid(int(meta_id), int(res["ids"][0]))
+        except Exception:
+            mssql_objectid_updated = False
+
         return JsonResponse(
             {
                 "ok": True,
@@ -1186,6 +1195,7 @@ def save_tekuis_parcels(request):
                 "saved_old_count": old_res["saved"],
                 "skipped_old_non_polygon": old_res["skipped"],
                 "deactivated_old": deactivated,
+                "mssql_objectid_updated": bool(mssql_objectid_updated),
             },
             status=200,
         )

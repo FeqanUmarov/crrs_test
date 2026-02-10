@@ -9,7 +9,7 @@ from shapely import wkt as shapely_wkt
 
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _clean_wkt_text, _payload_to_wkt_list
-from .mssql import PYODBC_AVAILABLE, _is_edit_allowed_for_fk, _mssql_clear_objectid, _mssql_set_objectid
+from .mssql import _is_edit_allowed_for_fk, _mssql_clear_objectid
 
 
 TEKUIS_PARCEL_TABLE = "public.tekuis_parcel"
@@ -175,21 +175,12 @@ def save_polygon(request):
                     )
                     ids.append(cur.fetchone()[0])
 
-        # MSSQL OBJECTID (birinci id ilə)
-        mssql_ok = False
-        try:
-            if PYODBC_AVAILABLE and ids:
-                mssql_ok = _mssql_set_objectid(int(fk_metadata), int(ids[0]))
-        except Exception:
-            mssql_ok = False
-
         return JsonResponse(
             {
                 "ok": True,
                 "fk_metadata": int(fk_metadata),
                 "inserted_count": len(ids),
                 "ids": ids,
-                "mssql_objectid_updated": bool(mssql_ok),
                 "replaced_old": replaced_old if replace else 0,
             },
             status=200,
