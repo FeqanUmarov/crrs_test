@@ -35,6 +35,8 @@
       : TEKUIS_SOURCES.old;
 
     btn.title = other.title;
+    btn.setAttribute('data-tooltip', other.title);
+    btn.setAttribute('aria-label', other.title);
     btn.classList.remove('is-old', 'is-current');
     btn.classList.add(source.uiClass);
 
@@ -193,7 +195,7 @@
     if (!document.getElementById('btnSwitchTekuis')){
       const btn = document.createElement('button');
       btn.id = 'btnSwitchTekuis';
-      btn.className = 'icon-btn ico-switch is-current';
+      btn.className = 'icon-btn ico-switch is-current ui-tooltip tooltip-left';
       btn.title = 'Mənbəni dəyiş (tekuis_parcel ↔ tekuis_parcel_old)';
       actions.prepend(btn);
 
