@@ -282,14 +282,14 @@ function ensureTopologyModal(){
   
   // Əgər həll edilməmiş xətalar varsa xəbərdarlıq göstər
   if (eff.overlapsLeft > 0 || eff.gapsLeft > 0) {
-    const ask = await Swal.fire({
+    const ask = await Swal.fire(window.buildAppConfirmModal({
       title: 'Xətalar həll edilməyib',
       html: `Hələ də <b>${eff.overlapsLeft} overlap</b> və <b>${eff.gapsLeft} gap</b> xətası var.<br><br>Pəncərəni bağlasanız, növbəti dəfə <b>yenidən yoxlanacaq</b>. Pəncərə bağlansın?`,
       icon: 'warning',
-      showCancelButton: true,
       confirmButtonText: 'Bəli, bağla',
-      cancelButtonText: 'Xeyr, geri qayıt'
-    });
+      cancelButtonText: 'Xeyr, geri qayıt',
+      confirmButtonVariant: 'danger'
+    }));
     if (!ask.isConfirmed) return;
   }
 
