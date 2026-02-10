@@ -321,12 +321,16 @@
 
     async handleSaveClick() {
       if (!this.service || this.state.saving || this.state.validating) return;
-      if (this.state.needsValidation) {
-        Swal.fire("Diqqət", "Yadda saxlamadan əvvəl dəyişikliklər üçün yenidən TEKUİS doğrulaması tələb olunur.", "warning");
+      const savedFromDb = await fetchSavedTekuisState();
+      if (savedFromDb || this.state.saved) {
+        this.state.saved = true;
+        this.state.needsValidation = false;
+        applyButtonState(this.state);
+        Swal.fire("Diqqət", "TEKUİS Parsellər artıq yadda saxlanılıb", "warning");
         return;
       }
-      if (!(this.state.localFinal && this.state.tekuisFinal)) {
-        Swal.fire("Diqqət", "Saxlama üçün əvvəlcə LOCAL və TEKUİS doğrulaması tamamlanmalıdır.", "warning");
+      if (this.state.needsValidation || !(this.state.localFinal && this.state.tekuisFinal)) {
+        Swal.fire("Diqqət", "Yadda saxlamadan əvvəl dəyişikliklər üçün yenidən TEKUİS doğrulaması tələb olunur.", "warning");
         return;
       }
 
