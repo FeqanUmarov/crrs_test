@@ -287,14 +287,23 @@ function setupLayersPanel({
           return;
         }
 
-        const ask = await Swal.fire({
-          title: 'Əminsiniz?',
-          html: 'Bütün məlumatlar ləğv ediləcək.',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Ləğv et',
-          cancelButtonText: 'İmtina et'
-        });
+        const ask = await Swal.fire(
+          window.buildAppConfirmModal?.({
+            title: 'Ləğv etmə təsdiqi',
+            html: 'Bütün məlumatlar ləğv ediləcək. Bu əməliyyat geri qaytarılmır.',
+            icon: 'warning',
+            confirmButtonText: 'Bəli, ləğv et',
+            cancelButtonText: 'İmtina et',
+            confirmButtonVariant: 'danger'
+          }) || {
+            title: 'Əminsiniz?',
+            html: 'Bütün məlumatlar ləğv ediləcək.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ləğv et',
+            cancelButtonText: 'İmtina et'
+          }
+        );
         if (!ask.isConfirmed) return;
 
         try {

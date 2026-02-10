@@ -723,6 +723,92 @@ body, button, input, select, textarea {
 .panel-body::-webkit-scrollbar-thumb{ background:#c7d2fe; border-radius:8px; }
 .panel-body{ scrollbar-color:#c7d2fe #f3f4f6; scrollbar-width:thin; }
 
+.app-swal-modal{
+  width: min(92vw, 510px);
+  border-radius: 18px;
+  padding: 24px 24px 18px;
+  border: 1px solid #dbe7ff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 22px 60px rgba(15, 23, 42, .25);
+}
+.app-swal-show{ animation: appSwalIn .18s ease-out; }
+.app-swal-hide{ animation: appSwalOut .14s ease-in; }
+.app-swal-icon{ margin: 0 auto 12px !important; border-width: 2px !important; }
+.app-swal-title{
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  margin: 0 0 6px !important;
+}
+.app-swal-content{
+  color: #334155 !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+}
+.app-swal-highlight{
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  padding: 0 10px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  margin-right: 6px;
+}
+.app-swal-actions{
+  margin-top: 20px !important;
+  gap: 10px !important;
+}
+.app-swal-btn{
+  border: 0;
+  border-radius: 11px;
+  height: 42px;
+  min-width: 138px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .1px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+.app-swal-btn:focus-visible{
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+.app-swal-btn:hover{ transform: translateY(-1px); }
+.app-swal-btn:active{ transform: translateY(0); }
+.app-swal-btn--primary{
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, .3);
+}
+.app-swal-btn--primary:hover{ filter: brightness(1.03); }
+.app-swal-btn--danger{
+  color: #fff;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 10px 20px rgba(185, 28, 28, .3);
+}
+.app-swal-btn--danger:hover{ filter: brightness(1.03); }
+.app-swal-btn--ghost{
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+.app-swal-btn--ghost:hover{ background: #e2e8f0; }
+
+@keyframes appSwalIn{
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes appSwalOut{
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(4px) scale(.98); }
+}
 
 #btnDeleteTicket:hover{
   background-color: #dc2f2f;

@@ -23,3 +23,43 @@ function showToast(msg, ms=2600){
 
 window.getCSRFToken = getCSRFToken;
 window.showToast = showToast;
+
+function buildAppConfirmModal({
+  title = 'Əminsiniz?',
+  html = '',
+  icon = 'question',
+  confirmButtonText = 'Təsdiq et',
+  cancelButtonText = 'İmtina',
+  confirmButtonVariant = 'primary'
+} = {}) {
+  return {
+    title,
+    html,
+    icon,
+    showCancelButton: true,
+    confirmButtonText,
+    cancelButtonText,
+    reverseButtons: true,
+    focusCancel: true,
+    allowOutsideClick: false,
+    allowEscapeKey: true,
+    buttonsStyling: false,
+    customClass: {
+      popup: 'app-swal-modal',
+      title: 'app-swal-title',
+      htmlContainer: 'app-swal-content',
+      icon: 'app-swal-icon',
+      actions: 'app-swal-actions',
+      confirmButton: `app-swal-btn app-swal-btn--${confirmButtonVariant}`,
+      cancelButton: 'app-swal-btn app-swal-btn--ghost'
+    },
+    showClass: {
+      popup: 'app-swal-show'
+    },
+    hideClass: {
+      popup: 'app-swal-hide'
+    }
+  };
+}
+
+window.buildAppConfirmModal = buildAppConfirmModal;
