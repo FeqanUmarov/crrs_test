@@ -216,6 +216,26 @@ function ensureTopologyModal(){
       }
     }
 
+    #btnSaveTekuis.tekuis-save-reminder{
+      animation: topoSavePulse 1.2s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, .55);
+      border-radius: 10px;
+    }
+    @keyframes topoSavePulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, .55);
+      }
+      70% {
+        transform: scale(1.06);
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+
   `;
 
   document.head.appendChild(style);

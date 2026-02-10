@@ -40,6 +40,11 @@
       el.removeAttribute("aria-disabled");
     }
   }
+  function setSaveReminder(active) {
+    const { save } = getButtons();
+    if (!save) return;
+    save.classList.toggle("tekuis-save-reminder", Boolean(active));
+  }
 
   function applyButtonState(state) {
     const { validateModal } = getButtons();
@@ -207,7 +212,10 @@
       }
       if (save && !save.dataset.bound) {
         save.dataset.bound = "true";
-        save.addEventListener("click", () => this.handleSaveClick());
+        save.addEventListener("click", () => {
+          setSaveReminder(false);
+          this.handleSaveClick();
+        });
       }
       applyButtonState(this.state);
     },
@@ -223,6 +231,7 @@
         this.state.tekuisFinal = false;
         this.state.saved = false;
         this.state.needsValidation = true;
+        setSaveReminder(false);
         window.TekuisTopologyUI?.resetIgnored?.();
         writeStoredState(this.state.metaId, false);
         applyButtonState(this.state);
@@ -252,7 +261,8 @@
         return;
       }
       if (!this.state.needsValidation && this.state.localFinal && this.state.tekuisFinal) {
-        Swal.fire("Uğurlu", "Xəta qalmayıb. Artıq yadda saxlaya bilərsiniz.", "success");
+        setSaveReminder(true);
+        Swal.fire("Uğurlu", "Topoloji xəta yoxdur. Məlumatları yadda saxlayın", "success");
         return;
       }
 
@@ -297,6 +307,7 @@
         applyButtonState(this.state);
         const hasErrors =
           (validation.overlaps || []).length > 0 || (validation.gaps || []).length > 0;
+        setSaveReminder(!hasErrors);
         if (!this.state.localFinal && hasErrors) {
           window.TekuisTopologyUI?.openModal?.(validation);
         } else {
@@ -306,10 +317,10 @@
           if (hasErrors) {
             Swal.fire("Diqqət", "Xətalar hələ də qalır. Zəhmət olmasa düzəliş edin.", "warning");
           } else {
-            Swal.fire("Uğurlu", "Xəta qalmayıb. Artıq yadda saxlaya bilərsiniz.", "success");
+            Swal.fire("Uğurlu", "Topoloji xəta yoxdur. Məlumatları yadda saxlayın", "success");
           }
         } else if (!hasErrors) {
-          Swal.fire("Uğurlu", "Xəta qalmayıb. Artıq yadda saxlaya bilərsiniz.", "success");
+          Swal.fire("Uğurlu", "Topoloji xəta yoxdur. Məlumatları yadda saxlayın", "success");
         }
       } catch (e) {
         Swal.fire("Xəta", e.message || "Şəbəkə xətası baş verdi.", "error");
@@ -388,6 +399,7 @@
         }
         this.state.saved = true;
         this.state.needsValidation = false;
+        setSaveReminder(false);
         writeStoredState(this.state.metaId, true);
         applyButtonState(this.state);
 
