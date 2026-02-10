@@ -46,6 +46,12 @@
     save.classList.toggle("tekuis-save-reminder", Boolean(active));
   }
 
+  function setValidateReminder(active) {
+    const { validateCard } = getButtons();
+    if (!validateCard) return;
+    validateCard.classList.toggle("topology-validate-reminder", Boolean(active));
+  }
+
   function applyButtonState(state) {
     const { validateModal } = getButtons();
     if (!state.loaded) {
@@ -214,6 +220,7 @@
         save.dataset.bound = "true";
         save.addEventListener("click", () => {
           setSaveReminder(false);
+          setValidateReminder(false);
           this.handleSaveClick();
         });
       }
@@ -232,6 +239,7 @@
         this.state.saved = false;
         this.state.needsValidation = true;
         setSaveReminder(false);
+        setValidateReminder(false);
         window.TekuisTopologyUI?.resetIgnored?.();
         writeStoredState(this.state.metaId, false);
         applyButtonState(this.state);
@@ -261,6 +269,7 @@
         return;
       }
       if (!this.state.needsValidation && this.state.localFinal && this.state.tekuisFinal) {
+        setValidateReminder(false);
         setSaveReminder(true);
         Swal.fire("Uğurlu", "Topoloji xəta yoxdur. Məlumatları yadda saxlayın", "success");
         return;
@@ -309,6 +318,7 @@
           (validation.overlaps || []).length > 0 || (validation.gaps || []).length > 0;
         const isTopologyClean = this.state.localFinal && this.state.tekuisFinal;
 
+        setValidateReminder(false);
         setSaveReminder(isTopologyClean);
         if (!isTopologyClean && hasErrors) {
           window.TekuisTopologyUI?.openModal?.(validation);

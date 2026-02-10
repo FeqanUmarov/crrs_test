@@ -273,10 +273,10 @@ function ensureTopologyModal(){
       </button>
     </div>
   `;
-  modal.querySelector('.topo-close').addEventListener('click', requestCloseTopologyModal);
-modal.querySelector('#btnTopoClose').addEventListener('click', requestCloseTopologyModal);
+  modal.querySelector('.topo-close').addEventListener('click', () => requestCloseTopologyModal({ source: 'headerClose' }));
+  modal.querySelector('#btnTopoClose').addEventListener('click', () => requestCloseTopologyModal({ source: 'footerClose' }));
 
-  async function requestCloseTopologyModal() {
+  async function requestCloseTopologyModal({ source = 'unknown' } = {}) {
   const v = window._lastTopoValidation || {};
   const eff = computeEffective(v);
   
@@ -302,9 +302,14 @@ modal.querySelector('#btnTopoClose').addEventListener('click', requestCloseTopol
     }
 
     const validateBtn = document.getElementById('btnValidateTekuis');
-    validateBtn?.classList.remove('topology-validate-reminder');
     const saveBtn = document.getElementById('btnSaveTekuis');
-    saveBtn?.classList.add('tekuis-save-reminder');
+    if (source === 'footerClose') {
+      validateBtn?.classList.add('topology-validate-reminder');
+      saveBtn?.classList.remove('tekuis-save-reminder');
+    } else {
+      validateBtn?.classList.remove('topology-validate-reminder');
+      saveBtn?.classList.add('tekuis-save-reminder');
+    }
   }
   
   closeTopologyModal();
