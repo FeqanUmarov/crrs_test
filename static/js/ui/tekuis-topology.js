@@ -276,16 +276,6 @@ function ensureTopologyModal(){
   modal.querySelector('.topo-close').addEventListener('click', requestCloseTopologyModal);
 modal.querySelector('#btnTopoClose').addEventListener('click', requestCloseTopologyModal);
 
-
-  function bindReminderClear() {
-    const validateBtn = document.getElementById('btnValidateTekuis');
-    if (!validateBtn || validateBtn.dataset.topoReminderBound === 'true') return;
-    validateBtn.dataset.topoReminderBound = 'true';
-    validateBtn.addEventListener('click', () => {
-      validateBtn.classList.remove('topology-validate-reminder');
-    });
-  }
-
   async function requestCloseTopologyModal() {
   const v = window._lastTopoValidation || {};
   const eff = computeEffective(v);
@@ -304,16 +294,17 @@ modal.querySelector('#btnTopoClose').addEventListener('click', requestCloseTopol
   }
 
   if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
-    const msg = 'Topoloji xətalar həll edilib, validate butonuna klik edin';
-    if (window.Toast?.warning) {
-      window.Toast.warning(msg, 'Diqqət', 6000);
+    const msg = 'Topoloji xəta yoxdur. Məlumatları yadda saxlayın';
+    if (window.Toast?.success) {
+      window.Toast.success(msg, 'Uğurlu', 6000);
     } else {
-      Swal.fire('Diqqət', msg, 'warning');
+      Swal.fire('Uğurlu', msg, 'success');
     }
 
-    bindReminderClear();
     const validateBtn = document.getElementById('btnValidateTekuis');
-    validateBtn?.classList.add('topology-validate-reminder');
+    validateBtn?.classList.remove('topology-validate-reminder');
+    const saveBtn = document.getElementById('btnSaveTekuis');
+    saveBtn?.classList.add('tekuis-save-reminder');
   }
   
   closeTopologyModal();
