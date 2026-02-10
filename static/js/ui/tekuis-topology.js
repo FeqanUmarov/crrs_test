@@ -196,6 +196,25 @@ function ensureTopologyModal(){
     }
 
     .swal2-container{ z-index:11000 !important; }
+    #btnValidateTekuis.topology-validate-reminder{
+      animation: topoValidatePulse 1.2s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, .55);
+      border-radius: 10px;
+    }
+    @keyframes topoValidatePulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, .55);
+      }
+      70% {
+        transform: scale(1.06);
+        box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+      }
+    }
 
   `;
 
@@ -234,8 +253,20 @@ function ensureTopologyModal(){
       </button>
     </div>
   `;
-  modal.querySelector('.topo-close').addEventListener('click', closeTopologyModal);
-modal.querySelector('#btnTopoClose').addEventListener('click', async () => {
+  modal.querySelector('.topo-close').addEventListener('click', requestCloseTopologyModal);
+modal.querySelector('#btnTopoClose').addEventListener('click', requestCloseTopologyModal);
+
+
+  function bindReminderClear() {
+    const validateBtn = document.getElementById('btnValidateTekuis');
+    if (!validateBtn || validateBtn.dataset.topoReminderBound === 'true') return;
+    validateBtn.dataset.topoReminderBound = 'true';
+    validateBtn.addEventListener('click', () => {
+      validateBtn.classList.remove('topology-validate-reminder');
+    });
+  }
+
+  async function requestCloseTopologyModal() {
   const v = window._lastTopoValidation || {};
   const eff = computeEffective(v);
   
@@ -251,9 +282,22 @@ modal.querySelector('#btnTopoClose').addEventListener('click', async () => {
     });
     if (!ask.isConfirmed) return;
   }
+
+  if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
+    const msg = 'Topoloji xətalar həll edilib, validate butonuna klik edin';
+    if (window.Toast?.warning) {
+      window.Toast.warning(msg, 'Diqqət', 6000);
+    } else {
+      Swal.fire('Diqqət', msg, 'warning');
+    }
+
+    bindReminderClear();
+    const validateBtn = document.getElementById('btnValidateTekuis');
+    validateBtn?.classList.add('topology-validate-reminder');
+  }
   
   closeTopologyModal();
-});
+}
 
 
   document.body.append(overlay, modal);
