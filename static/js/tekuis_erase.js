@@ -502,14 +502,23 @@ async function _addTicketFeaturesToTekuis(tekuisSrc, ticketFeatures, gjFmt, temp
       // təsdiq
       let proceed = true;
       if (window.Swal){
-        const ask = await Swal.fire({
-          title: 'Əminsiniz?',
-          html: 'Tədqiqat sərhədləri daxilində qalan <b>TEKUİS hissələri kəsilib silinəcək</b> və <b>Tədqiqat obyektləri TEKUİS layına əlavə ediləcək</b> (yalnız bu sessiyada).',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Bəli, icra et',
-          cancelButtonText: 'İmtina'
-        });
+        const ask = await Swal.fire(
+          window.buildAppConfirmModal?.({
+            title: 'Əminsiniz?',
+            html: 'Tədqiqat sərhədləri daxilində qalan <b>TEKUİS hissələri kəsilib silinəcək</b> və <b>Tədqiqat obyektləri TEKUİS layına əlavə ediləcək</b> (yalnız bu sessiyada).',
+            icon: 'warning',
+            confirmButtonText: 'Bəli, icra et',
+            cancelButtonText: 'İmtina',
+            confirmButtonVariant: 'primary'
+          }) || {
+            title: 'Əminsiniz?',
+            html: 'Tədqiqat sərhədləri daxilində qalan <b>TEKUİS hissələri kəsilib silinəcək</b> və <b>Tədqiqat obyektləri TEKUİS layına əlavə ediləcək</b> (yalnız bu sessiyada).',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Bəli, icra et',
+            cancelButtonText: 'İmtina'
+          }
+        );
         proceed = ask.isConfirmed;
       } else {
         proceed = confirm('Tədqiqat daxilində qalan TEKUİS hissələrini kəsib silmək və Tədqiqat obyektlərini TEKUİS layına əlavə etmək istəyirsiniz?');
