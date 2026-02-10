@@ -307,19 +307,21 @@
         applyButtonState(this.state);
         const hasErrors =
           (validation.overlaps || []).length > 0 || (validation.gaps || []).length > 0;
-        setSaveReminder(!hasErrors);
-        if (!this.state.localFinal && hasErrors) {
+        const isTopologyClean = this.state.localFinal && this.state.tekuisFinal;
+
+        setSaveReminder(isTopologyClean);
+        if (!isTopologyClean && hasErrors) {
           window.TekuisTopologyUI?.openModal?.(validation);
         } else {
           window.TekuisTopologyUI?.closeModal?.();
         }
         if (trigger === "modal") {
-          if (hasErrors) {
+          if (!isTopologyClean) {
             Swal.fire("Diqqət", "Xətalar hələ də qalır. Zəhmət olmasa düzəliş edin.", "warning");
           } else {
             Swal.fire("Uğurlu", "Topoloji xəta yoxdur. Məlumatları yadda saxlayın", "success");
           }
-        } else if (!hasErrors) {
+        } else if (isTopologyClean) {
           Swal.fire("Uğurlu", "Topoloji xəta yoxdur. Məlumatları yadda saxlayın", "success");
         }
       } catch (e) {
