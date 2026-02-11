@@ -179,9 +179,7 @@ body, button, input, select, textarea {
 
 /* Aktiv düymədən panelə uzanan mavi indikator */
 .panel-indicator{
-  position:absolute; left:-6px; width:6px;
-  background:#2563eb; border-radius:3px 0 0 3px;
-  top:0; height:32px; box-shadow:0 0 0 2px rgba(37,99,235,.25);
+  display:none !important;
 }
 
 /* Collapsed halda yalnız label-ı çevir, icon-u yox */
