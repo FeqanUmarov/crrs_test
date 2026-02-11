@@ -207,7 +207,7 @@ function ensureTopologyModal(){
     .topo-body{padding:14px 16px;display:grid;gap:10px}
     .topo-section{
       border:1px solid rgba(203,213,225,.7);
-      border-radius:12px;
+      border-radius:5px;
       padding:10px;
       background:rgba(255,255,255,.52);
       box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
@@ -377,55 +377,46 @@ function ensureTopologyModal(){
       </div>
     </div>
     <div class="topo-foot">
-      <button class="btn" id="btnValidateTekuisModal" disabled>Yoxla</button>
-      <button class="btn icon-only topo-action-close ui-tooltip" id="btnTopoClose" data-tooltip="Bağla" aria-label="Bağla">
-        <span class="ico">${TOPO_ICON_SVGS.close}</span>
-      </button>
+      <button class="icon-btn ico-validate ui-tooltip" id="btnValidateTekuisModal" data-tooltip="TEKUİS topologiyasını yoxla" aria-label="TEKUİS topologiyasını yoxla" disabled></button>
     </div>
   `;
   modal.querySelector('#btnTopoMinimize').addEventListener('click', () => toggleTopologyModalMinimize());
-  modal.querySelector('#btnTopoHeaderClose').addEventListener('click', () => requestCloseTopologyModal({ source: 'headerClose' }));
-  modal.querySelector('#btnTopoClose').addEventListener('click', () => requestCloseTopologyModal({ source: 'footerClose' }));
+  modal.querySelector('#btnTopoHeaderClose').addEventListener('click', () => requestCloseTopologyModal());
 
-  async function requestCloseTopologyModal({ source = 'unknown' } = {}) {
-  const v = window._lastTopoValidation || {};
-  const eff = computeEffective(v);
-  
-  // Əgər həll edilməmiş xətalar varsa xəbərdarlıq göstər
-  if (eff.overlapsLeft > 0 || eff.gapsLeft > 0) {
-    const ask = await Swal.fire(window.buildAppConfirmModal({
-      title: 'Xətalar həll edilməyib',
-      html: `Hələ də <b>${eff.overlapsLeft} overlap</b> və <b>${eff.gapsLeft} gap</b> xətası var.<br><br>Pəncərəni bağlasanız, növbəti dəfə <b>yenidən yoxlanacaq</b>. Pəncərə bağlansın?`,
-      icon: 'warning',
-      confirmButtonText: 'Bəli, bağla',
-      cancelButtonText: 'Xeyr, geri qayıt',
-      confirmButtonVariant: 'danger'
-    }));
-    if (!ask.isConfirmed) return;
-  }
+  async function requestCloseTopologyModal() {
+    const v = window._lastTopoValidation || {};
+    const eff = computeEffective(v);
 
-  if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
-    const msg = 'Topoloji xəta yoxdur. Məlumatları yadda saxlayın';
-    if (window.Toast?.success) {
-      window.Toast.success(msg, 'Uğurlu', 6000);
-    } else {
-      Swal.fire('Uğurlu', msg, 'success');
+    // Əgər həll edilməmiş xətalar varsa xəbərdarlıq göstər
+    if (eff.overlapsLeft > 0 || eff.gapsLeft > 0) {
+      const ask = await Swal.fire(window.buildAppConfirmModal({
+        title: 'Xətalar həll edilməyib',
+        html: `Hələ də <b>${eff.overlapsLeft} overlap</b> və <b>${eff.gapsLeft} gap</b> xətası var.<br><br>Pəncərəni bağlasanız, növbəti dəfə <b>yenidən yoxlanacaq</b>. Pəncərə bağlansın?`,
+        icon: 'warning',
+        confirmButtonText: 'Bəli, bağla',
+        cancelButtonText: 'Xeyr, geri qayıt',
+        confirmButtonVariant: 'danger'
+      }));
+      if (!ask.isConfirmed) return;
     }
 
-    const validateBtn = document.getElementById('btnValidateTekuis');
-    const saveBtn = document.getElementById('btnSaveTekuis');
-    if (source === 'footerClose') {
+    if (eff.overlapsLeft === 0 && eff.gapsLeft === 0) {
+      const msg = 'Topoloji xəta yoxdur. Məlumatları yadda saxlayın';
+      if (window.Toast?.success) {
+        window.Toast.success(msg, 'Uğurlu', 6000);
+      } else {
+        Swal.fire('Uğurlu', msg, 'success');
+      }
+
+      const validateBtn = document.getElementById('btnValidateTekuis');
+      const saveBtn = document.getElementById('btnSaveTekuis');
       validateBtn?.classList.add('topology-validate-reminder');
       saveBtn?.classList.remove('tekuis-save-reminder');
-    } else {
-      validateBtn?.classList.remove('topology-validate-reminder');
-      saveBtn?.classList.add('tekuis-save-reminder');
     }
+    closeTopologyModal();
   }
   
-  closeTopologyModal();
-}
-document.body.append(overlay, modal);
+  document.body.append(overlay, modal);
   _topoModal = { overlay, modal };
   return _topoModal;
 }
