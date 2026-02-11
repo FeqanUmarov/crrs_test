@@ -91,6 +91,14 @@ const TOPO_ICON_SVGS = {
 // --- Modal UI (dinamik yaradılır) ------------------------------------------
 let _topoModal = null;
 
+function getValidationForModalClose(){
+  const isModalVisible = _topoModal?.modal?.style?.display === 'block';
+  if (isModalVisible && _topoModal?.lastOpenedValidation) {
+    return _topoModal.lastOpenedValidation;
+  }
+  return window._lastTopoValidation || {};
+}
+
 function getTopologyModalElements(){
   if (!_topoModal?.modal) return null;
   const modal = _topoModal.modal;
@@ -384,7 +392,7 @@ function ensureTopologyModal(){
   modal.querySelector('#btnTopoHeaderClose').addEventListener('click', () => requestCloseTopologyModal());
 
   async function requestCloseTopologyModal() {
-    const v = window._lastTopoValidation || {};
+    const v = getValidationForModalClose();
     const eff = computeEffective(v);
 
     // Əgər həll edilməmiş xətalar varsa xəbərdarlıq göstər
@@ -520,6 +528,7 @@ return Array.from(gpSet);
 function openTopologyModal(validation){
   window._lastTopoValidation = validation;
   const { overlay, modal } = ensureTopologyModal();
+  _topoModal.lastOpenedValidation = validation || {};
 
   const s = validation?.stats || {};
   const eff = computeEffective(validation);
@@ -641,6 +650,7 @@ function closeTopologyModal(){
   _topoModal.modal.style.display   = 'none';
   _topoModal.modal.classList.remove('topo-modal-open');
   _topoModal.modal.classList.remove('topo-modal-minimized');
+  _topoModal.lastOpenedValidation = null;
 
 
   try { topoFocusSource.clear(true); } catch {}
