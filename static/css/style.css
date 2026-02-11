@@ -39,7 +39,7 @@ body, button, input, select, textarea {
   height:24px;
   flex:0 0 24px;
   display:block;
-  filter: var(--sidebar-icon-filter, none);
+  filter: var(--sidebar-icon-filter-default, brightness(0) saturate(100%) invert(100%));
 }
 .sidebar .tb-label{
   white-space:nowrap;
@@ -47,15 +47,43 @@ body, button, input, select, textarea {
   transition:opacity .15s ease, transform .15s ease;
 }
 
-.sidebar .tool-btn[data-icon-tone="upload"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(66%) sepia(64%) saturate(2813%) hue-rotate(155deg) brightness(101%) contrast(95%); }
-.sidebar .tool-btn[data-icon-tone="basemap"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(59%) sepia(63%) saturate(1154%) hue-rotate(210deg) brightness(100%) contrast(98%); }
-.sidebar .tool-btn[data-icon-tone="layers"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(73%) sepia(44%) saturate(582%) hue-rotate(90deg) brightness(97%) contrast(90%); }
-.sidebar .tool-btn[data-icon-tone="info"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(77%) sepia(44%) saturate(680%) hue-rotate(357deg) brightness(102%) contrast(95%); }
-.sidebar .tool-btn[data-icon-tone="attributes"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(64%) sepia(65%) saturate(1022%) hue-rotate(307deg) brightness(97%) contrast(96%); }
+.sidebar .tool-btn[data-icon-tone="upload"]{
+  --sidebar-icon-filter-active: brightness(0) saturate(100%) invert(80%) sepia(55%) saturate(1887%) hue-rotate(356deg) brightness(103%) contrast(103%);
+  --sidebar-active-border: rgba(250, 204, 21, .86);
+  --sidebar-active-bg: linear-gradient(145deg, rgba(250,204,21,.26), rgba(245,158,11,.16));
+  --sidebar-active-glow: rgba(250,204,21,.28);
+}
+.sidebar .tool-btn[data-icon-tone="basemap"]{
+  --sidebar-icon-filter-active: brightness(0) saturate(100%) invert(72%) sepia(60%) saturate(536%) hue-rotate(102deg) brightness(92%) contrast(93%);
+  --sidebar-active-border: rgba(52, 211, 153, .86);
+  --sidebar-active-bg: linear-gradient(145deg, rgba(52,211,153,.22), rgba(16,185,129,.14));
+  --sidebar-active-glow: rgba(16,185,129,.26);
+}
+.sidebar .tool-btn[data-icon-tone="layers"]{
+  --sidebar-icon-filter-active: brightness(0) saturate(100%) invert(68%) sepia(30%) saturate(1479%) hue-rotate(176deg) brightness(103%) contrast(96%);
+  --sidebar-active-border: rgba(56, 189, 248, .86);
+  --sidebar-active-bg: linear-gradient(145deg, rgba(56,189,248,.22), rgba(14,165,233,.16));
+  --sidebar-active-glow: rgba(14,165,233,.28);
+}
+.sidebar .tool-btn[data-icon-tone="info"]{
+  --sidebar-icon-filter-active: brightness(0) saturate(100%) invert(66%) sepia(20%) saturate(4922%) hue-rotate(232deg) brightness(102%) contrast(99%);
+  --sidebar-active-border: rgba(129, 140, 248, .88);
+  --sidebar-active-bg: linear-gradient(145deg, rgba(129,140,248,.25), rgba(99,102,241,.16));
+  --sidebar-active-glow: rgba(99,102,241,.28);
+}
+.sidebar .tool-btn[data-icon-tone="attributes"]{
+  --sidebar-icon-filter-active: brightness(0) saturate(100%) invert(65%) sepia(74%) saturate(447%) hue-rotate(294deg) brightness(102%) contrast(93%);
+  --sidebar-active-border: rgba(244, 114, 182, .86);
+  --sidebar-active-bg: linear-gradient(145deg, rgba(244,114,182,.23), rgba(236,72,153,.15));
+  --sidebar-active-glow: rgba(236,72,153,.28);
+}
 
-.sidebar .tool-btn:hover .tb-ico,
+.sidebar .tool-btn:hover .tb-ico{
+  filter: brightness(0) saturate(100%) invert(100%);
+}
+
 .sidebar .tool-btn.active .tb-ico{
-  filter: brightness(0) saturate(100%) invert(98%) sepia(3%) saturate(340%) hue-rotate(183deg) brightness(119%) contrast(100%);
+  filter: var(--sidebar-icon-filter-active, brightness(0) saturate(100%) invert(96%));
 }
 
 /* Expanded: ikon solda, mətn sağda görünür */
@@ -84,11 +112,11 @@ body, button, input, select, textarea {
 }
 .tool-btn.active{
   color:#ffffff;
-  border-color:rgba(125,211,252,.75);
-  background:linear-gradient(145deg, #0ea5e9, #2563eb);
+  border-color:var(--sidebar-active-border, rgba(125,211,252,.75));
+  background:var(--sidebar-active-bg, linear-gradient(145deg, #0ea5e9, #2563eb));
   box-shadow:
-    0 0 0 3px rgba(125,211,252,.24),
-    0 10px 20px rgba(14,165,233,.3);
+    0 0 0 3px var(--sidebar-active-glow, rgba(125,211,252,.24)),
+    0 10px 20px var(--sidebar-active-glow, rgba(14,165,233,.3));
 }
 
 /* İş sahəsi və xəritə */
