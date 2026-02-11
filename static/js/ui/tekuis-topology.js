@@ -90,6 +90,31 @@ const TOPO_ICON_SVGS = {
 
 // --- Modal UI (dinamik yaradılır) ------------------------------------------
 let _topoModal = null;
+
+function getTopologyModalElements(){
+  if (!_topoModal?.modal) return null;
+  const modal = _topoModal.modal;
+  const minimizeBtn = modal.querySelector('#btnTopoMinimize');
+  return { modal, minimizeBtn };
+}
+
+function toggleTopologyModalMinimize(forceMinimized){
+  const elements = getTopologyModalElements();
+  if (!elements) return;
+
+  const { modal, minimizeBtn } = elements;
+  const shouldMinimize = typeof forceMinimized === 'boolean'
+    ? forceMinimized
+    : !modal.classList.contains('topo-modal-minimized');
+
+  modal.classList.toggle('topo-modal-minimized', shouldMinimize);
+
+  if (minimizeBtn) {
+    minimizeBtn.classList.toggle('is-minimized', shouldMinimize);
+    minimizeBtn.dataset.tooltip = shouldMinimize ? 'Aç' : 'Yığ';
+    minimizeBtn.setAttribute('aria-label', shouldMinimize ? 'Aç' : 'Yığ');
+  }
+}
 function ensureTopologyModal(){
   if (_topoModal) return _topoModal;
 
@@ -318,7 +343,7 @@ function ensureTopologyModal(){
       <div class="topo-title">Topologiya xətaları tapıldı</div>
       <div class="topo-head-actions">
         <button class="topo-close topo-minimize ui-tooltip" id="btnTopoMinimize" data-tooltip="Yığ" aria-label="Yığ">−</button>
-        <button class="topo-close ui-tooltip" data-tooltip="Bağla" aria-label="Bağla">✕</button>
+        <button class="topo-close ui-tooltip" id="btnTopoHeaderClose" data-tooltip="Bağla" aria-label="Bağla">✕</button>
       </div>
     </div>
     <div class="topo-body">
@@ -343,7 +368,7 @@ function ensureTopologyModal(){
     </div>
   `;
   modal.querySelector('#btnTopoMinimize').addEventListener('click', () => toggleTopologyModalMinimize());
-  modal.querySelector('.topo-close').addEventListener('click', () => requestCloseTopologyModal({ source: 'headerClose' }));
+  modal.querySelector('#btnTopoHeaderClose').addEventListener('click', () => requestCloseTopologyModal({ source: 'headerClose' }));
   modal.querySelector('#btnTopoClose').addEventListener('click', () => requestCloseTopologyModal({ source: 'footerClose' }));
 
   async function requestCloseTopologyModal({ source = 'unknown' } = {}) {
@@ -384,23 +409,7 @@ function ensureTopologyModal(){
   
   closeTopologyModal();
 }
-function toggleTopologyModalMinimize(forceMinimized){
-  if (!_topoModal?.modal) return;
-  const modal = _topoModal.modal;
-  const shouldMinimize = typeof forceMinimized === 'boolean'
-    ? forceMinimized
-    : !modal.classList.contains('topo-modal-minimized');
-  modal.classList.toggle('topo-modal-minimized', shouldMinimize);
-  const btn = modal.querySelector('#btnTopoMinimize');
-  if (btn) {
-    btn.classList.toggle('is-minimized', shouldMinimize);
-    btn.dataset.tooltip = shouldMinimize ? 'Aç' : 'Yığ';
-    btn.setAttribute('aria-label', shouldMinimize ? 'Aç' : 'Yığ');
-  }
-}
-
-
-  document.body.append(overlay, modal);
+document.body.append(overlay, modal);
   _topoModal = { overlay, modal };
   return _topoModal;
 }
