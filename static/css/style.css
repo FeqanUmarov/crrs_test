@@ -13,23 +13,49 @@ body, button, input, select, textarea {
 
 /* Sol şaquli panel */
 .sidebar{
-  width: 56px; background:#1d2d44; color:#cfd8e3;
+  width: 64px;
+  background:linear-gradient(180deg, #0f172a 0%, #16243a 100%);
+  color:#dbeafe;
   display:flex; flex-direction:column; align-items:center;
-  padding:8px 6px; gap:8px; border-right:1px solid #1f2430;
+  padding:12px 8px;
+  gap:10px;
+  border-right:1px solid rgba(148,163,184,.25);
+  box-shadow:8px 0 26px rgba(2,6,23,.2);
 }
 
 /* Sidebar düymələrinin ikon+label quruluşu */
 .sidebar .tool-btn{
-  display:flex; align-items:center; gap:10px;
-  padding:10px 12px; width:100%; box-sizing:border-box;
+  display:flex; align-items:center; gap:12px;
+  padding:11px 12px;
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid transparent;
+  border-radius:14px;
+  background:linear-gradient(145deg, rgba(30,41,59,.48), rgba(30,41,59,.12));
+  transition:background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
 }
 .sidebar .tb-ico{
-  width:25px; height:25px; flex:0 0 18px; display:block;
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
+  display:block;
+  filter: var(--sidebar-icon-filter, none);
 }
 .sidebar .tb-label{
   white-space:nowrap;
   opacity:0; transform:translateX(-4px);
   transition:opacity .15s ease, transform .15s ease;
+}
+
+.sidebar .tool-btn[data-icon-tone="upload"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(66%) sepia(64%) saturate(2813%) hue-rotate(155deg) brightness(101%) contrast(95%); }
+.sidebar .tool-btn[data-icon-tone="basemap"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(59%) sepia(63%) saturate(1154%) hue-rotate(210deg) brightness(100%) contrast(98%); }
+.sidebar .tool-btn[data-icon-tone="layers"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(73%) sepia(44%) saturate(582%) hue-rotate(90deg) brightness(97%) contrast(90%); }
+.sidebar .tool-btn[data-icon-tone="info"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(77%) sepia(44%) saturate(680%) hue-rotate(357deg) brightness(102%) contrast(95%); }
+.sidebar .tool-btn[data-icon-tone="attributes"]{ --sidebar-icon-filter: brightness(0) saturate(100%) invert(64%) sepia(65%) saturate(1022%) hue-rotate(307deg) brightness(97%) contrast(96%); }
+
+.sidebar .tool-btn:hover .tb-ico,
+.sidebar .tool-btn.active .tb-ico{
+  filter: brightness(0) saturate(100%) invert(98%) sepia(3%) saturate(340%) hue-rotate(183deg) brightness(119%) contrast(100%);
 }
 
 /* Expanded: ikon solda, mətn sağda görünür */
@@ -44,15 +70,25 @@ body, button, input, select, textarea {
 
 
 .tool-btn{
-  /* writing-mode və transform-u silin */
-  border:0; background:transparent; color:inherit;
-  padding:10px 6px; border-radius:5px; cursor:pointer; font-size:12px;
-  letter-spacing:.4px; transition:background .15s ease, color .15s ease, box-shadow .15s ease;
+  border:0;
+  color:inherit;
+  cursor:pointer;
+  font-size:12px;
+  letter-spacing:.3px;
 }
-.tool-btn:hover{ background:rgba(255,255,255,.08); }
+.tool-btn:hover{
+  background:linear-gradient(145deg, rgba(30,64,175,.44), rgba(37,99,235,.2));
+  border-color:rgba(96,165,250,.58);
+  transform:translateY(-1px);
+  box-shadow:0 10px 18px rgba(30,64,175,.2);
+}
 .tool-btn.active{
-  color:#fff; background:#2563eb;
-  box-shadow:0 0 0 2px rgba(37,99,235,.35) inset;
+  color:#ffffff;
+  border-color:rgba(125,211,252,.75);
+  background:linear-gradient(145deg, #0ea5e9, #2563eb);
+  box-shadow:
+    0 0 0 3px rgba(125,211,252,.24),
+    0 10px 20px rgba(14,165,233,.3);
 }
 
 /* İş sahəsi və xəritə */
@@ -310,20 +346,32 @@ body, button, input, select, textarea {
 
 
 /* Sidebar expand/collapse */
-.sidebar{ position:relative; transition:width .2s ease; padding-bottom:52px; }
-.sidebar.expanded{ width:220px; align-items:stretch; }
+.sidebar{ position:relative; transition:width .24s ease; padding-bottom:56px; }
+.sidebar.expanded{ width:236px; align-items:stretch; }
 .sidebar.expanded .tool-btn{
   writing-mode:initial; transform:none; text-align:left;
   padding:10px 12px; width:100%; border-radius:5px;
 }
 .sidebar .sidebar-toggle{
-  position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
-  width:38px; height:38px; border-radius:999px; border:1px solid #3a4150;
-  background:#252a36; color:#cfd8e3; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  box-shadow: inset 0 0 0 2px rgba(0,0,0,.08);
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  width:40px;
+  height:40px;
+  border-radius:999px;
+  border:1px solid rgba(148,163,184,.38);
+  background:linear-gradient(145deg, rgba(30,41,59,.95), rgba(15,23,42,.95));
+  color:#dbeafe;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 10px 16px rgba(2,6,23,.28);
 }
-.sidebar .sidebar-toggle:hover{ background:#323846; }
+.sidebar .sidebar-toggle:hover{
+  background:linear-gradient(145deg, rgba(37,99,235,.78), rgba(30,64,175,.88));
+}
 .sidebar.expanded .sidebar-toggle{
   left:auto; right:8px; transform:none;
 }
