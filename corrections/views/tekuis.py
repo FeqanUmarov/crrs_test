@@ -15,7 +15,12 @@ from shapely.geometry import mapping, shape as shapely_shape
 from .attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_zip_file, _smb_net_use
 from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
 from .geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
-from .mssql import PYODBC_AVAILABLE, _mssql_set_objectid
+from .mssql import (
+    PYODBC_AVAILABLE,
+    _mssql_get_objectid,
+    _mssql_restore_objectid,
+    _mssql_set_objectid_with_retry,
+)
 from corrections.tekuis_topology_db import get_validation_state
 from corrections.tekuis_topology_service import run_tekuis_validation
 from corrections.tekuis_validation import ignore_gap, validate_tekuis
@@ -1136,6 +1141,9 @@ def save_tekuis_parcels(request):
             {"ok": False, "error": "validation_required", "message": "LOCAL və TEKUİS mərhələləri tamamlanmayıb"},
             status=409,
         )
+    mssql_objectid_updated = False
+    mssql_compensated = False
+    previous_objectid = None
     try:
         uid = getattr(request, "user_id_from_token", None)
         ufn = getattr(request, "user_full_name_from_token", None)
@@ -1178,12 +1186,14 @@ def save_tekuis_parcels(request):
                     modified_flags=modified_flags,
                 )
 
-        mssql_objectid_updated = False
-        try:
-            if PYODBC_AVAILABLE and res.get("ids"):
-                mssql_objectid_updated = _mssql_set_objectid(int(meta_id), int(res["ids"][0]))
-        except Exception:
-            mssql_objectid_updated = False
+                if PYODBC_AVAILABLE and res.get("ids"):
+                    previous_objectid = _mssql_get_objectid(int(meta_id))
+                    mssql_objectid_updated = _mssql_set_objectid_with_retry(
+                        row_id=int(meta_id),
+                        gis_id=int(res["ids"][0]),
+                    )
+                    if not mssql_objectid_updated:
+                        raise RuntimeError("MSSQL OBJECTID update failed")
 
         return JsonResponse(
             {
@@ -1196,11 +1206,17 @@ def save_tekuis_parcels(request):
                 "skipped_old_non_polygon": old_res["skipped"],
                 "deactivated_old": deactivated,
                 "mssql_objectid_updated": bool(mssql_objectid_updated),
+                "mssql_compensated": bool(mssql_compensated),
             },
             status=200,
         )
     except Exception as e:
-        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        if PYODBC_AVAILABLE and mssql_objectid_updated:
+            mssql_compensated = _mssql_restore_objectid(int(meta_id), previous_objectid)
+        return JsonResponse(
+            {"ok": False, "error": str(e), "mssql_compensated": bool(mssql_compensated)},
+            status=500,
+        )
 
 
 def _topo_key_py(obj):

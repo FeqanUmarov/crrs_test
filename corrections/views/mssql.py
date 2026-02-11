@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple
@@ -217,6 +218,62 @@ def _mssql_set_objectid(row_id: int, gis_id: int) -> bool:
         return False
 
 
+def _mssql_get_objectid(row_id: int) -> Optional[int]:
+    """TBL_REQUEST_REG cədvəlindən mövcud OBJECTID dəyərini oxuyur."""
+    try:
+        with _mssql_connect() as cn:
+            cur = cn.cursor()
+            schema = getattr(settings, "MSSQL_SCHEMA", "dbo")
+
+            cur.execute(
+                """
+                SELECT UPPER(COLUMN_NAME)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'TBL_REQUEST_REG'
+            """,
+                (schema,),
+            )
+            cols = {r[0] for r in cur.fetchall()}
+
+            idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
+            if not idcol:
+                raise RuntimeError("TBL_REQUEST_REG üçün ID kolonu (ROW_ID/ROWID/ID) tapılmadı.")
+            if "OBJECTID" not in cols:
+                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECTID kolonu tapılmadı.")
+
+            sql = f"SELECT TOP 1 OBJECTID FROM {schema}.TBL_REQUEST_REG WHERE {idcol} = ?"
+            cur.execute(sql, (int(row_id),))
+            row = cur.fetchone()
+            if not row:
+                return None
+            val = row[0]
+            return int(val) if val is not None else None
+    except Exception as e:
+        logger.error("MSSQL OBJECTID read failed: %s", e)
+        return None
+
+
+def _mssql_set_objectid_with_retry(row_id: int, gis_id: int, retries: int = 3, delay_sec: float = 0.6) -> bool:
+    """Qısa müddətli bağlantı qırılmalarına qarşı OBJECTID update-ni retry edir."""
+    attempts = max(1, int(retries))
+    for i in range(attempts):
+        if _mssql_set_objectid(row_id=row_id, gis_id=gis_id):
+            return True
+        if i < attempts - 1:
+            time.sleep(max(0.0, float(delay_sec)) * (i + 1))
+    return False
+
+
+def _mssql_restore_objectid(row_id: int, objectid: Optional[int]) -> bool:
+    """
+    Kompensasiya addımı: PostgreSQL transaction rollback olunduqda MSSQL OBJECTID-ni
+    əvvəlki vəziyyətinə qaytarır.
+    """
+    if objectid is None:
+        return _mssql_clear_objectid(row_id)
+    return _mssql_set_objectid(row_id=row_id, gis_id=int(objectid))
+
+
 def _mssql_clear_objectid(row_id: int) -> bool:
     """
     TBL_REQUEST_REG cədvəlində OBJECTID sütununu NULL edir:
@@ -271,4 +328,5 @@ def _get_status_id_from_row(row: Optional[Dict[str, Any]]) -> Optional[int]:
 def _is_edit_allowed_for_fk(meta_id: int) -> Tuple[bool, Optional[int]]:
     details = _mssql_fetch_request(int(meta_id))
     sid = _get_status_id_from_row(details)
+    
     return (sid in (2, 99)), sid

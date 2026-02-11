@@ -49,7 +49,10 @@ body, button, input, select, textarea {
   padding:10px 6px; border-radius:5px; cursor:pointer; font-size:12px;
   letter-spacing:.4px; transition:background .15s ease, color .15s ease, box-shadow .15s ease;
 }
-.tool-btn:hover{ background:rgba(255,255,255,.08); }
+.tool-btn:hover{
+  color:#e7eef8;
+  background:rgba(148, 163, 184, .16);
+}
 .tool-btn.active{
   color:#fff; background:#2563eb;
   box-shadow:0 0 0 2px rgba(37,99,235,.35) inset;
