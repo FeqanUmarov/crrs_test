@@ -195,8 +195,6 @@ function ensureTopologyModal(){
       width:10px;
       height:10px;
       border-radius:50%;
-      background:#ff5f57;
-      box-shadow:16px 0 0 #febc2e, 32px 0 0 #28c840;
       margin-right:14px;
       flex:0 0 auto;
     }
