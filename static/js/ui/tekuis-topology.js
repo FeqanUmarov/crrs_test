@@ -106,14 +106,25 @@ function getTopologyModalElements(){
   return { modal, minimizeBtn };
 }
 
+function resetTopologyModalPosition(modal){
+  if (!modal) return;
+  modal.style.left = '50%';
+  modal.style.top = '72px';
+  modal.style.transform = 'translateX(-50%)';
+  delete modal.dataset.preMinLeft;
+  delete modal.dataset.preMinTop;
+  delete modal.dataset.preMinTransform;
+}
+
 function toggleTopologyModalMinimize(forceMinimized){
   const elements = getTopologyModalElements();
   if (!elements) return;
 
   const { modal, minimizeBtn } = elements;
+  const wasMinimized = modal.classList.contains('topo-modal-minimized');
   const shouldMinimize = typeof forceMinimized === 'boolean'
     ? forceMinimized
-    : !modal.classList.contains('topo-modal-minimized');
+    : !wasMinimized;
 
   if (shouldMinimize) {
     const rect = modal.getBoundingClientRect();
@@ -123,7 +134,7 @@ function toggleTopologyModalMinimize(forceMinimized){
     modal.style.left = `${rect.left}px`;
     modal.style.top = `${rect.top}px`;
     modal.style.transform = 'none';
-  } else {
+  } else if (wasMinimized) {
     const savedLeft = Number.parseFloat(modal.dataset.preMinLeft || '');
     const savedTop = Number.parseFloat(modal.dataset.preMinTop || '');
     if (Number.isFinite(savedLeft) && Number.isFinite(savedTop)) {
@@ -166,7 +177,7 @@ function ensureTopologyModal(){
       transform:translateX(-50%);
       width:min(820px,calc(100vw - 32px));
       max-height:calc(100vh - 120px);
-      overflow:auto;
+      overflow:hidden;
       background:rgba(250, 252, 255, .7);
       border:1px solid rgba(255,255,255,.45);
       border-radius:16px;
@@ -179,6 +190,7 @@ function ensureTopologyModal(){
       resize: both; /* diaqonal ölçü dəyiş */
       transform-origin:top center;
       transition:top .34s cubic-bezier(.22,.8,.2,1), max-height .28s ease, box-shadow .28s ease;
+      flex-direction:column;
     }
     .topo-modal.topo-modal-open{
       animation: topoMacOpen .32s cubic-bezier(.2,.7,.25,1);
@@ -212,7 +224,15 @@ function ensureTopologyModal(){
     .topo-close:hover{background:#e5e7eb}
     .topo-minimize{font-weight:700;line-height:1;padding:4px 8px;}
     .topo-minimize.is-minimized{color:#0f766e;}
-    .topo-body{padding:14px 16px;display:grid;gap:10px}
+    .topo-body{
+      padding:14px 16px;
+      display:grid;
+      gap:10px;
+      overflow-y:auto;
+      overflow-x:hidden;
+      flex:1 1 auto;
+      min-height:0;
+    }
     .topo-section{
       border:1px solid rgba(203,213,225,.7);
       border-radius:5px;
@@ -225,7 +245,7 @@ function ensureTopologyModal(){
     .topo-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px dashed rgba(148,163,184,.65);border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.78) 0%,rgba(248,250,252,.62) 100%)}
     .topo-actions{display:flex;gap:8px}
     .btn.link{background:transparent;border:0;color:#0b5ed7;text-decoration:underline}
-    .topo-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid rgba(148,163,184,.28);background:rgba(255,255,255,.35);border-bottom-left-radius:16px;border-bottom-right-radius:16px;}
+    .topo-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid rgba(148,163,184,.28);background:rgba(255,255,255,.35);border-bottom-left-radius:16px;border-bottom-right-radius:16px;flex-shrink:0;}
     .topo-item.ignored{ opacity:.55; }
     .badge-ignored{ margin-left:8px;padding:2px 6px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:12px; }
     .hidden{ display:none; }
@@ -634,7 +654,8 @@ function openTopologyModal(validation){
   renderTopoErrorsOnMap(validation);
   
   overlay.style.display = 'block';
-  modal.style.display   = 'block';
+  resetTopologyModalPosition(modal);
+  modal.style.display   = 'flex';
   toggleTopologyModalMinimize(false);
   modal.classList.remove('topo-modal-open');
   void modal.offsetWidth;
@@ -647,6 +668,7 @@ function openTopologyModal(validation){
 function closeTopologyModal(){
   if (!_topoModal) return;
   _topoModal.overlay.style.display = 'none';
+  resetTopologyModalPosition(_topoModal.modal);
   _topoModal.modal.style.display   = 'none';
   _topoModal.modal.classList.remove('topo-modal-open');
   _topoModal.modal.classList.remove('topo-modal-minimized');
