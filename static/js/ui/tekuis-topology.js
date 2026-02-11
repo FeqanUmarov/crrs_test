@@ -107,6 +107,24 @@ function toggleTopologyModalMinimize(forceMinimized){
     ? forceMinimized
     : !modal.classList.contains('topo-modal-minimized');
 
+  if (shouldMinimize) {
+    const rect = modal.getBoundingClientRect();
+    modal.dataset.preMinLeft = `${rect.left}`;
+    modal.dataset.preMinTop = `${rect.top}`;
+    modal.dataset.preMinTransform = modal.style.transform || '';
+    modal.style.left = `${rect.left}px`;
+    modal.style.top = `${rect.top}px`;
+    modal.style.transform = 'none';
+  } else {
+    const savedLeft = Number.parseFloat(modal.dataset.preMinLeft || '');
+    const savedTop = Number.parseFloat(modal.dataset.preMinTop || '');
+    if (Number.isFinite(savedLeft) && Number.isFinite(savedTop)) {
+      modal.style.left = `${savedLeft}px`;
+      modal.style.top = `${savedTop}px`;
+      modal.style.transform = modal.dataset.preMinTransform || 'none';
+    }
+  }
+
   modal.classList.toggle('topo-modal-minimized', shouldMinimize);
 
   if (minimizeBtn) {
