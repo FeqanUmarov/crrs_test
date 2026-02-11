@@ -102,7 +102,8 @@ function ensureTopologyModal(){
         radial-gradient(circle at 18% 8%, rgba(59,130,246,.2), transparent 45%),
         radial-gradient(circle at 82% 92%, rgba(14,165,233,.18), transparent 42%),
         rgba(9, 14, 25, .26);
-      backdrop-filter: blur(2px);
+      backdrop-filter:none;
+      -webkit-backdrop-filter:none;
       z-index:9998;
       display:none;
       pointer-events:none; /* arxadakı xəritəyə kliklər keçsin */
@@ -125,7 +126,8 @@ function ensureTopologyModal(){
       display:none;
       font-family:Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
       resize: both; /* diaqonal ölçü dəyiş */
-            transform-origin:top center;
+      transform-origin:top center;
+      transition:top .34s cubic-bezier(.22,.8,.2,1), max-height .28s ease, box-shadow .28s ease;
     }
     .topo-modal.topo-modal-open{
       animation: topoMacOpen .32s cubic-bezier(.2,.7,.25,1);
@@ -159,6 +161,8 @@ function ensureTopologyModal(){
     .topo-title{font-weight:600;letter-spacing:.01em;}
     .topo-close{border:0;background:transparent;color:#374151;font-size:18px;cursor:pointer;border-radius:8px;padding:4px}
     .topo-close:hover{background:#e5e7eb}
+    .topo-minimize{font-weight:700;line-height:1;padding:4px 8px;}
+    .topo-minimize.is-minimized{color:#0f766e;}
     .topo-body{padding:14px 16px;display:grid;gap:10px}
     .topo-section{
       border:1px solid rgba(203,213,225,.7);
@@ -243,6 +247,21 @@ function ensureTopologyModal(){
     .topo-foot .btn.primary:hover{
       background:#1d4ed8;border-color:#1d4ed8;
     }
+    .topo-modal.topo-modal-minimized{
+      top:calc(100vh - 68px) !important;
+      max-height:54px;
+      overflow:hidden;
+      box-shadow:0 16px 34px rgba(15, 23, 42, .2), inset 0 1px 0 rgba(255,255,255,.75);
+    }
+    .topo-modal.topo-modal-minimized .topo-body,
+    .topo-modal.topo-modal-minimized .topo-foot{
+      display:none;
+    }
+    .topo-modal.topo-modal-minimized .topo-head{
+      border-bottom:0;
+      border-bottom-left-radius:16px;
+      border-bottom-right-radius:16px;
+    }
 
     .swal2-container{ z-index:11000 !important; }
     #btnValidateTekuis.topology-validate-reminder{
@@ -298,7 +317,7 @@ function ensureTopologyModal(){
     <div class="topo-head">
       <div class="topo-title">Topologiya xətaları tapıldı</div>
       <div class="topo-head-actions">
-        <button class="btn" id="btnValidateTekuisModal" disabled>Yoxla</button>
+        <button class="topo-close topo-minimize ui-tooltip" id="btnTopoMinimize" data-tooltip="Yığ" aria-label="Yığ">−</button>
         <button class="topo-close ui-tooltip" data-tooltip="Bağla" aria-label="Bağla">✕</button>
       </div>
     </div>
@@ -317,11 +336,13 @@ function ensureTopologyModal(){
       </div>
     </div>
     <div class="topo-foot">
+      <button class="btn" id="btnValidateTekuisModal" disabled>Yoxla</button>
       <button class="btn icon-only topo-action-close ui-tooltip" id="btnTopoClose" data-tooltip="Bağla" aria-label="Bağla">
         <span class="ico">${TOPO_ICON_SVGS.close}</span>
       </button>
     </div>
   `;
+  modal.querySelector('#btnTopoMinimize').addEventListener('click', () => toggleTopologyModalMinimize());
   modal.querySelector('.topo-close').addEventListener('click', () => requestCloseTopologyModal({ source: 'headerClose' }));
   modal.querySelector('#btnTopoClose').addEventListener('click', () => requestCloseTopologyModal({ source: 'footerClose' }));
 
@@ -362,6 +383,20 @@ function ensureTopologyModal(){
   }
   
   closeTopologyModal();
+}
+function toggleTopologyModalMinimize(forceMinimized){
+  if (!_topoModal?.modal) return;
+  const modal = _topoModal.modal;
+  const shouldMinimize = typeof forceMinimized === 'boolean'
+    ? forceMinimized
+    : !modal.classList.contains('topo-modal-minimized');
+  modal.classList.toggle('topo-modal-minimized', shouldMinimize);
+  const btn = modal.querySelector('#btnTopoMinimize');
+  if (btn) {
+    btn.classList.toggle('is-minimized', shouldMinimize);
+    btn.dataset.tooltip = shouldMinimize ? 'Aç' : 'Yığ';
+    btn.setAttribute('aria-label', shouldMinimize ? 'Aç' : 'Yığ');
+  }
 }
 
 
@@ -575,6 +610,7 @@ function openTopologyModal(validation){
   
   overlay.style.display = 'block';
   modal.style.display   = 'block';
+  toggleTopologyModalMinimize(false);
   modal.classList.remove('topo-modal-open');
   void modal.offsetWidth;
   modal.classList.add('topo-modal-open');
@@ -588,6 +624,7 @@ function closeTopologyModal(){
   _topoModal.overlay.style.display = 'none';
   _topoModal.modal.style.display   = 'none';
   _topoModal.modal.classList.remove('topo-modal-open');
+  _topoModal.modal.classList.remove('topo-modal-minimized');
 
 
   try { topoFocusSource.clear(true); } catch {}
