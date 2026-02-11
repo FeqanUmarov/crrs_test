@@ -96,34 +96,83 @@ function ensureTopologyModal(){
   const style = document.createElement('style');
   style.textContent = `
     .topo-overlay{
-      position:fixed;inset:0;background:rgba(0,0,0,.25);
-      z-index:9998;display:none;pointer-events:none; /* arxadakı xəritəyə kliklər keçsin */
+      position:fixed;
+      inset:0;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(59,130,246,.2), transparent 45%),
+        radial-gradient(circle at 82% 92%, rgba(14,165,233,.18), transparent 42%),
+        rgba(9, 14, 25, .26);
+      backdrop-filter: blur(2px);
+      z-index:9998;
+      display:none;
+      pointer-events:none; /* arxadakı xəritəyə kliklər keçsin */
     }
     .topo-modal{
-      position:fixed;left:50%;top:72px;transform:translateX(-50%);
-      width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 120px);
-      overflow:auto;background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);
-      z-index:9999;display:none;font-family:sans-serif;
+      position:fixed;
+      left:50%;
+      top:72px;
+      transform:translateX(-50%);
+      width:min(820px,calc(100vw - 32px));
+      max-height:calc(100vh - 120px);
+      overflow:auto;
+      background:rgba(250, 252, 255, .7);
+      border:1px solid rgba(255,255,255,.45);
+      border-radius:16px;
+      box-shadow:0 24px 55px rgba(15, 23, 42, .28), inset 0 1px 0 rgba(255,255,255,.75);
+      backdrop-filter: blur(20px) saturate(165%);
+      -webkit-backdrop-filter: blur(20px) saturate(165%);
+      z-index:9999;
+      display:none;
+      font-family:Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
       resize: both; /* diaqonal ölçü dəyiş */
+            transform-origin:top center;
+    }
+    .topo-modal.topo-modal-open{
+      animation: topoMacOpen .32s cubic-bezier(.2,.7,.25,1);
+    }
+    @keyframes topoMacOpen{
+      from{ opacity:0; transform:translateX(-50%) translateY(-14px) scale(.97); }
+      to{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
     }
     .topo-head{
       position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;
-      padding:12px 16px;background:#f3f4f6;color:#111827;border-top-left-radius:12px;border-top-right-radius:12px;
+      padding:13px 16px;
+      background:linear-gradient(180deg, rgba(255,255,255,.72) 0%, rgba(243,246,252,.6) 100%);
+      color:#111827;
+      border-top-left-radius:16px;
+      border-top-right-radius:16px;
       cursor:move; user-select:none; /* başlıqdan tutub daşı */
-      border-bottom:1px solid #e5e7eb;
+      border-bottom:1px solid rgba(148,163,184,.28);
+      position:sticky;
+    }
+    .topo-head::before{
+      content:'';
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:#ff5f57;
+      box-shadow:16px 0 0 #febc2e, 32px 0 0 #28c840;
+      margin-right:14px;
+      flex:0 0 auto;
     }
     .topo-head-actions{display:flex;gap:8px;align-items:center;}
-    .topo-title{font-weight:600}
+    .topo-title{font-weight:600;letter-spacing:.01em;}
     .topo-close{border:0;background:transparent;color:#374151;font-size:18px;cursor:pointer;border-radius:8px;padding:4px}
     .topo-close:hover{background:#e5e7eb}
     .topo-body{padding:14px 16px;display:grid;gap:10px}
-    .topo-section{border:1px solid #e6e6e6;border-radius:10px;padding:10px}
+    .topo-section{
+      border:1px solid rgba(203,213,225,.7);
+      border-radius:12px;
+      padding:10px;
+      background:rgba(255,255,255,.52);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+    }
     .topo-section h4{margin:0 0 8px 0;font-size:14px}
     .topo-list{display:grid;gap:8px}
-    .topo-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px dashed #d9d9d9;border-radius:10px;background:linear-gradient(180deg,#ffffff 0%,#f9fafb 100%)}
+    .topo-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px dashed rgba(148,163,184,.65);border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.78) 0%,rgba(248,250,252,.62) 100%)}
     .topo-actions{display:flex;gap:8px}
     .btn.link{background:transparent;border:0;color:#0b5ed7;text-decoration:underline}
-    .topo-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid #eee}
+    .topo-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid rgba(148,163,184,.28);background:rgba(255,255,255,.35);border-bottom-left-radius:16px;border-bottom-right-radius:16px;}
     .topo-item.ignored{ opacity:.55; }
     .badge-ignored{ margin-left:8px;padding:2px 6px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:12px; }
     .hidden{ display:none; }
@@ -526,6 +575,9 @@ function openTopologyModal(validation){
   
   overlay.style.display = 'block';
   modal.style.display   = 'block';
+  modal.classList.remove('topo-modal-open');
+  void modal.offsetWidth;
+  modal.classList.add('topo-modal-open');
   window.TekuisValidationWorkflow?.bindButtons?.();
 
 }
@@ -535,6 +587,7 @@ function closeTopologyModal(){
   if (!_topoModal) return;
   _topoModal.overlay.style.display = 'none';
   _topoModal.modal.style.display   = 'none';
+  _topoModal.modal.classList.remove('topo-modal-open');
 
 
   try { topoFocusSource.clear(true); } catch {}
