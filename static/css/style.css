@@ -34,8 +34,9 @@ body, button, input, select, textarea {
   padding:10px 12px;
   width:100%;
   box-sizing:border-box;
-  border-radius:14px;
-  border:1px solid transparent;
+  border-radius:16px;
+  border:1px solid rgba(148, 163, 184, .18);
+  background:linear-gradient(155deg, rgba(255,255,255,.04), rgba(148,163,184,.03));
   overflow:hidden;
 }
 .sidebar .tool-btn::before{
@@ -54,9 +55,12 @@ body, button, input, select, textarea {
   height:22px;
   flex:0 0 22px;
   display:block;
+  padding:3px;
+  border-radius:9px;
+  background:radial-gradient(circle at 30% 20%, rgba(255,255,255,.26), rgba(255,255,255,0));
   object-fit:contain;
   filter:brightness(0) saturate(100%) invert(90%) sepia(15%) saturate(479%) hue-rotate(180deg) brightness(102%) contrast(95%);
-  transition:transform .2s ease, filter .2s ease;
+  transition:transform .2s ease, filter .2s ease, background .2s ease, box-shadow .2s ease;
 }
 .sidebar .tb-label{
   white-space:nowrap;
@@ -87,8 +91,8 @@ body, button, input, select, textarea {
 }
 .tool-btn:hover{
   color:#f8fbff;
-  background:rgba(148, 163, 184, .12);
-  border-color:rgba(148, 163, 184, .26);
+  background:linear-gradient(150deg, rgba(148, 163, 184, .18), rgba(59,130,246,.12));
+  border-color:rgba(148, 163, 184, .34);
   box-shadow:0 8px 18px rgba(8, 14, 26, .28);
   transform:translateY(-1px);
 }
@@ -97,22 +101,34 @@ body, button, input, select, textarea {
 }
 .tool-btn:hover .tb-ico{
   transform:scale(1.08);
+  background:radial-gradient(circle at 35% 22%, rgba(191,219,254,.55), rgba(96,165,250,.14));
+  box-shadow:0 6px 12px rgba(37,99,235,.2);
   filter:brightness(0) saturate(100%) invert(96%) sepia(9%) saturate(248%) hue-rotate(178deg) brightness(102%) contrast(102%);
 }
 .tool-btn.active{
   color:#fff;
-  background:linear-gradient(150deg, #2b76ff 0%, #1f62de 100%);
-  border-color:rgba(186, 212, 255, .45);
+  background:linear-gradient(150deg, #1d4ed8 0%, #2563eb 45%, #0f766e 120%);
+  border-color:rgba(191, 219, 254, .48);
   box-shadow:
-    0 0 0 1px rgba(232, 243, 255, .2) inset,
-    0 12px 20px rgba(11, 35, 78, .4);
+    0 0 0 1px rgba(232, 243, 255, .26) inset,
+    0 10px 16px rgba(11, 35, 78, .36),
+    0 0 0 3px rgba(59, 130, 246, .22);
 }
 .tool-btn.active::before{
   opacity:1;
   background:linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,255,255,0));
 }
 .tool-btn.active .tb-ico{
+  background:radial-gradient(circle at 30% 18%, rgba(191,219,254,.65), rgba(30,64,175,.22));
+  box-shadow:0 8px 16px rgba(15, 23, 42, .3);
   filter:brightness(0) saturate(100%) invert(100%) sepia(2%) saturate(0%) hue-rotate(20deg) brightness(103%) contrast(102%);
+}
+.tool-btn:focus-visible{
+  outline:none;
+  border-color:rgba(147, 197, 253, .8);
+  box-shadow:
+    0 0 0 2px rgba(15,23,42,.5),
+    0 0 0 4px rgba(96,165,250,.55);
 }
 
 /* İş sahəsi və xəritə */
