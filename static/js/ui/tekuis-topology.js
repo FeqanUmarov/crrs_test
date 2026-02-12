@@ -148,7 +148,6 @@ function toggleTopologyModalMinimize(forceMinimized){
 
   if (minimizeBtn) {
     minimizeBtn.classList.toggle('is-minimized', shouldMinimize);
-    minimizeBtn.dataset.tooltip = shouldMinimize ? 'Aç' : 'Yığ';
     minimizeBtn.setAttribute('aria-label', shouldMinimize ? 'Aç' : 'Yığ');
   }
 }
@@ -386,8 +385,8 @@ function ensureTopologyModal(){
     <div class="topo-head">
       <div class="topo-title">Topologiya xətaları tapıldı</div>
       <div class="topo-head-actions">
-        <button class="topo-close topo-minimize ui-tooltip" id="btnTopoMinimize" data-tooltip="Yığ" aria-label="Yığ">−</button>
-        <button class="topo-close ui-tooltip" id="btnTopoHeaderClose" data-tooltip="Bağla" aria-label="Bağla">✕</button>
+        <button class="topo-close topo-minimize" id="btnTopoMinimize" aria-label="Yığ">−</button>
+        <button class="topo-close" id="btnTopoHeaderClose" aria-label="Bağla">✕</button>
       </div>
     </div>
     <div class="topo-body">
