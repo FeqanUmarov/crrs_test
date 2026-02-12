@@ -952,6 +952,24 @@ body, button, input, select, textarea {
   to { opacity: 0; transform: translateY(4px) scale(.98); }
 }
 
+.tekuis-note-highlight{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  font-weight:600;
+  letter-spacing:.1px;
+}
+.tekuis-note-highlight--current{
+  color:#1d4ed8;
+  background:linear-gradient(135deg, rgba(59,130,246,.16), rgba(14,165,233,.12));
+  border:1px solid rgba(59,130,246,.28);
+}
+.tekuis-note-highlight--old{
+  color:#7c3aed;
+  background:linear-gradient(135deg, rgba(168,85,247,.16), rgba(236,72,153,.12));
+  border:1px solid rgba(168,85,247,.30);
+}
+
 #btnDeleteTicket:hover{
   background-color: #dc2f2f;
 }

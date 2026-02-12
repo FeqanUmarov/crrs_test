@@ -40,11 +40,11 @@
     btn.classList.remove('is-old', 'is-current');
     btn.classList.add(source.uiClass);
 
-    const description = TEKUIS_MODE === 'old'
-      ? 'Köhnə TEKUİS məlumatları'
-      : 'Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.';
-
-    small.textContent = description;
+    if (TEKUIS_MODE === 'old') {
+      small.innerHTML = '<span class="tekuis-note-highlight tekuis-note-highlight--old">Köhnə TEKUİS məlumatları</span>';
+    } else {
+      small.innerHTML = '<span class="tekuis-note-highlight tekuis-note-highlight--current">Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.</span>';
+    }
   }
 
   function getNextTekuisMode(){

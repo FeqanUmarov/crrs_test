@@ -353,22 +353,32 @@ function ensureTopologyModal(){
     }
 
     #btnSaveTekuis.tekuis-save-reminder{
-      animation: topoSavePulse 1.2s ease-in-out infinite;
-      box-shadow: 0 0 0 0 rgba(16, 185, 129, .55);
+      animation: topoSaveColorRamp 2.2s ease-in-out infinite;
       border-radius: 10px;
     }
-    @keyframes topoSavePulse {
+    @keyframes topoSaveColorRamp {
       0% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, .55);
+        background-color: #22c55e;
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, .45);
       }
-      70% {
+      25% {
+        background-color: #14b8a6;
+        box-shadow: 0 0 0 6px rgba(20, 184, 166, .25);
+      }
+      50% {
         transform: scale(1.06);
-        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+        background-color: #3b82f6;
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, .20);
+      }
+      75% {
+        background-color: #a855f7;
+        box-shadow: 0 0 0 6px rgba(168, 85, 247, .24);
       }
       100% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        background-color: #22c55e;
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
       }
     }
 

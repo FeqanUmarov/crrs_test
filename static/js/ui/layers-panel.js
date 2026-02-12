@@ -51,6 +51,17 @@ function setupLayersPanel({
     delBtn.title = allowed ? '' : 'Bu əməliyyat yalnız STATUS 2 və ya 99 üçün mümkündür.';
   }
 
+  function formatTekuisDescriptionHtml(text){
+    const value = `${text || ''}`;
+    if (value === 'Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.') {
+      return '<span class="tekuis-note-highlight tekuis-note-highlight--current">Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.</span>';
+    }
+    if (value === 'Köhnə TEKUİS məlumatları') {
+      return '<span class="tekuis-note-highlight tekuis-note-highlight--old">Köhnə TEKUİS məlumatları</span>';
+    }
+    return value;
+  }
+
   function applyNoDataCardState(cardId, isEmpty, emptyText, defaultText){
     const card = document.getElementById(cardId);
     if (!card) return;
@@ -79,6 +90,7 @@ function setupLayersPanel({
       card.style.border     = '';
       card.style.boxShadow  = '';
       if (small && defaultText) small.textContent = defaultText;
+      if (small && defaultText) small.innerHTML = formatTekuisDescriptionHtml(defaultText);
 
       card.querySelectorAll('input, button').forEach(el=>{ el.disabled = false; });
     }
@@ -191,7 +203,7 @@ function setupLayersPanel({
           <button id="btnZoomTekuis"               class="icon-btn ico-zoom zoombtn ui-tooltip tooltip-left" data-tooltip="Laya yaxınlaşdır" aria-label="Laya yaxınlaşdır"></button>
         </div>
       </div>
-      <div class="small" style="color:#6b7280;">Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.</div>
+      <div class="small" style="color:#6b7280;"><span class="tekuis-note-highlight tekuis-note-highlight--current">Tədqiqat nəticəsində dəyişdirilmiş TEKUİS Parselləri.</span></div>
     </div>
 
     <div style="height:10px;"></div>

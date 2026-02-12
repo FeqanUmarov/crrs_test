@@ -369,14 +369,14 @@
       const ask = await Swal.fire(
         window.buildAppConfirmModal?.({
           title: "Yadda saxlama təsdiqi",
-          html: `<span class="app-swal-highlight">${features.length}</span> TEKUİS parseli bazaya yazılacaq.`,
+          html: `<b>${features.length} ədəd</b> parseli bazaya yazılacaq.`,
           icon: "question",
           confirmButtonText: "Bəli, yadda saxla",
           cancelButtonText: "İmtina",
           confirmButtonVariant: "primary"
         }) || {
           title: "Əminsiniz?",
-          html: `<b>${features.length}</b> TEKUİS parseli bazaya yazılacaq.`,
+          html: `<b>${features.length} ədəd</b> parseli bazaya yazılacaq.`,
           icon: "question",
           showCancelButton: true,
           confirmButtonText: "Bəli, yadda saxla",
