@@ -403,7 +403,7 @@ body, button, input, select, textarea {
 
 
 /* Sidebar expand/collapse */
-.sidebar{ position:relative; transition:width .24s ease; padding-bottom:56px; }
+.sidebar{ position:relative; transition:width .24s ease; padding:58px 8px 12px; }
 .sidebar.expanded{ width:236px; align-items:stretch; }
 .sidebar.expanded .tool-btn{
   writing-mode:initial; transform:none; text-align:left;
@@ -411,26 +411,28 @@ body, button, input, select, textarea {
 }
 .sidebar .sidebar-toggle{
   position:absolute;
-  bottom:10px;
-  left:50%;
-  transform:translateX(-50%);
+  top:14px;
+  right:-18px;
+  left:auto;
+  transform:none;
   width:40px;
   height:40px;
   border-radius:999px;
   border:1px solid rgba(148,163,184,.38);
-  background:linear-gradient(145deg, rgba(30,41,59,.95), rgba(15,23,42,.95));
-  color:#dbeafe;
+  background:#f8fafc;
+  color:#0f172a;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  box-shadow:0 10px 16px rgba(2,6,23,.28);
+  box-shadow:0 6px 16px rgba(15,23,42,.25);
+  z-index:5;
 }
 .sidebar .sidebar-toggle:hover{
-  background:linear-gradient(145deg, rgba(37,99,235,.78), rgba(30,64,175,.88));
+  background:#e2e8f0;
 }
 .sidebar.expanded .sidebar-toggle{
-  left:auto; right:8px; transform:none;
+  right:-18px;
 }
 
 
