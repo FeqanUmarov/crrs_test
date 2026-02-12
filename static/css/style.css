@@ -126,8 +126,6 @@ body, button, input, select, textarea {
 .sidebar:not(.expanded) .tb-label{ display:none; }
 
 
-
-
 .tool-btn{
   border:0;
   color:inherit;
