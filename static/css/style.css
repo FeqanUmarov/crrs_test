@@ -403,30 +403,39 @@ body, button, input, select, textarea {
 
 
 /* Sidebar expand/collapse */
-.sidebar{ position:relative; transition:width .24s ease; padding:58px 8px 12px; }
-.sidebar.expanded{ width:236px; align-items:stretch; }
+.sidebar{ position:relative; transition:width .24s ease; padding:12px 8px; }
+.sidebar.expanded{ width:240px; align-items:stretch; }
 .sidebar.expanded .tool-btn{
   writing-mode:initial; transform:none; text-align:left;
   padding:10px 12px; width:100%; border-radius:5px;
 }
 .sidebar .sidebar-toggle{
   position:absolute;
-  top:14px;
+  top:10px;
   right:-5px;
-  width:32px;
-  height:32px;
+  width:30px;
+  height:30px;
+  padding:0;
   border-radius:999px;
   border:2px solid #111827;
-  background:#ffffff;
+  background:#fff;
   color:#111827;
-  font-size:20px;
-  line-height:1;
-  cursor:pointer;
-  display:flex;
+
+  display:flex;              /* grid də olar, flex optik baxımdan stabil olur */
   align-items:center;
   justify-content:center;
+
+  font-size:18px;            /* 18-20 arası yoxla */
+  line-height:1;             /* ✅ ən vacib düzəliş */
+  font-weight:700;
+  text-align:center;
+  cursor: pointer;
+
   box-shadow:0 2px 6px rgba(15,23,42,.22);
   z-index:11;
+
+  /* optik mərkəz üçün çox kiçik “nudge” */
+  transform: translateY(-.5px);
 }
 .sidebar .sidebar-toggle:hover{
   background:#f8fafc;
