@@ -412,27 +412,27 @@ body, button, input, select, textarea {
 .sidebar .sidebar-toggle{
   position:absolute;
   top:14px;
-  right:-18px;
-  left:auto;
-  transform:none;
-  width:40px;
-  height:40px;
+  right:-5px;
+  width:32px;
+  height:32px;
   border-radius:999px;
-  border:1px solid rgba(148,163,184,.38);
-  background:#f8fafc;
-  color:#0f172a;
+  border:2px solid #111827;
+  background:#ffffff;
+  color:#111827;
+  font-size:20px;
+  line-height:1;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  box-shadow:0 6px 16px rgba(15,23,42,.25);
-  z-index:5;
+  box-shadow:0 2px 6px rgba(15,23,42,.22);
+  z-index:11;
 }
 .sidebar .sidebar-toggle:hover{
-  background:#e2e8f0;
+  background:#f8fafc;
 }
 .sidebar.expanded .sidebar-toggle{
-  right:-18px;
+  right:-4px;
 }
 
 

@@ -629,7 +629,7 @@ window.MainLayers.init = function initLayers(state = {}) {
   const sidebarToggleBtn = document.getElementById('sidebarToggle');
   function setSidebarExpanded(expanded){
     sidebarEl.classList.toggle('expanded', expanded);
-    sidebarToggleBtn.textContent = expanded ? '«««' : '»»»';
+    sidebarToggleBtn.textContent = expanded ? '‹' : '›';
     sidebarToggleBtn.title = expanded ? 'Yığ' : 'Genişləndir';
     const activeBtn = document.querySelector('.tool-btn.active');
     if (activeBtn && !panelEl.hidden) moveIndicatorToButton(activeBtn);
