@@ -125,6 +125,34 @@ body, button, input, select, textarea {
 .sidebar:not(.expanded) .tool-btn{ justify-content:center; }
 .sidebar:not(.expanded) .tb-label{ display:none; }
 
+.sidebar-footer{
+  margin-top:auto;
+  width:100%;
+  padding:10px 6px 4px;
+  border-top:1px solid rgba(148,163,184,.28);
+}
+
+.sidebar-footer-text{
+  display:block;
+  font-size:12px;
+  line-height:1.3;
+  color:#d7e2f3;
+  opacity:0;
+  max-height:0;
+  overflow:hidden;
+  transition:opacity .15s ease;
+}
+
+.sidebar.expanded .sidebar-footer-text{
+  opacity:1;
+  max-height:72px;
+}
+
+.sidebar:not(.expanded) .sidebar-footer{
+  border-top:none;
+  padding:0;
+}
+
 
 .tool-btn{
   border:0;
