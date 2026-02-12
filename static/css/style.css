@@ -1189,7 +1189,7 @@ body, button, input, select, textarea {
 /* Növlər üzrə rənglər */
 .toast--success{ --toast-accent:#22c55e; }
 .toast--error{ --toast-accent:#f87171; }
-.toast--warning{ --toast-accent:#fbbf24; }
+.toast--warning{ --toast-accent:#facc15; }
 .toast--info{ --toast-accent:#60a5fa; }
 /* Kiçik ekranlarda məsafə */
 @media (max-width:480px){

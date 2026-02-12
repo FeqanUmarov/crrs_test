@@ -1333,7 +1333,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     });
 
     // 5) Delete düyməsi — Tədqiqat layı + TEKUİS layı üçün işləsin
-    rtEditUI.btnDelete.addEventListener('click', () => {
+    rtEditUI.btnDelete.addEventListener('click', async () => {
       if (!ensureEditAllowed()) return;
 
       // Hər iki selection-dan BİRGƏ siyahı (təkrarsız)
@@ -1345,6 +1345,17 @@ window.MainEditing.init = function initEditing(state = {}) {
         Swal.fire('Info', 'Seçilmiş obyekt yoxdur.', 'info');
         return;
       }
+
+      const confirmDelete = await Swal.fire(buildAppConfirmModal({
+        title: 'Seçilən obyektlər silinsin?',
+        html: 'TEKUİS Parselləri yaddaşa yazılanadək bu əməliyyatı "ctrl+z" geri ala bilərsiniz',
+        icon: 'warning',
+        confirmButtonText: 'Bəli, sil',
+        cancelButtonText: 'İmtina',
+        confirmButtonVariant: 'danger'
+      }));
+
+      if (!confirmDelete.isConfirmed) return;
 
       // Yalnız bu iki laydan silirik:
       // - Tədqiqat layı (editLayer/editSource)

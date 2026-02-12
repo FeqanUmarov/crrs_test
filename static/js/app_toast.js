@@ -4,6 +4,8 @@
 (function(){
   'use strict';
 
+  const DEFAULT_TOAST_DURATION = 6000;
+
   // ===== Helpers =====
   const TYPES = new Set(['success','error','warning','info']);
 
@@ -24,7 +26,7 @@
     setTimeout(()=> el.remove(), 220);
   }
 
-  function showToast({ title='', text='', html=null, type='info', duration=5000 } = {}){
+  function showToast({ title='', text='', html=null, type='info', duration=DEFAULT_TOAST_DURATION } = {}){
     const stack = ensureStack();
     if (!TYPES.has(type)) type = 'info';
 
@@ -101,10 +103,10 @@
   // Publik API
   window.Toast = {
     show: showToast,
-    success: (text, title='Uğurlu', ms=5000)=> showToast({title, text, type:'success', duration:ms}),
-    error:   (text, title='Xəta',   ms=5000)=> showToast({title, text, type:'error',   duration:ms}),
-    warning: (text, title='Diqqət', ms=5000)=> showToast({title, text, type:'warning', duration:ms}),
-    info:    (text, title='Məlumat',ms=5000)=> showToast({title, text, type:'info',    duration:ms})
+    success: (text, title='Uğurlu', ms=DEFAULT_TOAST_DURATION)=> showToast({title, text, type:'success', duration:ms}),
+    error:   (text, title='Xəta',   ms=DEFAULT_TOAST_DURATION)=> showToast({title, text, type:'error',   duration:ms}),
+    warning: (text, title='Diqqət', ms=DEFAULT_TOAST_DURATION)=> showToast({title, text, type:'warning', duration:ms}),
+    info:    (text, title='Məlumat',ms=DEFAULT_TOAST_DURATION)=> showToast({title, text, type:'info',    duration:ms})
   };
 
   // ===== SweetAlert2 patch =====
@@ -124,7 +126,7 @@
           const title = a != null ? String(a) : '';
           const text  = b != null ? String(b) : '';
           const icon  = c != null ? String(c) : 'info';
-          return showToast({ title, text, type: icon, duration: 5000 });
+          return showToast({ title, text, type: icon, duration: DEFAULT_TOAST_DURATION });
         }
         // Obyekt imzası
         if (a && typeof a === 'object'){
@@ -140,7 +142,7 @@
           const text  = (opts.text != null ? String(opts.text) : '');
           const icon  = opts.icon || 'info';
           const html  = opts.html || null;
-          const timer = (typeof opts.timer === 'number') ? opts.timer : 5000;
+           const timer = (typeof opts.timer === 'number') ? opts.timer : DEFAULT_TOAST_DURATION;
           return showToast({ title, text, html, type: icon, duration: timer });
         }
 
