@@ -227,8 +227,8 @@ window.MainEditing.init = function initEditing(state = {}) {
       drawInteraction = null;
     }
     disableSnap();
+    updateDrawBtnUI && updateDrawBtnUI(false);
     if (!silent) {
-      updateDrawBtnUI && updateDrawBtnUI(false);
       updateEditStatus && updateEditStatus('Çəkmə dayandırıldı. Snap bağlıdır.');
     }
   }
@@ -1327,6 +1327,7 @@ window.MainEditing.init = function initEditing(state = {}) {
 
     // 4) Snap düyməsi
     rtEditUI.btnSnap.addEventListener('click', () => {
+      if (rtEditUI.btnSnap.disabled) return;
       if (!ensureEditAllowed()) return;
       toggleSnap();
       rtEditUI.btnSnap.classList.toggle('active', !!snapState.enabled);
@@ -1403,37 +1404,8 @@ window.MainEditing.init = function initEditing(state = {}) {
       saveSelected({ alsoAttach:true });
     });
 
-
-    rtEditUI.btnMove = (function mk() {
-      if (document.getElementById('rtMove')) return document.getElementById('rtMove');
-      const b = document.createElement('button');
-      b.id = 'rtMove';
-      b.className = 'rt-btn';
-      applyTooltip(b, 'Obyekti sürüşdür (Move)');
-      b.dataset.color = 'move';
-      const img = document.createElement('img');
-      img.className = 'rt-icon-img';
-      img.alt = 'Move';
-      img.src = (window.RT_ICONS && window.RT_ICONS.move) || '';
-      b.appendChild(img);
-      document.getElementById('rightTools').appendChild(b);
-      return b;
-    })();
-
-
-    // Move düyməsi
-    rtEditUI.btnMove.addEventListener('click', () => {
-      if (!ensureEditAllowed()) return;
-      if (window.RTMove && typeof RTMove.toggle === 'function') {
-        RTMove.toggle();
-      }
-    });
-
-
-
-
-
     // Başlanğıc UI vəziyyəti
+    rtEditUI.btnSnap.disabled = !drawInteraction;
     rtEditUI.btnSnap.classList.toggle('active', !!snapState.enabled);
     rtEditUI.btnDelete.disabled = (selectInteraction.getFeatures().getLength() === 0);
     rtEditUI.btnSave.disabled   = !hasAtLeastOnePolygonSelected();
@@ -1447,25 +1419,17 @@ window.MainEditing.init = function initEditing(state = {}) {
     injectRightEditButtons();
   }
 
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      if (window.RTMove && typeof RTMove.init === 'function') {
-        RTMove.init({ map });
-      }
-    });
-  } else {
-    if (window.RTMove && typeof RTMove.init === 'function') {
-      RTMove.init({ map });
-    }
-  }
-
-
-
   // Çək düyməsinin aktivliyi
   function updateDrawBtnUI(isActive){
+    const active = !!isActive;
     if (rtEditUI && rtEditUI.btnDraw) {
-      rtEditUI.btnDraw.classList.toggle('active', !!isActive);
+      rtEditUI.btnDraw.classList.toggle('active', active);
+    }
+    if (rtEditUI && rtEditUI.btnSnap) {
+      rtEditUI.btnSnap.disabled = !active;
+      if (!active) {
+        rtEditUI.btnSnap.classList.remove('active');
+      }
     }
   }
 
