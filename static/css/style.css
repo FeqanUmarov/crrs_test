@@ -22,6 +22,33 @@ body, button, input, select, textarea {
   border-right:1px solid rgba(148,163,184,.25);
   box-shadow:8px 0 26px rgba(2,6,23,.2);
 }
+.sidebar-brand{
+  width:100%;
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 4px 12px;
+  border-bottom:1px solid rgba(148,163,184,.35);
+  margin-bottom:6px;
+}
+.sidebar-brand-logo{
+  width:44px;
+  height:44px;
+  object-fit:contain;
+  flex:0 0 44px;
+}
+.sidebar-brand-text{
+  font-size:12px;
+  line-height:1.2;
+  font-weight:600;
+  color:#f8fafc;
+  opacity:0;
+  max-width:0;
+  overflow:hidden;
+  white-space:normal;
+  transition:opacity .15s ease;
+}
 
 /* Sidebar düymələrinin ikon+label quruluşu */
 .sidebar .tool-btn{
@@ -87,10 +114,14 @@ body, button, input, select, textarea {
 }
 
 /* Expanded: ikon solda, mətn sağda görünür */
+.sidebar.expanded .sidebar-brand{ padding:10px 6px 14px; justify-content:flex-start; }
+.sidebar.expanded .sidebar-brand-text{ opacity:1; max-width:152px; }
 .sidebar.expanded .tool-btn{ justify-content:flex-start; }
 .sidebar.expanded .tb-label{ opacity:1; transform:none; }
 
 /* Collapsed: yalnız ikon ortada */
+.sidebar:not(.expanded) .sidebar-brand{ justify-content:center; padding-inline:0; }
+.sidebar:not(.expanded) .sidebar-brand-text{ display:none; }
 .sidebar:not(.expanded) .tool-btn{ justify-content:center; }
 .sidebar:not(.expanded) .tb-label{ display:none; }
 
