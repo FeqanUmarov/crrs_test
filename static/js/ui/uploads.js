@@ -5,6 +5,25 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
     crs: null
   });
 
+
+  const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024;
+
+  function clearUploadState(){
+    lastUploadState.type = null;
+    lastUploadState.file = null;
+    lastUploadState.crs = null;
+    uploadLayerApi?.clearUploadedLayer?.();
+  }
+
+  function validateFileSize(file){
+    if (!file) return false;
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      Swal.fire('Xəta', 'Faylın həcmi maksimum 2 MB ola bilər.', 'error');
+      return false;
+    }
+    return true;
+  }
+
   function ensureEditAllowed(title = 'Diqqət') {
     if (typeof window.ensureEditAllowed === 'function') {
       return window.ensureEditAllowed(title);
@@ -18,7 +37,9 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
 
   async function uploadArchiveToBackend(file){
     if (!ensureEditAllowed()) return;
+    if (!validateFileSize(file)) return;
 
+    clearUploadState();
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -37,12 +58,16 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
       updateAllSaveButtons?.();
     } catch (err) {
       console.error(err);
+      clearUploadState();
       Swal.fire('Xəta', (err && err.message) || 'Yükləmə və ya çevirmə alınmadı.', 'error');
     }
   }
 
   async function uploadPointsToBackend(file, crs){
     if (!ensureEditAllowed()) return;
+    if (!validateFileSize(file)) return;
+
+    clearUploadState();
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -62,6 +87,7 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
       updateAllSaveButtons?.();
     } catch (err) {
       console.error(err);
+      clearUploadState();
       Swal.fire('Xəta', (err && err.message) || 'Yükləmə və ya çevirmə alınmadı.', 'error');
     }
   }

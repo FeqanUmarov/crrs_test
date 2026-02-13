@@ -3,6 +3,12 @@ function setupUploadedLayer({ map, registerSnapSource, onResetTekuis } = {}){
 
   let uploadedLayer = null;
 
+    function clearUploadedLayer(){
+    if (!uploadedLayer) return;
+    map.removeLayer(uploadedLayer);
+    uploadedLayer = null;
+  }
+
   function addGeoJSONToMap(geojson){
     const format = new ol.format.GeoJSON();
     const features = format.readFeatures(geojson, {
@@ -11,7 +17,7 @@ function setupUploadedLayer({ map, registerSnapSource, onResetTekuis } = {}){
     });
     const source = new ol.source.Vector({ features });
 
-    if (uploadedLayer) map.removeLayer(uploadedLayer);
+    clearUploadedLayer();
 
     uploadedLayer = new ol.layer.Vector({
       source,
@@ -29,6 +35,7 @@ function setupUploadedLayer({ map, registerSnapSource, onResetTekuis } = {}){
 
   return {
     addGeoJSONToMap,
+    clearUploadedLayer,
     getUploadedLayer: () => uploadedLayer
   };
 }

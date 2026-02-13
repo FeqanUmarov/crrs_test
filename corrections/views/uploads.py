@@ -35,6 +35,15 @@ except Exception:
     rarfile = None
     RAR_AVAILABLE = False
 
+MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024
+
+
+def _validate_uploaded_file_size(uploaded_file):
+    if uploaded_file is None:
+        return "Fayl göndərilməyib: 'file' sahəsi boşdur."
+    if uploaded_file.size > MAX_UPLOAD_SIZE_BYTES:
+        return "Faylın həcmi maksimum 2 MB ola bilər."
+    return None
 
 # ==========================
 # Köməkçi: arxivdən çıxarma
@@ -69,8 +78,9 @@ def upload_shp(request):
     if request.method != "POST":
         return HttpResponseBadRequest("POST gözlənirdi.")
     f = request.FILES.get("file")
-    if not f:
-        return HttpResponseBadRequest("Fayl göndərilməyib: 'file' sahəsi boşdur.")
+    size_error = _validate_uploaded_file_size(f)
+    if size_error:
+        return HttpResponseBadRequest(size_error)
 
     tmpdir = None
     try:
@@ -120,8 +130,9 @@ def upload_points(request):
         return HttpResponseBadRequest("POST gözlənirdi.")
     f = request.FILES.get("file")
     posted_crs_choice = request.POST.get("crs", "wgs84")
-    if not f:
-        return HttpResponseBadRequest("Fayl göndərilməyib: 'file' sahəsi boşdur.")
+    size_error = _validate_uploaded_file_size(f)
+    if size_error:
+        return HttpResponseBadRequest(size_error)
 
     try:
         data_bytes = f.read()
