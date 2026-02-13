@@ -45,6 +45,16 @@
     if (!save) return;
     save.classList.toggle("tekuis-save-reminder", Boolean(active));
   }
+  function setExplodeReminder(active) {
+    const explodeBtn = document.getElementById("rtExplode");
+    if (!explodeBtn) return;
+    explodeBtn.classList.toggle("tekuis-explode-reminder", Boolean(active));
+  }
+
+  function clearMultipartReminder() {
+    window.mapOverlays?.setMultipartHighlight?.([]);
+    setExplodeReminder(false);
+  }
 
   function setValidateReminder(active) {
     const { validateCard } = getButtons();
@@ -162,7 +172,13 @@
   }
 
   function highlightMultipartFeatures(features = []) {
-    if (!Array.isArray(features) || features.length === 0) return;
+    if (!Array.isArray(features) || features.length === 0) {
+      clearMultipartReminder();
+      return;
+    }
+
+    window.mapOverlays?.setMultipartHighlight?.(features);
+    setExplodeReminder(true);
 
     const selectAnyFeatures = window.MainState?.selectAny?.getFeatures?.();
     const selectInteractionFeatures = window.MainState?.selectInteraction?.getFeatures?.();
@@ -273,6 +289,11 @@
           this.handleSaveClick();
         });
       }
+      const explodeBtn = document.getElementById("rtExplode");
+      if (explodeBtn && !explodeBtn.dataset.multipartReminderBound) {
+        explodeBtn.dataset.multipartReminderBound = "true";
+        explodeBtn.addEventListener("click", () => clearMultipartReminder());
+      }
       applyButtonState(this.state);
     },
 
@@ -282,6 +303,7 @@
       source.__tekuisValidationBound = true;
 
       const markDirty = () => {
+        clearMultipartReminder();
         if (!this.state.loaded) return;
         this.state.localFinal = false;
         this.state.tekuisFinal = false;
@@ -479,6 +501,7 @@
 
         window.tekuisCache?.clearTekuisCache?.();
         window.tekuisNecasApi?.markTekuisSaved?.(true);
+        clearMultipartReminder();
         window.TekuisTopologyUI?.resetIgnored?.();
         window.TekuisTopologyUI?.clearOverlay?.();
 

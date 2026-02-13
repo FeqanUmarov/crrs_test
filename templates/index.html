@@ -181,6 +181,28 @@
         0 10px 20px rgba(6,182,212,.25);
 
     }
+
+.rt-btn.tekuis-explode-reminder{
+  animation:rtExplodePulse 1.2s ease-in-out infinite;
+  border-color:#f97316;
+  box-shadow:0 0 0 0 rgba(249,115,22,.55);
+}
+@keyframes rtExplodePulse{
+  0%{
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(249,115,22,.55);
+  }
+  70%{
+    transform:scale(1.06);
+    box-shadow:0 0 0 11px rgba(249,115,22,0);
+  }
+  100%{
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(249,115,22,0);
+  }
+}
+
+
     .rt-icon{ width:24px; height:24px; }
     .rt-icon-img{ width:26px; height:26px; object-fit:contain; }
     .rt-btn[data-color] .rt-icon-img,

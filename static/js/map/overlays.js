@@ -67,17 +67,61 @@ function initMapOverlays(map){
   topoErrorLayer.set('selectIgnore', true);
   map.addLayer(topoErrorLayer);
 
+  const multipartReminderSource = new ol.source.Vector();
+  const multipartReminderLayer = new ol.layer.Vector({
+    source: multipartReminderSource,
+    zIndex: 202,
+    style: (feature) => {
+      const t = feature.getGeometry().getType();
+      const orange = '#f97316';
+      if (/Point/i.test(t)) {
+        return new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 6,
+            fill: new ol.style.Fill({ color: 'rgba(249,115,22,0.16)' }),
+            stroke: new ol.style.Stroke({ color: orange, width: 3 })
+          })
+        });
+      }
+      if (/LineString/i.test(t)) {
+        return [
+          new ol.style.Style({ stroke: new ol.style.Stroke({ color: 'rgba(249,115,22,0.35)', width: 8 }) }),
+          new ol.style.Style({ stroke: new ol.style.Stroke({ color: orange, width: 3 }) })
+        ];
+      }
+      return [
+        new ol.style.Style({ fill: new ol.style.Fill({ color: 'rgba(249,115,22,0.08)' }) }),
+        new ol.style.Style({ stroke: new ol.style.Stroke({ color: 'rgba(249,115,22,0.35)', width: 6 }) }),
+        new ol.style.Style({ stroke: new ol.style.Stroke({ color: orange, width: 3 }) })
+      ];
+    }
+  });
+  multipartReminderLayer.set('infoIgnore', true);
+  multipartReminderLayer.set('selectIgnore', true);
+  map.addLayer(multipartReminderLayer);
+
   function setInfoHighlight(feature){
     infoHighlightSource.clear(true);
     if (!feature || !feature.getGeometry) return;
     const f = new ol.Feature({ geometry: feature.getGeometry().clone() });
     infoHighlightSource.addFeature(f);
   }
+  function setMultipartHighlight(features = []) {
+    multipartReminderSource.clear(true);
+    if (!Array.isArray(features) || features.length === 0) return;
+    features.forEach((feature) => {
+      const geometry = feature?.getGeometry?.();
+      if (!geometry) return;
+      multipartReminderSource.addFeature(new ol.Feature({ geometry: geometry.clone() }));
+    });
+  }
 
   return {
     infoHighlightSource,
     topoErrorSource,
-    setInfoHighlight
+    multipartReminderSource,
+    setInfoHighlight,
+    setMultipartHighlight
   };
 }
 
