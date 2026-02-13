@@ -18,21 +18,32 @@
       updateToggleMeta();
     });
 
-    rightTools.addEventListener('click', (event) => {
-      const btn = event.target.closest('.rt-btn');
-      if (!btn || !rightTools.contains(btn)) return;
+    const syncSelectedButtons = () => {
+      rightTools.querySelectorAll('.rt-btn').forEach((btn) => {
+        btn.classList.toggle('is-selected', btn.classList.contains('active'));
+      });
+    };
 
-      rightTools
-        .querySelectorAll('.rt-btn.is-selected')
-        .forEach((node) => node.classList.remove('is-selected'));
+    const selectionObserver = new MutationObserver((mutations) => {
+      const shouldSync = mutations.some((mutation) => {
+        if (mutation.type === 'childList') return true;
+        return (
+          mutation.type === 'attributes' &&
+          mutation.attributeName === 'class' &&
+          mutation.target.classList?.contains('rt-btn')
+        );
+      });
 
-      btn.classList.add('is-selected');
+      if (shouldSync) syncSelectedButtons();
+    });
+    selectionObserver.observe(rightTools, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class']
     });
 
-    const activeBtn = rightTools.querySelector('.rt-btn.active');
-    if (activeBtn) {
-      activeBtn.classList.add('is-selected');
-    }
+    syncSelectedButtons();
 
     updateToggleMeta();
   }
