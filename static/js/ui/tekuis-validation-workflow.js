@@ -150,6 +150,55 @@
     }
   }
 
+  function collectMultipartFeatures(source) {
+    const features = source?.getFeatures?.() || [];
+    return features.filter((feature) => {
+      const geom = feature?.getGeometry?.();
+      if (!geom) return false;
+      if (geom.getType?.() !== "MultiPolygon") return false;
+      const coords = geom.getCoordinates?.() || [];
+      return Array.isArray(coords) && coords.length > 1;
+    });
+  }
+
+  function highlightMultipartFeatures(features = []) {
+    if (!Array.isArray(features) || features.length === 0) return;
+
+    const selectAnyFeatures = window.MainState?.selectAny?.getFeatures?.();
+    const selectInteractionFeatures = window.MainState?.selectInteraction?.getFeatures?.();
+
+    const applySelection = (collection) => {
+      if (!collection) return;
+      try {
+        collection.clear();
+      } catch (e) {
+        /* ignore */
+      }
+      features.forEach((feature) => {
+        if (collection.getArray?.().includes(feature)) return;
+        try {
+          collection.push(feature);
+        } catch (e) {
+          /* ignore */
+        }
+      });
+    };
+
+    applySelection(selectAnyFeatures);
+    applySelection(selectInteractionFeatures);
+  }
+
+  function highlightMultipartIndexes(source, indexes = []) {
+    if (!Array.isArray(indexes) || indexes.length === 0) return;
+    const features = source?.getFeatures?.() || [];
+    const multipartFeatures = indexes
+      .map((idx) => features[idx])
+      .filter(Boolean);
+    highlightMultipartFeatures(multipartFeatures);
+  }
+
+
+
   function resolveOriginalTekuis(fc) {
     const cached = window.tekuisCache?.getOriginalTekuis?.();
     if (cached && cached.type === "FeatureCollection") return cached;
@@ -365,6 +414,18 @@
         Swal.fire("Info", "Yadda saxlanacaq TEKUİS parseli yoxdur.", "info");
         return;
       }
+      const multipartFeatures = collectMultipartFeatures(source);
+      if (multipartFeatures.length > 0) {
+        highlightMultipartFeatures(multipartFeatures);
+        window.updateAllSaveButtons?.();
+        window.updateDeleteButtonState?.();
+        Swal.fire(
+          "Diqqət",
+          `Yadda saxlama bloklandı. ${multipartFeatures.length} ədəd multipart parsel aşkarlandı və avtomatik seçildi. Zəhmət olmasa əvvəlcə Explode edin.`,
+          "warning"
+        );
+        return;
+      }
 
       const ask = await Swal.fire(
         window.buildAppConfirmModal?.({
@@ -405,6 +466,13 @@
         });
 
         if (!response.ok) {
+          if (response.data?.error === "multipart_not_allowed") {
+            highlightMultipartIndexes(source, response.data?.multipart_indexes || []);
+            window.updateAllSaveButtons?.();
+            window.updateDeleteButtonState?.();
+            Swal.fire("Diqqət", response.data?.message || "Multipart parsellər saxlanıla bilməz.", "warning");
+            return;
+          }
           Swal.fire("Xəta", response.data?.error || "TEKUİS parselləri yadda saxlanılmadı.", "error");
           return;
         }

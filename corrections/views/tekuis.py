@@ -922,6 +922,17 @@ def _insert_tekuis_rows(
 
     return {"saved": saved, "skipped": skipped, "ids": inserted_ids}
 
+def _collect_multipart_feature_indexes(features: list) -> list[int]:
+    multipart_indexes: list[int] = []
+    for idx, feature in enumerate(features or []):
+        geom = (feature or {}).get("geometry") or {}
+        if (geom.get("type") or "") != "MultiPolygon":
+            continue
+        coords = geom.get("coordinates") or []
+        if isinstance(coords, list) and len(coords) > 1:
+            multipart_indexes.append(idx)
+    return multipart_indexes
+
 
 def _json_body(request):
     try:
@@ -1095,6 +1106,19 @@ def save_tekuis_parcels(request):
     features = fc.get("features") or []
     if not features:
         return JsonResponse({"ok": False, "error": "Boş FeatureCollection"}, status=400)
+
+    multipart_indexes = _collect_multipart_feature_indexes(features)
+    if multipart_indexes:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "multipart_not_allowed",
+                "message": "Multipart (MultiPolygon) parsellər saxlanıla bilməz. Zəhmət olmasa əvvəlcə Explode edin.",
+                "multipart_indexes": multipart_indexes,
+            },
+            status=409,
+        )
+
 
     # --- HƏMİŞƏ REAL FK METADATA ---
     meta_id = getattr(request, "fk_metadata", None)
