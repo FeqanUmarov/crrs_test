@@ -330,6 +330,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       return t === 'Polygon' || t === 'MultiPolygon';
     });
   }
+
   function hasAtLeastOnePolygonSelected(){
     return getSelectedPolygons().length >= 1;
   }
