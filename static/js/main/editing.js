@@ -1120,7 +1120,7 @@ window.MainEditing.init = function initEditing(state = {}) {
 
     const wkt = composeSelectedPolygonsWKT();
     if (!wkt) {
-      Swal.fire('Diqqət', 'Yadda saxlamaq üçün ekranda <b>ən azı 1 poliqon</b> seçilməlidir.', 'warning');
+      Swal.fire('Diqqət', 'Mütləq bir poliqon seçilməlidir.', 'warning');
       return;
     }
 
@@ -1401,6 +1401,10 @@ window.MainEditing.init = function initEditing(state = {}) {
 // 6) Save düyməsi
     rtEditUI.btnSave.addEventListener('click', () => {
       if (!ensureEditAllowed()) return;
+      if (!hasAtLeastOnePolygonSelected()) {
+        Swal.fire('Diqqət', 'Mütləq bir poliqon seçilməlidir.', 'warning');
+        return;
+      }
       saveSelected({ alsoAttach:true });
     });
 
