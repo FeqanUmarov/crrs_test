@@ -48,7 +48,9 @@
   function setExplodeReminder(active) {
     const explodeBtn = document.getElementById("rtExplode");
     if (!explodeBtn) return;
-    explodeBtn.classList.toggle("tekuis-explode-reminder", Boolean(active));
+    const isActive = Boolean(active);
+    explodeBtn.classList.toggle("tekuis-save-reminder", isActive);
+    explodeBtn.classList.toggle("tekuis-explode-reminder", isActive);
   }
 
   function clearMultipartReminder() {
