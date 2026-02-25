@@ -1,6 +1,5 @@
 from .auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
 from .attach import attach_geojson, attach_geojson_by_ticket, attach_list_by_ticket, attach_upload
-from .debug import debug_mssql, debug_odbc
 from .gis import save_polygon, soft_delete_gis_by_ticket
 from .info import (
     attributes_options,
@@ -34,8 +33,6 @@ __all__ = [
     "attach_list_by_ticket",
     "attach_upload",
     "attributes_options",
-    "debug_mssql",
-    "debug_odbc",
     "ignore_tekuis_gap",
     "info_by_fk",
     "info_by_geom",
