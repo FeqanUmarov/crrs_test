@@ -42,7 +42,7 @@ def _redeem_ticket_with_token(ticket: str):
     if not url:
         logger.error("NODE_REDEEM_URL is empty; set it in .env")
         return None, None
-        ticket = (ticket or "").strip()
+    ticket = (ticket or "").strip()
     if not ticket:
         return None, None
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
@@ -81,7 +81,7 @@ def _redeem_ticket_with_token(ticket: str):
         except Exception:
             return None, None
 
-        def _post_form(key: str):
+    def _post_form(key: str):
         try:
             resp = requests.post(
                 url,
