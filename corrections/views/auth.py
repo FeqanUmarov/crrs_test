@@ -12,31 +12,6 @@ from django.http import JsonResponse
 logger = logging.getLogger(__name__)
 
 
-
-def _redeem_payload(payload: dict) -> dict:
-    """Redeem response-larında faydalı sahələri daşıyan obyekti qaytarır.
-
-    Köhnə formatda sahələr root-da idi, yeni formatda isə `data` altındadır.
-    """
-    nested = payload.get("data") if isinstance(payload, dict) else None
-    return nested if isinstance(nested, dict) else (payload if isinstance(payload, dict) else {})
-
-
-def _redeem_fields(payload: dict) -> tuple[bool, str, int | None, object]:
-    """Normalize redeem payload and return (valid, token, exp, id)."""
-    redeem_data = _redeem_payload(payload)
-    valid = redeem_data.get("valid", True) is not False
-    token = (redeem_data.get("token") or "").strip()
-    exp = _coerce_exp_ms(redeem_data.get("exp"))
-    rid = (
-        redeem_data.get("id")
-        or redeem_data.get("rowid")
-        or redeem_data.get("fk")
-        or redeem_data.get("fk_metadata")
-    )
-    return valid, token, exp, rid
-
-
 def _unauthorized(msg="unauthorized"):
     return JsonResponse({"ok": False, "error": msg}, status=401)
 
@@ -63,93 +38,46 @@ def _redeem_ticket_with_token(ticket: str):
     Node redeem-dən həm fk_metadata (id), həm də token qaytarır.
     Token yoxdursa və ya vaxtı keçibsə -> (None, None).
     """
-    ticket = (ticket or "").strip()
-    if not ticket:
-        return None, None
     url = str(getattr(settings, "NODE_REDEEM_URL", "") or "").strip().rstrip("/")
     if not url:
         logger.error("NODE_REDEEM_URL is empty; set it in .env")
         return None, None
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
-    prefer = (getattr(settings, "NODE_REDEEM_METHOD", "FORM") or "FORM").upper()
-    skew_ms = int(getattr(settings, "NODE_REDEEM_EXP_SKEW_SEC", 15)) * 1000
     bearer = getattr(settings, "NODE_REDEEM_BEARER", None)
-    base_headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json"}
     if bearer:
-        base_headers["Authorization"] = f"Bearer {bearer}"
-
-    def _parse_and_validate(resp) -> tuple[Optional[int], Optional[str]]:
+        headers["Authorization"] = f"Bearer {bearer}"
+    try:
+        resp = requests.post(
+            url,
+            data={"ticket": (ticket or "").strip()},
+            headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
+            timeout=timeout,
+        )
         if resp.status_code != 200:
-            logger.warning("redeem(with_token) HTTP %s: %s", resp.status_code, (resp.text[:300] if resp.content else ""))
             return None, None
-        try:
-            data = resp.json()
-        except Exception:
-            logger.warning("redeem(with_token) JSON parse failed: %r", resp.text[:200])
+        data = resp.json()
+        if data.get("valid", True) is False:
             return None, None
-
-        valid, tok, exp_ms, rid = _redeem_fields(data)
-        if not valid:
-            return None, None
+        tok = (data.get("token") or "").strip()
+        exp = data.get("exp")
+        # token mütləq lazımdır:
         if not tok:
             return None, None
-        if exp_ms is None or _now_ms() > exp_ms + skew_ms:
+        # vaxt yoxlaması:
+        exp_ms = _coerce_exp_ms(exp)
+        if exp_ms is None or _now_ms() > exp_ms + int(
+            getattr(settings, "NODE_REDEEM_EXP_SKEW_SEC", 15)
+        ) * 1000:
             return None, None
+        # id götür:
+        rid = data.get("id") or data.get("rowid") or data.get("fk") or data.get("fk_metadata")
         try:
             return int(str(rid).strip()), tok
         except Exception:
             return None, None
-
-    def _post_form(key: str) -> tuple[Optional[int], Optional[str]]:
-        try:
-            h = {**base_headers, "Content-Type": "application/x-www-form-urlencoded"}
-            resp = requests.post(url, data={key: ticket}, headers=h, timeout=timeout)
-            logger.info("redeem(with_token) POST FORM %s → %s", key, resp.status_code)
-            return _parse_and_validate(resp)
-        except Exception as e:
-            logger.warning("redeem(with_token) POST FORM (%s) failed: %s", key, e)
-            return None, None
-
-    def _post_json(key: str) -> tuple[Optional[int], Optional[str]]:
-        try:
-            h = {**base_headers, "Content-Type": "application/json"}
-            resp = requests.post(url, json={key: ticket}, headers=h, timeout=timeout)
-            logger.info("redeem(with_token) POST JSON %s → %s", key, resp.status_code)
-            return _parse_and_validate(resp)
-        except Exception as e:
-            logger.warning("redeem(with_token) POST JSON (%s) failed: %s", key, e)
-            return None, None
-
-    def _get_qs(key: str) -> tuple[Optional[int], Optional[str]]:
-        try:
-            resp = requests.get(
-                url,
-                params={key: ticket},
-                headers=base_headers,
-                timeout=timeout,
-                allow_redirects=False,
-            )
-            logger.info("redeem(with_token) GET %s → %s", key, resp.status_code)
-            return _parse_and_validate(resp)
-        except Exception as e:
-            logger.warning("redeem(with_token) GET (%s) failed: %s", key, e)
-            return None, None
-
-    order_map = {
-        "FORM": (_post_form, _post_json, _get_qs),
-        "JSON": (_post_json, _get_qs, _post_form),
-        "GET": (_get_qs, _post_form, _post_json),
-    }
-    order = order_map.get(prefer, order_map["FORM"])
-
-    for fn in order:
-        for key in ("ticket", "hash"):
-            fk, tok = fn(key)
-            if fk is not None and tok:
-                return fk, tok
-
-    logger.error("redeem(with_token) failed for ticket")
-    return None, None
+    except Exception:
+        return None, None
 
 
 def _extract_ticket(request) -> str:
@@ -269,21 +197,19 @@ def _redeem_ticket(ticket: str) -> Optional[int]:
             logger.warning("redeem JSON parse failed: %r", resp.text[:200])
             return None
 
-        valid, tok, exp_ms, rid = _redeem_fields(data)
-
         # valid=false isə rədd
-        if not valid:
+        if data.get("valid", True) is False:
             logger.info("redeem: valid=false qaytdı")
             return None
 
         # token tələbi (default: tələb olunur)
-        tok = (redeem_data.get("token") or "").strip()
+        tok = (data.get("token") or "").strip()
         if require_token and not tok:
             logger.info("redeem: token yoxdur (require_token=True)")
             return None
 
         # exp yoxlaması
-        exp_ms = _coerce_exp_ms(redeem_data.get("exp"))
+        exp_ms = _coerce_exp_ms(data.get("exp"))
         if exp_ms is None:
             logger.info("redeem: exp yoxdur/yolverilməz")
             return None
@@ -298,12 +224,7 @@ def _redeem_ticket(ticket: str) -> Optional[int]:
             return None
 
         # id götür
-        rid = (
-            redeem_data.get("id")
-            or redeem_data.get("rowid")
-            or redeem_data.get("fk")
-            or redeem_data.get("fk_metadata")
-        )
+        rid = data.get("id") or data.get("rowid") or data.get("fk") or data.get("fk_metadata")
         try:
             return int(str(rid).strip())
         except Exception:
