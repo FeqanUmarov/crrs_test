@@ -48,12 +48,15 @@ def _redeem_ticket_with_token(ticket: str):
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
     prefer = (getattr(settings, "NODE_REDEEM_METHOD", "FORM") or "FORM").upper()
     bearer = getattr(settings, "NODE_REDEEM_BEARER", None)
+    auth_header = (getattr(settings, "NODE_REDEEM_AUTH_HEADER", "") or "").strip()
     headers = {"Accept": "application/json"}
-    if bearer:
+    if auth_header:
+        headers["Authorization"] = auth_header
+    elif bearer:
         headers["Authorization"] = f"Bearer {bearer}"
     def _parse(resp):
         if resp.status_code != 200:
-            logger.warning("redeem(with_token) HTTP %s", resp.status_code)
+            logger.warning("redeem(with_token) HTTP %s: %s", resp.status_code, (resp.text[:300] if getattr(resp, "text", None) else ""))
             return None, None
 
         try:
@@ -242,8 +245,11 @@ def _redeem_ticket(ticket: str) -> Optional[int]:
     skew_ms = skew_sec * 1000
 
     bearer = getattr(settings, "NODE_REDEEM_BEARER", None)
+    auth_header = (getattr(settings, "NODE_REDEEM_AUTH_HEADER", "") or "").strip()
     base_headers = {"Accept": "application/json"}
-    if bearer:
+    if auth_header:
+        base_headers["Authorization"] = auth_header
+    elif bearer:
         base_headers["Authorization"] = f"Bearer {bearer}"
 
     def _parse_and_validate(resp) -> Optional[int]:

@@ -138,6 +138,7 @@ NODE_REDEEM_TIMEOUT      = env("NODE_REDEEM_TIMEOUT", "8", cast=int)
 NODE_REDEEM_REQUIRE_TOKEN= env_bool("NODE_REDEEM_REQUIRE_TOKEN", True) # token mütləq olsun
 NODE_REDEEM_EXP_SKEW_SEC = env("NODE_REDEEM_EXP_SKEW_SEC", "15", cast=int)  # kiçik saat fərqi buferi
 NODE_REDEEM_BEARER       = env("NODE_REDEEM_BEARER", "")               # lazım deyilsə boş qalsın
+NODE_REDEEM_AUTH_HEADER  = env("NODE_REDEEM_AUTH_HEADER", "")
 
 
 TEKUIS_VALIDATION_MIN_OVERLAP_SQM = 0.01   # ArcGIS Pro həssaslığına yaxınlaşdırmaq üçün xırda sliver-ləri də tut
