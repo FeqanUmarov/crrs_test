@@ -311,7 +311,7 @@ def _mssql_clear_objectid(row_id: int) -> bool:
         return False
 
 
-# --- GIS edit icazəsi: STATUS_ID yalnız 2 və 99 olduqda ---
+# --- GIS edit icazəsi: STATUS_ID yalnız 15 və 99 olduqda ---
 
 def _get_status_id_from_row(row: Optional[Dict[str, Any]]) -> Optional[int]:
     if not row:
@@ -329,4 +329,4 @@ def _is_edit_allowed_for_fk(meta_id: int) -> Tuple[bool, Optional[int]]:
     details = _mssql_fetch_request(int(meta_id))
     sid = _get_status_id_from_row(details)
     
-    return (sid in (2, 99)), sid
+    return (sid in (15, 99)), sid

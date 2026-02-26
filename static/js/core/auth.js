@@ -64,7 +64,7 @@ authGuardOnce();
 // Hər 30 saniyədən bir sessiyanı yoxla:
 setInterval(() => { authGuardOnce(); }, 30000);
 
-// === STATUS icazəsi (yalnız STATUS_ID 2 və 99 üçün) ===
+// === STATUS icazəsi (yalnız STATUS_ID 15 və 99 üçün) ===
 window.EDIT_ALLOWED = false;
 window.CURRENT_STATUS_ID = null;
 
@@ -101,7 +101,7 @@ function applyEditPermissions(){
     } else {
       btn.classList.add('locked');
       btn.setAttribute('aria-disabled','true');
-      btn.title = 'Bu müraciətin statusuna görə (STATUS_ID ≠ 2/99) bu bölmə bağlıdır.';
+      btn.title = 'Bu müraciətin statusuna görə bu bölmə bağlıdır.';
     }
   });
 }

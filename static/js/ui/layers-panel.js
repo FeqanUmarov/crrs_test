@@ -40,15 +40,15 @@ function setupLayersPanel({
     const delBtn = document.getElementById('btnDeleteTicket');
     if (!delBtn) return;
 
-    const showByStatus = (window.CURRENT_STATUS_ID === 2 || window.CURRENT_STATUS_ID === 99);
-    // Yalnız STATUS_ID 2 və 99 olduqda göstər
+    const showByStatus = (window.CURRENT_STATUS_ID === 15 || window.CURRENT_STATUS_ID === 99);
+    // Yalnız STATUS_ID 15 və 99 olduqda göstər
     delBtn.style.display = showByStatus ? '' : 'none';
     if (!showByStatus) return;
 
     // Görünəndə də icazəyə görə aktiv/deaktiv et
-    const allowed = (window.CURRENT_STATUS_ID === 2 || window.CURRENT_STATUS_ID === 99);
+    const allowed = (window.CURRENT_STATUS_ID === 15 || window.CURRENT_STATUS_ID === 99);
     delBtn.disabled = !allowed;
-    delBtn.title = allowed ? '' : 'Bu əməliyyat yalnız STATUS 2 və ya 99 üçün mümkündür.';
+    delBtn.title = allowed ? '' : 'Bu əməliyyat yalnız STATUS 15 və ya 99 üçün mümkündür.';
   }
 
   function formatTekuisDescriptionHtml(text){
@@ -133,7 +133,7 @@ function setupLayersPanel({
 
 
   function renderLayersPanel(){
-    const canDelete = (window.CURRENT_STATUS_ID === 2 || window.CURRENT_STATUS_ID === 99);
+    const canDelete = (window.CURRENT_STATUS_ID === 15 || window.CURRENT_STATUS_ID === 99);
 
     const html = `
     <div class="card layer-card" id="cardTicket">
@@ -285,7 +285,7 @@ function setupLayersPanel({
 
     if (canDelete) {
       document.getElementById('btnDeleteTicket').addEventListener('click', async () => {
-        const allowed = (window.CURRENT_STATUS_ID === 2 || window.CURRENT_STATUS_ID === 99);
+        const allowed = (window.CURRENT_STATUS_ID === 15 || window.CURRENT_STATUS_ID === 99);
 
         const currentTicketLayerCount = getTicketLayerCount?.() ?? 0;
         const hasTicketData = (currentTicketLayerCount > 0);
@@ -295,7 +295,7 @@ function setupLayersPanel({
           return;
         }
         if (!allowed) {
-          Swal.fire('Diqqət','Bu əməliyyat yalnız 99 statusu və ya redaktə (qaralama) rejimində mümkündür.','info');
+          Swal.fire('Diqqət','Bu əməliyyat yalnız 15 və ya 99 statuslarında mümkündür.','info');
           return;
         }
 
