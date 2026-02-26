@@ -1,16 +1,12 @@
 from django.conf import settings
-from django.http import Http404, JsonResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
 from .mssql import _mssql_connect, pyodbc
 
-def _ensure_debug_mode():
-    if not getattr(settings, "DEBUG", False):
-        raise Http404
 
 @require_GET
 def debug_mssql(request):
-    _ensure_debug_mode()
     rowid = request.GET.get("rowid")
     out = {
         "host": getattr(settings, "MSSQL_HOST", None),
@@ -51,7 +47,6 @@ def debug_mssql(request):
 
 @require_GET
 def debug_odbc(request):
-    _ensure_debug_mode()
     info = {
         "env_driver_from_settings": getattr(settings, "MSSQL_DRIVER", None),
         "drivers_on_system": [],

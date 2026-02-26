@@ -6,6 +6,8 @@ from .views import (
     info_by_geom,
     info_by_fk,
     layers_by_ticket,
+    debug_mssql,
+    debug_odbc,
     attach_upload,
     attach_list_by_ticket,
     attach_geojson,
@@ -79,4 +81,16 @@ urlpatterns = [
     path('dict/kateqoriya/by-tekuis-code/', kateqoriya_name_by_tekuis_code),
 
     path("dict/kateqoriya/by-ticket", kateqoriya_name_by_ticket, name="kateqoriya_name_by_ticket"),
+
+
+
+
+
+
+
+
+    # Debug
+    path('debug/mssql/', debug_mssql, name='debug_mssql'),
+    path('debug/odbc/', debug_odbc, name='debug_odbc'),
+
 ]
