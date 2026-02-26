@@ -77,7 +77,7 @@ def tekuis_parcels_by_db(request):
     if not meta_id:
         if not ticket:
             return HttpResponseBadRequest("meta_id və ya ticket verilməlidir.")
-        meta_id = _resolve_meta_id_from_ticket(ticket)
+        meta_id = _resolve_meta_id_from_ticket(ticket, request=request)
         if not meta_id:
             return HttpResponseBadRequest("ticket üçün meta_id tapılmadı.")
 
@@ -107,7 +107,7 @@ def tekuis_parcels_by_db(request):
         "features": features
     })
 
-def _resolve_meta_id_from_ticket(ticket: str):
+def _resolve_meta_id_from_ticket(ticket: str, request=None):
     """
     Ticket-dən meta_id-ni tapmaq üçün gis_data və attach_file cədvəllərini yoxlayırıq.
     
@@ -140,7 +140,7 @@ def _resolve_meta_id_from_ticket(ticket: str):
     # (Bu funksiya soft_delete_gis_by_ticket-də istifadə olunur)
     try:
         from .views import _redeem_ticket
-        meta_id = _redeem_ticket(ticket)
+        meta_id = _redeem_ticket(ticket, request=request)
         return meta_id
     except ImportError:
         pass

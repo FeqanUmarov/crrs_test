@@ -68,3 +68,26 @@ class RedeemWithTokenTests(SimpleTestCase):
         fk, tok = _redeem_ticket_with_token("abc")
 
         self.assertEqual((fk, tok), (None, None))
+
+    @override_settings(
+        NODE_REDEEM_URL="http://node/redeem",
+        NODE_REDEEM_METHOD="FORM",
+        NODE_REDEEM_AUTH_HEADER="",
+        NODE_REDEEM_BEARER="",
+    )
+    @patch("corrections.views.auth.requests.post")
+    def test_prefers_incoming_authorization_header_from_request(self, mock_post):
+        mock_post.return_value = DummyResponse(
+            status_code=200,
+            data={"valid": True, "id": 11, "token": "jwt", "exp": 9999999999999},
+        )
+
+        class Req:
+            headers = {"Authorization": "Bearer live-user-token"}
+            META = {"HTTP_AUTHORIZATION": "Bearer live-user-token"}
+
+        fk, tok = _redeem_ticket_with_token("abc", request=Req())
+
+        self.assertEqual((fk, tok), (11, "jwt"))
+        called_headers = mock_post.call_args.kwargs["headers"]
+        self.assertEqual(called_headers["Authorization"], "Bearer live-user-token")

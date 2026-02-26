@@ -33,7 +33,35 @@ def _coerce_exp_ms(exp_val) -> int | None:
     return v * 1000 if v < 10**12 else v
 
 
-def _redeem_ticket_with_token(ticket: str):
+def _resolve_redeem_auth_header(request=None) -> str:
+    """Redeem üçün Authorization header qaytarır.
+
+    Prioritet:
+    1) gələn sorğudakı Authorization
+    2) NODE_REDEEM_AUTH_HEADER
+    3) NODE_REDEEM_BEARER
+    """
+    if request is not None:
+        incoming = (
+            request.headers.get("Authorization")
+            or request.META.get("HTTP_AUTHORIZATION")
+            or ""
+        ).strip()
+        if incoming:
+            return incoming
+
+    auth_header = (getattr(settings, "NODE_REDEEM_AUTH_HEADER", "") or "").strip()
+    if auth_header:
+        return auth_header
+
+    bearer = (getattr(settings, "NODE_REDEEM_BEARER", "") or "").strip()
+    if bearer:
+        return f"Bearer {bearer}"
+
+    return ""
+
+
+def _redeem_ticket_with_token(ticket: str, request=None):
     """
     Node redeem-dən həm fk_metadata (id), həm də token qaytarır.
     Token yoxdursa və ya vaxtı keçibsə -> (None, None).
@@ -47,13 +75,10 @@ def _redeem_ticket_with_token(ticket: str):
         return None, None
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
     prefer = (getattr(settings, "NODE_REDEEM_METHOD", "FORM") or "FORM").upper()
-    bearer = getattr(settings, "NODE_REDEEM_BEARER", None)
-    auth_header = (getattr(settings, "NODE_REDEEM_AUTH_HEADER", "") or "").strip()
     headers = {"Accept": "application/json"}
+    auth_header = _resolve_redeem_auth_header(request=request)
     if auth_header:
         headers["Authorization"] = auth_header
-    elif bearer:
-        headers["Authorization"] = f"Bearer {bearer}"
     def _parse(resp):
         if resp.status_code != 200:
             logger.warning("redeem(with_token) HTTP %s: %s", resp.status_code, (resp.text[:300] if getattr(resp, "text", None) else ""))
@@ -204,7 +229,7 @@ def require_valid_ticket(view_fn):
     @wraps(view_fn)
     def _wrap(request, *args, **kwargs):
         ticket = _extract_ticket(request)
-        fk, tok = _redeem_ticket_with_token(ticket)
+        fk, tok = _redeem_ticket_with_token(ticket, request=request)
         if not (fk and tok):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
 
@@ -220,7 +245,7 @@ def require_valid_ticket(view_fn):
     return _wrap
 
 
-def _redeem_ticket(ticket: str) -> Optional[int]:
+def _redeem_ticket(ticket: str, request=None) -> Optional[int]:
     """
     Node redeem endpoint-ini çağırır və yalnız aşağıdakılar ödənərsə id qaytarır:
       - HTTP 200 + JSON parse OK
@@ -244,13 +269,11 @@ def _redeem_ticket(ticket: str) -> Optional[int]:
     skew_sec = int(getattr(settings, "NODE_REDEEM_EXP_SKEW_SEC", 15))  # kiçik saat fərqi buferi
     skew_ms = skew_sec * 1000
 
-    bearer = getattr(settings, "NODE_REDEEM_BEARER", None)
-    auth_header = (getattr(settings, "NODE_REDEEM_AUTH_HEADER", "") or "").strip()
+
     base_headers = {"Accept": "application/json"}
+    auth_header = _resolve_redeem_auth_header(request=request)
     if auth_header:
         base_headers["Authorization"] = auth_header
-    elif bearer:
-        base_headers["Authorization"] = f"Bearer {bearer}"
 
     def _parse_and_validate(resp) -> Optional[int]:
         if resp.status_code != 200:

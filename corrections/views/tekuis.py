@@ -695,7 +695,7 @@ def tekuis_parcels_by_attach_ticket(request):
     limit = request.GET.get("limit")
     limit = int(limit) if (limit is not None and str(limit).strip().isdigit()) else None
 
-    meta_id = _redeem_ticket(ticket)
+    meta_id = _redeem_ticket(ticket, request=request)
     if meta_id is None:
         return _unauthorized()
 

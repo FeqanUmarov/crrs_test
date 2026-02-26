@@ -59,7 +59,7 @@ def layers_by_ticket(request):
     if not ticket:
         return HttpResponseBadRequest("ticket tələb olunur.")
 
-    fk_metadata = _redeem_ticket(ticket)
+    fk_metadata = _redeem_ticket(ticket, request=request)
     if fk_metadata is None:
         return _unauthorized()
 

@@ -116,7 +116,7 @@ def history_status(request):
 
     # 2) meta_id verilməyibsə, redeem ilə ticket → fk_metadata
     if meta_id is None and ticket:
-        meta_id = _redeem_ticket(ticket)  # valid deyilsə None qaytaracaq
+        meta_id = _redeem_ticket(ticket, request=request)  # valid deyilsə None qaytaracaq
 
     # Cavab skeleti
     out = {

@@ -328,7 +328,7 @@ def attach_list_by_ticket(request):
     ticket = (request.GET.get("ticket") or "").strip()
     if not ticket:
         return HttpResponseBadRequest("ticket tələb olunur.")
-    meta_id = _redeem_ticket(ticket)
+    meta_id = _redeem_ticket(ticket, request=request)
     if meta_id is None:
         return _unauthorized()
 
@@ -589,7 +589,7 @@ def attach_geojson_by_ticket(request):
     req_crs = (request.GET.get("crs") or "auto").lower()
     if not ticket:
         return HttpResponseBadRequest("ticket tələb olunur.")
-    meta_id = _redeem_ticket(ticket)
+    meta_id = _redeem_ticket(ticket, request=request)
     if meta_id is None:
         return _unauthorized()
 

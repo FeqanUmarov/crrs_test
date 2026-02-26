@@ -196,7 +196,7 @@ def soft_delete_gis_by_ticket(request):
     if not ticket:
         return HttpResponseBadRequest("ticket is required")
 
-    meta_id = _redeem_ticket(ticket)
+    meta_id = _redeem_ticket(ticket, request=request)
     if meta_id is None:
         return _unauthorized()
 
