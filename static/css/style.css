@@ -447,12 +447,12 @@ body, button, input, select, textarea {
   background:#fff;
   color:#111827;
 
-  display:flex;              /* grid də olar, flex optik baxımdan stabil olur */
+  display:flex;
   align-items:center;
   justify-content:center;
 
-  font-size:18px;            /* 18-20 arası yoxla */
-  line-height:1;             /* ✅ ən vacib düzəliş */
+  font-size:18px;
+  line-height:1;
   font-weight:700;
   text-align:center;
   cursor: pointer;

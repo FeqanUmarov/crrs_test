@@ -132,7 +132,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ======================
 # External service configs
 # ======================
-NODE_REDEEM_URL          = env("NODE_REDEEM_URL", "http://10.11.1.73:8080/api/requests/handoff/redeem")
+NODE_REDEEM_URL          = env("NODE_REDEEM_URL", "")
 NODE_REDEEM_METHOD       = env("NODE_REDEEM_METHOD", "FORM")           # FORM | JSON | GET
 NODE_REDEEM_TIMEOUT      = env("NODE_REDEEM_TIMEOUT", "8", cast=int)
 NODE_REDEEM_REQUIRE_TOKEN= env_bool("NODE_REDEEM_REQUIRE_TOKEN", True) # token mütləq olsun

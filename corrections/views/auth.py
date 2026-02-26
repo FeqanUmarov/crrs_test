@@ -38,11 +38,10 @@ def _redeem_ticket_with_token(ticket: str):
     Node redeem-dən həm fk_metadata (id), həm də token qaytarır.
     Token yoxdursa və ya vaxtı keçibsə -> (None, None).
     """
-    url = getattr(
-        settings,
-        "NODE_REDEEM_URL",
-        "http://10.11.1.73:8080/api/requests/handoff/redeem",
-    ).rstrip("/")
+    url = str(getattr(settings, "NODE_REDEEM_URL", "") or "").strip().rstrip("/")
+    if not url:
+        logger.error("NODE_REDEEM_URL is empty; set it in .env")
+        return None, None
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
     bearer = getattr(settings, "NODE_REDEEM_BEARER", None)
     headers = {"Accept": "application/json"}
@@ -172,11 +171,10 @@ def _redeem_ticket(ticket: str) -> Optional[int]:
     if not ticket:
         return None
 
-    url = getattr(
-        settings,
-        "NODE_REDEEM_URL",
-        "http://10.11.1.73:8080/api/requests/handoff/redeem",
-    ).rstrip("/")
+    url = str(getattr(settings, "NODE_REDEEM_URL", "") or "").strip().rstrip("/")
+    if not url:
+        logger.error("NODE_REDEEM_URL is empty; set it in .env")
+        return None
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
     prefer = (getattr(settings, "NODE_REDEEM_METHOD", "FORM") or "FORM").upper()
 
