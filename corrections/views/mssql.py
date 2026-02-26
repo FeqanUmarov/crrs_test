@@ -118,11 +118,12 @@ def _mssql_fetch_request(row_id: int) -> Optional[Dict[str, Any]]:
             )
             cols = {r[0] for r in cur.fetchall()}
             idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
+            object_col = "OBJECT_ID" if "OBJECT_ID" in cols else ("OBJECTID" if "OBJECTID" in cols else None)
             if not idcol:
                 print("MSSQL: ID sütunu tapılmadı. Mövcud sütunlar:", cols)
                 return None
 
-            schema = getattr(settings, "MSSQL_SCHEMA", "dbo")
+            schema = getattr(settings, "MSSQL_OBJECTID_SCHEMA", getattr(settings, "MSSQL_SCHEMA", "dbo"))
             sql = f"SELECT TOP 1 * FROM {schema}.TBL_REQUEST_REG WHERE {idcol} = ?"
             cur.execute(sql, (int(row_id),))
             row = cur.fetchone()
@@ -206,10 +207,10 @@ def _mssql_set_objectid(row_id: int, gis_id: int) -> bool:
             idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
             if not idcol:
                 raise RuntimeError("TBL_REQUEST_REG üçün ID kolonu (ROW_ID/ROWID/ID) tapılmadı.")
-            if "OBJECTID" not in cols:
-                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECTID kolonu tapılmadı.")
+            if not object_col:
+                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECT_ID/OBJECTID kolonu tapılmadı.")
 
-            sql = f"UPDATE {schema}.TBL_REQUEST_REG SET OBJECTID = ? WHERE {idcol} = ?"
+            sql = f"UPDATE {schema}.TBL_REQUEST_REG SET {object_col} = ? WHERE {idcol} = ?"
             cur.execute(sql, (int(gis_id), int(row_id)))
             cn.commit()
             return True
@@ -223,7 +224,7 @@ def _mssql_get_objectid(row_id: int) -> Optional[int]:
     try:
         with _mssql_connect() as cn:
             cur = cn.cursor()
-            schema = getattr(settings, "MSSQL_SCHEMA", "dbo")
+            schema = getattr(settings, "MSSQL_OBJECTID_SCHEMA", getattr(settings, "MSSQL_SCHEMA", "dbo"))
 
             cur.execute(
                 """
@@ -236,12 +237,13 @@ def _mssql_get_objectid(row_id: int) -> Optional[int]:
             cols = {r[0] for r in cur.fetchall()}
 
             idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
+            object_col = "OBJECT_ID" if "OBJECT_ID" in cols else ("OBJECTID" if "OBJECTID" in cols else None)
             if not idcol:
                 raise RuntimeError("TBL_REQUEST_REG üçün ID kolonu (ROW_ID/ROWID/ID) tapılmadı.")
-            if "OBJECTID" not in cols:
-                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECTID kolonu tapılmadı.")
+            if not object_col:
+                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECT_ID/OBJECTID kolonu tapılmadı.")
 
-            sql = f"SELECT TOP 1 OBJECTID FROM {schema}.TBL_REQUEST_REG WHERE {idcol} = ?"
+            sql = f"SELECT TOP 1 {object_col} FROM {schema}.TBL_REQUEST_REG WHERE {idcol} = ?"
             cur.execute(sql, (int(row_id),))
             row = cur.fetchone()
             if not row:
@@ -283,7 +285,7 @@ def _mssql_clear_objectid(row_id: int) -> bool:
     try:
         with _mssql_connect() as cn:
             cur = cn.cursor()
-            schema = getattr(settings, "MSSQL_SCHEMA", "dbo")
+            schema = getattr(settings, "MSSQL_OBJECTID_SCHEMA", getattr(settings, "MSSQL_SCHEMA", "dbo"))
 
             # Sütunları yoxla
             cur.execute(
@@ -297,10 +299,11 @@ def _mssql_clear_objectid(row_id: int) -> bool:
             cols = {r[0] for r in cur.fetchall()}
 
             idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
+            object_col = "OBJECT_ID" if "OBJECT_ID" in cols else ("OBJECTID" if "OBJECTID" in cols else None)
             if not idcol:
                 raise RuntimeError("TBL_REQUEST_REG üçün ID kolonu (ROW_ID/ROWID/ID) tapılmadı.")
-            if "OBJECTID" not in cols:
-                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECTID kolonu tapılmadı.")
+            if not object_col:
+                raise RuntimeError("TBL_REQUEST_REG cədvəlində OBJECT_ID/OBJECTID kolonu tapılmadı.")
 
             sql = f"UPDATE {schema}.TBL_REQUEST_REG SET OBJECTID = NULL WHERE {idcol} = ?"
             cur.execute(sql, (int(row_id),))

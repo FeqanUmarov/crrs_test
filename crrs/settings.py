@@ -159,6 +159,7 @@ MSSQL_ENCRYPT    = env_bool('MSSQL_ENCRYPT',    env('CRRS_MSSQL_ENCRYPT',  "fals
 MSSQL_TRUST_CERT = env_bool('MSSQL_TRUST_CERT', env('CRRS_MSSQL_TRUST_CERT', "true"))
 MSSQL_TIMEOUT    = env('MSSQL_TIMEOUT',    env('CRRS_MSSQL_TIMEOUT',    "5"), cast=int)
 MSSQL_SCHEMA     = env('MSSQL_SCHEMA', 'dbo')
+MSSQL_OBJECTID_SCHEMA = env('MSSQL_OBJECTID_SCHEMA', 'original')
 
 # ======================
 # ATTACH / SMB konfiqurasiyası (hamısı .env-dən)
