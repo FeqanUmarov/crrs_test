@@ -326,7 +326,31 @@ def _get_status_id_from_row(row: Optional[Dict[str, Any]]) -> Optional[int]:
 
 
 def _is_edit_allowed_for_fk(meta_id: int) -> Tuple[bool, Optional[int]]:
-    details = _mssql_fetch_request(int(meta_id))
-    sid = _get_status_id_from_row(details)
-    
+    sid = None
+    schema = getattr(settings, "MSSQL_STATUS_SCHEMA", "original")
+
+    try:
+        with _mssql_connect() as cn:
+            cur = cn.cursor()
+            cur.execute(
+                """
+                SELECT UPPER(COLUMN_NAME)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'TBL_REQUEST_REG'
+            """,
+                (schema,),
+            )
+            cols = {r[0] for r in cur.fetchall()}
+            idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
+            if not idcol or "STATUS_ID" not in cols:
+                return False, None
+
+            cur.execute(f"SELECT TOP 1 STATUS_ID FROM {schema}.TBL_REQUEST_REG WHERE {idcol} = ?", (int(meta_id),))
+            row = cur.fetchone()
+            if row and row[0] is not None:
+                sid = int(row[0])
+    except Exception:
+        details = _mssql_fetch_request(int(meta_id))
+        sid = _get_status_id_from_row(details)
+
     return (sid in (15, 99)), sid

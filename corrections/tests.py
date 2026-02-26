@@ -2,6 +2,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, override_settings
 
 from corrections.views.auth import _redeem_ticket_with_token
+from corrections.views.mssql import _is_edit_allowed_for_fk
 
 
 class DummyResponse:
@@ -91,3 +92,61 @@ class RedeemWithTokenTests(SimpleTestCase):
         self.assertEqual((fk, tok), (11, "jwt"))
         called_headers = mock_post.call_args.kwargs["headers"]
         self.assertEqual(called_headers["Authorization"], "Bearer live-user-token")
+
+class _FakeCursor:
+    def __init__(self, columns, status_row):
+        self.columns = columns
+        self.status_row = status_row
+        self._last_sql = ''
+
+    def execute(self, sql, params=None):
+        self._last_sql = sql
+
+    def fetchall(self):
+        if 'INFORMATION_SCHEMA.COLUMNS' in self._last_sql:
+            return [(c,) for c in self.columns]
+        return []
+
+    def fetchone(self):
+        if 'SELECT TOP 1 STATUS_ID' in self._last_sql:
+            return self.status_row
+        return None
+
+
+class _FakeConn:
+    def __init__(self, columns, status_row):
+        self._cursor = _FakeCursor(columns, status_row)
+
+    def cursor(self):
+        return self._cursor
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class EditStatusRuleTests(SimpleTestCase):
+    @override_settings(MSSQL_STATUS_SCHEMA='original')
+    @patch('corrections.views.mssql._mssql_connect')
+    def test_allows_only_status_15_and_99_from_original_schema(self, mock_connect):
+        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(15,))
+        allowed, sid = _is_edit_allowed_for_fk(77)
+        self.assertEqual((allowed, sid), (True, 15))
+
+        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(99,))
+        allowed, sid = _is_edit_allowed_for_fk(77)
+        self.assertEqual((allowed, sid), (True, 99))
+
+        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(2,))
+        allowed, sid = _is_edit_allowed_for_fk(77)
+        self.assertEqual((allowed, sid), (False, 2))
+
+    @patch('corrections.views.mssql._mssql_connect', side_effect=RuntimeError('db down'))
+    @patch('corrections.views.mssql._mssql_fetch_request', return_value={'STATUS_ID': 15})
+    def test_falls_back_to_fetch_request_when_direct_query_fails(self, mock_fetch, mock_connect):
+        allowed, sid = _is_edit_allowed_for_fk(88)
+
+        self.assertEqual((allowed, sid), (True, 15))
+        mock_fetch.assert_called_once_with(88)
