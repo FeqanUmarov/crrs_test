@@ -192,7 +192,8 @@ def kateqoriya_name_by_ticket(request):
     except Exception as e:
         return JsonResponse({"ok": False, "error": f"redeem error: {e}"}, status=500)
 
-    tekuis_id = data.get("tekuisId")
+    redeem_data = data.get("data") if isinstance(data.get("data"), dict) else data
+    tekuis_id = redeem_data.get("tekuisId")
     if tekuis_id in (None, ""):
         return JsonResponse({"ok": False, "error": "tekuisId not found in redeem"}, status=404)
 
