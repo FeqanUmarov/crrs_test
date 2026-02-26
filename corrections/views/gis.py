@@ -53,7 +53,6 @@ def _soft_delete_tekuis_current(cur, meta_id):
 # ==========================
 # PostGIS insert (save)
 # ==========================
-@csrf_exempt
 @require_valid_ticket
 def save_polygon(request):
     if request.method != "POST":

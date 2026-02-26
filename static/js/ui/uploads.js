@@ -35,6 +35,11 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
     return true;
   }
 
+  function buildCsrfHeaders(){
+    const token = (typeof window.getCSRFToken === 'function' && window.getCSRFToken()) || '';
+    return token ? { 'X-CSRFToken': token } : {};
+  }
+
   async function uploadArchiveToBackend(file){
     if (!ensureEditAllowed()) return;
     if (!validateFileSize(file)) return;
@@ -45,7 +50,12 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
       fd.append('file', file);
       fd.append('ticket', ticket || '');
 
-      const resp = await fetch('/api/upload-shp/', { method: 'POST', body: fd });
+      const resp = await fetch('/api/upload-shp/', {
+        method: 'POST',
+        headers: buildCsrfHeaders(),
+        credentials: 'same-origin',
+        body: fd
+      });
       if (!resp.ok) {
         throw new Error((await resp.text()) || `HTTP ${resp.status}`);
       }
@@ -74,7 +84,12 @@ function setupUploadHandlers({ ticket, uploadLayerApi, updateAllSaveButtons } = 
       fd.append('crs', crs);
       fd.append('ticket', ticket || '');
 
-      const resp = await fetch('/api/upload-points/', { method: 'POST', body: fd });
+      const resp = await fetch('/api/upload-points/', {
+        method: 'POST',
+        headers: buildCsrfHeaders(),
+        credentials: 'same-origin',
+        body: fd
+      });
       if (!resp.ok) {
         throw new Error((await resp.text()) || `HTTP ${resp.status}`);
       }

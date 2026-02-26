@@ -7,7 +7,6 @@ from pathlib import Path
 
 import shapefile  # pyshp
 from django.http import HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from .auth import require_valid_ticket
 from .geo_utils import (
@@ -72,7 +71,6 @@ def _extract_archive_to_tmp(uploaded_bytes: bytes, filename: str) -> Path:
 # ==========================
 # Upload servisleri
 # ==========================
-@csrf_exempt
 @require_valid_ticket
 def upload_shp(request):
     if request.method != "POST":
@@ -117,7 +115,6 @@ def upload_shp(request):
                 pass
 
 
-@csrf_exempt
 @require_valid_ticket
 def upload_points(request):
     """

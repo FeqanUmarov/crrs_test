@@ -1101,7 +1101,12 @@ window.MainEditing.init = function initEditing(state = {}) {
       fd.append('ticket', state.PAGE_TICKET);
       if (crs) fd.append('crs', crs); // Backend CSV/TXT üçün coordinate_system sütununa insanoxunan dəyəri yazacaq
 
-      const resp = await fetch('/api/attach/upload/', { method: 'POST', body: fd });
+      const resp = await fetch('/api/attach/upload/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCSRFToken?.() || '' },
+        credentials: 'same-origin',
+        body: fd
+      });
       if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
       const data = await resp.json();
       return { ok:true, data };
@@ -1140,7 +1145,12 @@ window.MainEditing.init = function initEditing(state = {}) {
       try {
         const resp = await fetch('/api/save-polygon/', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept':'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept':'application/json',
+            'X-CSRFToken': getCSRFToken?.() || ''
+          },
+          credentials: 'same-origin',
           body: JSON.stringify({ wkt: wkt, ticket: state.PAGE_TICKET })
         });
 

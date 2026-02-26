@@ -13,7 +13,6 @@ from django.conf import settings
 from django.db import connection
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.utils.text import get_valid_filename
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 from pyproj import CRS, Transformer
 
@@ -247,7 +246,6 @@ def _find_attach_file(meta_id: int, name: str) -> Optional[Path]:
     return None
 
 
-@csrf_exempt
 def attach_upload(request):
     """
     POST multipart:
