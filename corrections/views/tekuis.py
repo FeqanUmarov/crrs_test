@@ -131,7 +131,7 @@ def tekuis_parcels_by_bbox(request):
                 props["SOURCE"] = "TEKUIS"
                 features.append({"type": "Feature", "geometry": mapping(geom), "properties": props})
 
-    print(f"[TEKUIS][BBOX] returned={len(features)} skipped={skipped} extent=({minx},{miny},{maxx},{maxy})")
+    logger.info("[TEKUIS][BBOX] returned=%s skipped=%s extent=(%s,%s,%s,%s)", len(features), skipped, minx, miny, maxx, maxy)
     return JsonResponse({"type": "FeatureCollection", "features": features}, safe=False)
 
 
@@ -224,8 +224,11 @@ def tekuis_parcels_by_geom(request):
         safe_wkts.append(s)
 
     if not safe_wkts:
-        print(
-            f"[TEKUIS][GEOM][input_sanitize] all invalid. empty={bad_empty}, curved={bad_curved}, parse={bad_parse}"
+        logger.warning(
+            "[TEKUIS][GEOM][input_sanitize] all invalid. empty=%s, curved=%s, parse=%s",
+            bad_empty,
+            bad_curved,
+            bad_parse,
         )
         return JsonResponse({"type": "FeatureCollection", "features": []}, safe=False)
 
@@ -237,7 +240,7 @@ def tekuis_parcels_by_geom(request):
             if (-180 <= minx <= 180 and -180 <= maxx <= 180 and -90 <= miny <= 90 and -90 <= maxy <= 90):
                 return 4326
         except Exception:
-            pass
+            logger.debug("[TEKUIS][GEOM] srid inference failed; fallback SRID istifadə olunacaq.", exc_info=True)
         return fallback
 
     srid_in = _infer_srid(safe_wkts, srid_in_payload)
@@ -365,7 +368,7 @@ def tekuis_parcels_by_geom(request):
                     try:
                         cur.setinputsizes(**{k: oracledb.DB_TYPE_CLOB for k in params if k.startswith("w")})
                     except Exception:
-                        pass
+                        logger.debug("[TEKUIS][GEOM] setinputsizes skipped for WKT chunk.", exc_info=True)
                     cur.execute(sql_wkt, params)
                     _consume_cursor(cur)
                 except oracledb.DatabaseError:
@@ -417,20 +420,31 @@ def tekuis_parcels_by_geom(request):
                                 ok = True
                             except Exception as e2:
                                 head = (w[:220] + "…") if len(w) > 220 else w
-                                print(
-                                    "[TEKUIS][GEOM] skipped one WKT due to SDE error.\n"
-                                    f"WKT head: {head}\nWKB fallback err: {str(e2)[:240]}"
+                                logger.warning(
+                                    "[TEKUIS][GEOM] skipped one WKT due to SDE error. WKT head: %s | WKB fallback err: %s",
+                                    head,
+                                    str(e2)[:240],
                                 )
                         if not ok:
                             continue
 
-    print(
-        f"[TEKUIS][GEOM] input_sanitized={len(safe_wkts)} dropped={bad_empty+bad_curved+bad_parse} "
-        f"(empty={bad_empty}, curved={bad_curved}, parse={bad_parse}) srid_in={srid_in} table_srid={table_srid} buf_m={buf_m}"
+    logger.info(
+        "[TEKUIS][GEOM] input_sanitized=%s dropped=%s (empty=%s, curved=%s, parse=%s) srid_in=%s table_srid=%s buf_m=%s",
+        len(safe_wkts),
+        bad_empty + bad_curved + bad_parse,
+        bad_empty,
+        bad_curved,
+        bad_parse,
+        srid_in,
+        table_srid,
+        buf_m,
     )
-    print(
-        f"[TEKUIS][GEOM] returned={len(features)} unique_rids={len(seen_rids)} "
-        f"skipped_out={out_skip_empty+out_skip_curved+out_skip_parse} tailfix={out_tailfix}"
+    logger.info(
+        "[TEKUIS][GEOM] returned=%s unique_rids=%s skipped_out=%s tailfix=%s",
+        len(features),
+        len(seen_rids),
+        out_skip_empty + out_skip_curved + out_skip_parse,
+        out_tailfix,
     )
 
     return JsonResponse({"type": "FeatureCollection", "features": features}, safe=False)
@@ -461,7 +475,7 @@ def _collect_attach_wkts_for_meta(meta_id: int, req_crs: str = "auto") -> List[s
     try:
         _smb_net_use()
     except Exception:
-        pass
+        logger.warning("[TEKUIS][ATTACH] smb net use failed for meta_id=%s", meta_id, exc_info=True)
 
     for aid, name, coord_label in rows:
         p = _find_attach_file(meta_id, name)
@@ -562,7 +576,7 @@ def _tekuis_features_from_wkts(wkt_list: List[str], srid: int, buf_m: float, lim
                 try:
                     cur.setinputsizes(**{bn: oracledb.DB_TYPE_CLOB for bn in bind_names})
                 except Exception:
-                    pass
+                    logger.debug("[TEKUIS][ATTACH] setinputsizes skipped for WKT chunk.", exc_info=True)
 
                 g_raw_sql = " \nUNION ALL\n".join([f"  SELECT :{bn} AS wkt FROM dual" for bn in bind_names])
 
@@ -658,7 +672,11 @@ def _tekuis_features_from_wkts(wkt_list: List[str], srid: int, buf_m: float, lim
                         skipped_parse += 1
                         if logged_parse_examples < 3:
                             head = (w[:280] + "…") if len(w) > 280 else w
-                            print(f"[TEKUIS][ATTACH][parse_error] sample WKT head:\n{head}\n---\n{e}\n")
+                            logger.warning(
+                                "[TEKUIS][ATTACH][parse_error] sample WKT head: %s | err: %s",
+                                head,
+                                str(e)[:240],
+                            )
                             logged_parse_examples += 1
                         continue
 
@@ -672,10 +690,16 @@ def _tekuis_features_from_wkts(wkt_list: List[str], srid: int, buf_m: float, lim
                             break
 
     skipped_total = skipped_empty + skipped_curved + skipped_parse
-    print(
-        f"[TEKUIS][ATTACH] returned={len(features)} unique_rids={len(seen_rids)} "
-        f"skipped_total={skipped_total} (empty={skipped_empty}, curved={skipped_curved}, parse={skipped_parse}) "
-        f"srid={srid} buf_m={buf_m}"
+    logger.info(
+        "[TEKUIS][ATTACH] returned=%s unique_rids=%s skipped_total=%s (empty=%s, curved=%s, parse=%s) srid=%s buf_m=%s",
+        len(features),
+        len(seen_rids),
+        skipped_total,
+        skipped_empty,
+        skipped_curved,
+        skipped_parse,
+        srid,
+        buf_m,
     )
     return features
 
@@ -705,7 +729,7 @@ def tekuis_parcels_by_attach_ticket(request):
     # Attach-lardan bütün geometriyaları topla
     wkt_list = _collect_attach_wkts_for_meta(meta_id, req_crs="auto")
     if not wkt_list:
-        print(f"[TEKUIS][ATTACH] no geometries found for meta_id={meta_id}")
+        logger.info("[TEKUIS][ATTACH] no geometries found for meta_id=%s", meta_id)
         return JsonResponse({"type": "FeatureCollection", "features": []}, safe=False)
 
     # TEKUIS parsellərini çək
@@ -758,7 +782,7 @@ def _guess_tekuis_id(props: dict):
             return int(str(val).strip())
         except Exception:
             # bəzən ROWID string ola bilər → skip
-            pass
+            logger.debug("[TEKUIS] _guess_tekuis_id: non-integer candidate skipped (%r)", val, exc_info=True)
     return None
 
 
@@ -960,7 +984,7 @@ def _meta_id_from_request(request):
             try:
                 return int(m)
             except Exception:
-                pass
+                logger.debug("[TEKUIS] invalid explicit meta_id skipped: %r", m, exc_info=True)
 
     # 2) Ticket-dən türet
     body = _json_body(request)

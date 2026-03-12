@@ -122,7 +122,7 @@ def _mssql_fetch_request(row_id: int) -> Optional[Dict[str, Any]]:
             idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
             object_col = "OBJECT_ID" if "OBJECT_ID" in cols else ("OBJECTID" if "OBJECTID" in cols else None)
             if not idcol:
-                print("MSSQL: ID sütunu tapılmadı. Mövcud sütunlar:", cols)
+                logger.warning("MSSQL: ID sütunu tapılmadı. Mövcud sütunlar: %s", cols)
                 return None
 
             schema = getattr(settings, "MSSQL_OBJECTID_SCHEMA", getattr(settings, "MSSQL_SCHEMA", "dbo"))
@@ -130,7 +130,7 @@ def _mssql_fetch_request(row_id: int) -> Optional[Dict[str, Any]]:
             cur.execute(sql, (int(row_id),))
             row = cur.fetchone()
             if not row:
-                print(f"MSSQL: Sətir tapılmadı ({idcol}={row_id})")
+                logger.info("MSSQL: Sətir tapılmadı (%s=%s)", idcol, row_id)
                 return None
 
             colnames = [d[0] for d in cur.description]
@@ -147,8 +147,10 @@ def _mssql_fetch_request(row_id: int) -> Optional[Dict[str, Any]]:
                         r = cur.fetchone()
                         if r and r[0]:
                             data["ORG_ID"] = r[0]
+                    except (TypeError, ValueError):
+                        logger.warning("MSSQL: ORG_ID çevrilə bilmədi: %r", org_id)
                     except Exception:
-                        pass
+                        logger.exception("MSSQL: ORG_ID enrichment failed (row_id=%s)", row_id)
 
                 re_type_id = data.get("RE_TYPE_ID")
                 if re_type_id is not None:
@@ -160,8 +162,11 @@ def _mssql_fetch_request(row_id: int) -> Optional[Dict[str, Any]]:
                         r = cur.fetchone()
                         if r and r[0]:
                             data["RE_TYPE_ID"] = r[0]
+
+                    except (TypeError, ValueError):
+                        logger.warning("MSSQL: RE_TYPE_ID çevrilə bilmədi: %r", re_type_id)
                     except Exception:
-                        pass
+                        logger.exception("MSSQL: RE_TYPE_ID enrichment failed (row_id=%s)", row_id)
 
                 re_cat_id = data.get("RE_CATEGORY_ID")
                 if re_cat_id is not None:
@@ -173,14 +178,16 @@ def _mssql_fetch_request(row_id: int) -> Optional[Dict[str, Any]]:
                         r = cur.fetchone()
                         if r and r[0]:
                             data["RE_CATEGORY_ID"] = r[0]
+                    except (TypeError, ValueError):
+                        logger.warning("MSSQL: RE_CATEGORY_ID çevrilə bilmədi: %r", re_cat_id)
                     except Exception:
-                        pass
+                        logger.exception("MSSQL: RE_CATEGORY_ID enrichment failed (row_id=%s)", row_id)
             except Exception:
-                pass
+                logger.exception("MSSQL: əlavə enrichment mərhələsində xəta (row_id=%s)", row_id)
 
             return _jsonify_values(data)
-    except Exception as e:
-        print("MSSQL error:", e)
+    except Exception:
+        logger.exception("MSSQL error in _mssql_fetch_request (row_id=%s)", row_id)
         return None
 
 
