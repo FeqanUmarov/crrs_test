@@ -73,6 +73,7 @@ def _extract_archive_to_tmp(uploaded_bytes: bytes, filename: str) -> Path:
 # ==========================
 @require_valid_ticket
 def upload_shp(request):
+    # API-only endpoint: ticket/JWT əsaslı inteqrasiya üçün CSRF middleware default davranışında qalır; @csrf_exempt istifadə edilmir.
     if request.method != "POST":
         return HttpResponseBadRequest("POST gözlənirdi.")
     f = request.FILES.get("file")
@@ -105,8 +106,8 @@ def upload_shp(request):
             features.append({"type": "Feature", "geometry": geom, "properties": props})
         fc = {"type": "FeatureCollection", "features": features}
         return JsonResponse(fc, safe=False)
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")
     finally:
         if tmpdir and tmpdir.exists():
             try:
@@ -117,6 +118,7 @@ def upload_shp(request):
 
 @require_valid_ticket
 def upload_points(request):
+    # API-only endpoint: session-cookie auth istifadəsi yoxdur, ona görə CSRF istisnası verilmədən mövcud ticket flow qorunur.
     """
     CSV/TXT oxu və WGS84-ə çevir. Prioritet:
       1) Sətirdə 'coordinate_system' sütunu varsa → onu istifadə et
@@ -206,5 +208,5 @@ def upload_points(request):
         fc = {"type": "FeatureCollection", "features": features}
         return JsonResponse(fc, safe=False)
 
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")

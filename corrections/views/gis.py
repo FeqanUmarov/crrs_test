@@ -3,7 +3,6 @@ from typing import List
 
 from django.db import connection, transaction
 from django.http import HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from shapely import wkt as shapely_wkt
 
@@ -99,7 +98,7 @@ def save_polygon(request):
                 },
                 status=409,
             )
-    except Exception as e:
+    except Exception:
         return JsonResponse(
             {"ok": False, "error": "Məlumat yoxlaması alınmadı, əməliyyat dayandırıldı."}, status=500
         )
@@ -185,13 +184,13 @@ def save_polygon(request):
             status=200,
         )
 
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")
 
 
-@csrf_exempt
 @require_POST
 def soft_delete_gis_by_ticket(request):
+    # Browser-origin endpoint: state-changing POST olmasına görə CSRF yoxlaması aktiv saxlanılır.
     ticket = request.GET.get("ticket") or request.POST.get("ticket")
     if not ticket:
         return HttpResponseBadRequest("ticket is required")

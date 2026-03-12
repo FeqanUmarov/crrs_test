@@ -188,8 +188,8 @@ def _attach_base_dir_for_write() -> Path:
 def debug_attach(request):
     try:
         chosen = str(_attach_base_dir_for_write())
-    except Exception as e:
-        chosen = f"ERROR: {e}"
+    except Exception:
+        chosen = "ERROR"
     return JsonResponse(
         {
             "ATTACH_BASE_DIR": getattr(settings, "ATTACH_BASE_DIR", None),
@@ -247,6 +247,7 @@ def _find_attach_file(meta_id: int, name: str) -> Optional[Path]:
 
 
 def attach_upload(request):
+    # API-only endpoint: ticket body parametri və JWT parse ilə işləyir; CSRF istisnası verilmədən saxlanılır.
     """
     POST multipart:
       - file: .zip | .csv | .txt
@@ -319,8 +320,8 @@ def attach_upload(request):
                 "coordinate_system": coordinate_system,
             }
         )
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")
 
 
 @require_GET
@@ -371,8 +372,8 @@ def attach_list_by_ticket(request):
                 }
             )
         return JsonResponse({"ok": True, "meta_id": meta_id, "items": items})
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")
 
 
 # ---- ZIP (SHP) üçün GEOJSON çevirmə ----
@@ -579,8 +580,8 @@ def attach_geojson(request, attach_id: int):
             props.setdefault("attach_name", name)
 
         return JsonResponse(fc, safe=False)
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")
 
 
 @require_GET
@@ -651,8 +652,8 @@ def attach_geojson_by_ticket(request):
                 out_features.append(ftr)
 
         return JsonResponse({"type": "FeatureCollection", "features": out_features}, safe=False)
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        return HttpResponseBadRequest("Əməliyyat zamanı xəta baş verdi.")
 
 
 __all__ = [
