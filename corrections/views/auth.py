@@ -228,18 +228,18 @@ def _parse_jwt_user(tok: str) -> tuple[Optional[int], Optional[str]]:
     except Exception:
         return None, None
 
-    def _resolve_identity_from_token(tok: str) -> tuple[Optional[int], Optional[str]]:
-        """
-        Signature verify edilməmiş JWT payload identity üçün etibarlı deyil.
+def _resolve_identity_from_token(tok: str) -> tuple[Optional[int], Optional[str]]:
+    """
+    Signature verify edilməmiş JWT payload identity üçün etibarlı deyil.
 
-        Phase-1 hardening: default olaraq user_id/full_name None qaytarılır ki,
-        client-dən dəyişdirilə bilən claim-lər DB audit sahələrinə yazılmasın.
-        Keçid dövründə köhnə davranışa müvəqqəti qayıtmaq üçün
-        ALLOW_UNVERIFIED_JWT_IDENTITY=true aktiv edilə bilər.
-        """
-        if getattr(settings, "ALLOW_UNVERIFIED_JWT_IDENTITY", False):
-            return _parse_jwt_user(tok)
-        return None, None
+    Phase-1 hardening: default olaraq user_id/full_name None qaytarılır ki,
+    client-dən dəyişdirilə bilən claim-lər DB audit sahələrinə yazılmasın.
+    Keçid dövründə köhnə davranışa müvəqqəti qayıtmaq üçün
+    ALLOW_UNVERIFIED_JWT_IDENTITY=true aktiv edilə bilər.
+    """
+    if getattr(settings, "ALLOW_UNVERIFIED_JWT_IDENTITY", False):
+        return _parse_jwt_user(tok)
+    return None, None
 
 
 def require_valid_ticket(view_fn):
