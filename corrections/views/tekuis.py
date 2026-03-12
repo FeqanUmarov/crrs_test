@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import zlib
 from typing import List, Optional
@@ -24,6 +25,8 @@ from .mssql import (
 from corrections.tekuis_topology_db import get_validation_state
 from corrections.tekuis_topology_service import run_tekuis_validation
 from corrections.tekuis_validation import ignore_gap, validate_tekuis
+
+logger = logging.getLogger(__name__)
 
 TEKUIS_ATTRS = (
     "ID",
@@ -1234,11 +1237,12 @@ def save_tekuis_parcels(request):
             },
             status=200,
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("save_tekuis_parcels failed")
         if PYODBC_AVAILABLE and mssql_objectid_updated:
             mssql_compensated = _mssql_restore_objectid(int(meta_id), previous_objectid)
         return JsonResponse(
-            {"ok": False, "error": str(e), "mssql_compensated": bool(mssql_compensated)},
+            {"ok": False, "error": "Daxili server xətası.", "mssql_compensated": bool(mssql_compensated)},
             status=500,
         )
 

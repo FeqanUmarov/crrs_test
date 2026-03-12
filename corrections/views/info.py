@@ -1,4 +1,5 @@
 import json
+import logging
 
 import requests
 from django.conf import settings
@@ -9,6 +10,9 @@ from django.views.decorators.http import require_GET
 from .auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
 from .mssql import _filter_request_fields, _is_edit_allowed_for_fk, _mssql_fetch_request
 from .tekuis import _has_active_tekuis
+
+logger = logging.getLogger(__name__)
+
 
 
 def _resolve_fk_by_wkt(wkt: str):
@@ -94,8 +98,9 @@ def layers_by_ticket(request):
             )
         fc = {"type": "FeatureCollection", "features": features, "count": len(features), "fk_metadata": fk_metadata}
         return JsonResponse(fc, safe=False)
-    except Exception as e:
-        return HttpResponseBadRequest(f"Xəta: {e}")
+    except Exception:
+        logger.exception("layers_by_ticket failed")
+        return HttpResponseBadRequest("Xəta baş verdi.")
 
 
 def info_by_geom(request):
@@ -154,8 +159,9 @@ def kateqoriya_name_by_tekuis_code(request):
         if not row or row[0] in (None, ""):
             return JsonResponse({"ok": False, "code": code}, status=404)
         return JsonResponse({"ok": True, "code": code, "name": row[0]})
-    except Exception as e:
-        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+    except Exception:
+        logger.exception("kateqoriya_name_by_tekuis_code failed")
+        return JsonResponse({"ok": False, "error": "Daxili server xətası."}, status=500)
 
 
 @require_GET
@@ -189,8 +195,9 @@ def kateqoriya_name_by_ticket(request):
         if resp.status_code != 200:
             return JsonResponse({"ok": False, "error": f"redeem HTTP {resp.status_code}"}, status=resp.status_code)
         data = resp.json()
-    except Exception as e:
-        return JsonResponse({"ok": False, "error": f"redeem error: {e}"}, status=500)
+    except Exception:
+        logger.exception("kateqoriya_name_by_ticket redeem failed")
+        return JsonResponse({"ok": False, "error": "redeem error"}, status=500)
 
     tekuis_id = data.get("tekuisId")
     if tekuis_id in (None, ""):
@@ -211,8 +218,9 @@ def kateqoriya_name_by_ticket(request):
                 [code_str],
             )
             row = cur.fetchone()
-    except Exception as e:
-        return JsonResponse({"ok": False, "error": f"DB error: {e}"}, status=500)
+    except Exception:
+        logger.exception("kateqoriya_name_by_ticket DB lookup failed")
+        return JsonResponse({"ok": False, "error": "DB error"}, status=500)
 
     if not row or not row[0]:
         return JsonResponse({"ok": False, "error": "kateqoriya not found for code", "code": code_str}, status=404)
