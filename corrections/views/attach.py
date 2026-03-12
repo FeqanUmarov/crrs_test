@@ -16,7 +16,7 @@ from django.utils.text import get_valid_filename
 from django.views.decorators.http import require_GET
 from pyproj import CRS, Transformer
 
-from .auth import _parse_jwt_user, _redeem_ticket, _redeem_ticket_with_token, _unauthorized
+from .auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized
 from .geo_utils import (
     _build_transformer_for_points,
     _canonize_crs_value,
@@ -270,7 +270,9 @@ def attach_upload(request):
     if not (fk and tok):
         return _unauthorized()
     meta_id = fk
-    uid, ufn = _parse_jwt_user(tok)
+    # Phase-1 hardening: JWT imzası ayrıca verify edilmədiyi üçün payload identity-si istifadə olunmur.
+    # Bu endpoint üçün audit sahələrinə yalnız təhlükəsiz fallback (None) yazılır.
+    uid, ufn = None, None
 
     allowed, sid = _is_edit_allowed_for_fk(meta_id)
     if not allowed:

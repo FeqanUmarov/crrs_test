@@ -1,7 +1,8 @@
 from unittest.mock import patch
 from django.test import SimpleTestCase, override_settings
+from django.test.client import RequestFactory
 
-from corrections.views.auth import _redeem_ticket_with_token
+from corrections.views.auth import _redeem_ticket_with_token, require_valid_ticket
 from corrections.views.mssql import _is_edit_allowed_for_fk
 
 
@@ -150,3 +151,43 @@ class EditStatusRuleTests(SimpleTestCase):
 
         self.assertEqual((allowed, sid), (True, 15))
         mock_fetch.assert_called_once_with(88)
+
+
+class JwtIdentityHardeningTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @override_settings(ALLOW_UNVERIFIED_JWT_IDENTITY=False)
+    @patch("corrections.views.auth._redeem_ticket_with_token", return_value=(12, "a.b.c"))
+    def test_require_valid_ticket_does_not_trust_unverified_claims_by_default(self, _mock_redeem):
+        @require_valid_ticket
+        def _view(request):
+            return {
+                "uid": getattr(request, "user_id_from_token", None),
+                "full_name": getattr(request, "user_full_name_from_token", None),
+                "fk": getattr(request, "fk_metadata", None),
+            }
+
+        request = self.factory.get("/dummy", {"ticket": "abc"})
+        data = _view(request)
+
+        self.assertEqual(data["fk"], 12)
+        self.assertIsNone(data["uid"])
+        self.assertIsNone(data["full_name"])
+
+    @override_settings(ALLOW_UNVERIFIED_JWT_IDENTITY=True)
+    @patch("corrections.views.auth._redeem_ticket_with_token", return_value=(12, "a.b.c"))
+    @patch("corrections.views.auth._parse_jwt_user", return_value=(55, "Test User"))
+    def test_require_valid_ticket_keeps_legacy_mode_behind_flag(self, _mock_parse, _mock_redeem):
+        @require_valid_ticket
+        def _view(request):
+            return (
+                getattr(request, "user_id_from_token", None),
+                getattr(request, "user_full_name_from_token", None),
+            )
+
+        request = self.factory.get("/dummy", {"ticket": "abc"})
+        uid, full_name = _view(request)
+
+        self.assertEqual(uid, 55)
+        self.assertEqual(full_name, "Test User")

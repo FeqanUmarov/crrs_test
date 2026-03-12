@@ -198,6 +198,10 @@ def _parse_jwt_user(tok: str) -> tuple[Optional[int], Optional[str]]:
     """
     JWT payload-ını imza yoxlamadan oxuyur və (user_id, full_name) qaytarır.
     Token payload nümunəsi: {"id": 2, "fullName": "..." , ...}
+
+    Təhlükəsizlik qeydi:
+    Bu funksiya yalnız transitional mərhələdə diaqnostika/kompat üçün saxlanılır.
+    Buradan çıxan dəyərlər etibarlı identity hesab olunmamalıdır.
     """
     try:
         parts = (tok or "").split(".")
@@ -224,6 +228,19 @@ def _parse_jwt_user(tok: str) -> tuple[Optional[int], Optional[str]]:
     except Exception:
         return None, None
 
+    def _resolve_identity_from_token(tok: str) -> tuple[Optional[int], Optional[str]]:
+        """
+        Signature verify edilməmiş JWT payload identity üçün etibarlı deyil.
+
+        Phase-1 hardening: default olaraq user_id/full_name None qaytarılır ki,
+        client-dən dəyişdirilə bilən claim-lər DB audit sahələrinə yazılmasın.
+        Keçid dövründə köhnə davranışa müvəqqəti qayıtmaq üçün
+        ALLOW_UNVERIFIED_JWT_IDENTITY=true aktiv edilə bilər.
+        """
+        if getattr(settings, "ALLOW_UNVERIFIED_JWT_IDENTITY", False):
+            return _parse_jwt_user(tok)
+        return None, None
+
 
 def require_valid_ticket(view_fn):
     @wraps(view_fn)
@@ -235,8 +252,9 @@ def require_valid_ticket(view_fn):
 
         request.fk_metadata = fk  # metadata id
         request.jwt_token = tok  # xammal JWT
-        # token-dən user məlumatını çıxart
-        uid, fname = _parse_jwt_user(tok)
+        # İmza yoxlanmadan JWT claim-lərini trust etmirik.
+        # Beləliklə audit user_id/full_name sahələrinə spoofed dəyər yazılmır.
+        uid, fname = _resolve_identity_from_token(tok)
         request.user_id_from_token = uid
         request.user_full_name_from_token = fname
 
