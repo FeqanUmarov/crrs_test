@@ -2,8 +2,8 @@
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from corrections.tekuis_topology_db import get_validation_state
-from corrections.views.tekuis import _has_active_tekuis
+from corrections.services.tekuis.topology_db import get_validation_state
+from corrections.views.tekuis.tekuis import _has_active_tekuis
 
 from corrections.views import _redeem_ticket_with_token
 

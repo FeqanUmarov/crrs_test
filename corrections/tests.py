@@ -2,8 +2,8 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, override_settings
 from django.test.client import RequestFactory
 
-from corrections.views.auth import _redeem_ticket_with_token, require_valid_ticket
-from corrections.views.mssql import _is_edit_allowed_for_fk
+from corrections.views.common.auth import _redeem_ticket_with_token, require_valid_ticket
+from corrections.views.common.mssql import _is_edit_allowed_for_fk
 
 
 class DummyResponse:
@@ -23,7 +23,7 @@ class RedeemWithTokenTests(SimpleTestCase):
         NODE_REDEEM_METHOD="FORM",
         NODE_REDEEM_AUTH_HEADER="Bearer custom-token",
     )
-    @patch("corrections.views.auth.requests.post")
+    @patch("corrections.views.common.auth.requests.post")
     def test_uses_custom_auth_header_and_parses_success(self, mock_post):
         mock_post.return_value = DummyResponse(
             status_code=200,
@@ -42,7 +42,7 @@ class RedeemWithTokenTests(SimpleTestCase):
         NODE_REDEEM_AUTH_HEADER="",
         NODE_REDEEM_BEARER="fallback-secret",
     )
-    @patch("corrections.views.auth.requests.post")
+    @patch("corrections.views.common.auth.requests.post")
     def test_falls_back_to_node_redeem_bearer_setting(self, mock_post):
         mock_post.return_value = DummyResponse(
             status_code=200,
@@ -61,8 +61,8 @@ class RedeemWithTokenTests(SimpleTestCase):
         NODE_REDEEM_AUTH_HEADER="",
         NODE_REDEEM_BEARER="",
     )
-    @patch("corrections.views.auth.requests.get")
-    @patch("corrections.views.auth.requests.post")
+    @patch("corrections.views.common.auth.requests.get")
+    @patch("corrections.views.common.auth.requests.post")
     def test_returns_none_when_every_attempt_is_unauthorized(self, mock_post, mock_get):
         mock_post.return_value = DummyResponse(status_code=401, text="unauthorized")
         mock_get.return_value = DummyResponse(status_code=401, text="unauthorized")
@@ -77,7 +77,7 @@ class RedeemWithTokenTests(SimpleTestCase):
         NODE_REDEEM_AUTH_HEADER="",
         NODE_REDEEM_BEARER="",
     )
-    @patch("corrections.views.auth.requests.post")
+    @patch("corrections.views.common.auth.requests.post")
     def test_prefers_incoming_authorization_header_from_request(self, mock_post):
         mock_post.return_value = DummyResponse(
             status_code=200,
@@ -130,7 +130,7 @@ class _FakeConn:
 
 class EditStatusRuleTests(SimpleTestCase):
     @override_settings(MSSQL_STATUS_SCHEMA='original')
-    @patch('corrections.views.mssql._mssql_connect')
+    @patch('corrections.views.common.mssql._mssql_connect')
     def test_allows_only_status_15_and_99_from_original_schema(self, mock_connect):
         mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(15,))
         allowed, sid = _is_edit_allowed_for_fk(77)
@@ -144,8 +144,8 @@ class EditStatusRuleTests(SimpleTestCase):
         allowed, sid = _is_edit_allowed_for_fk(77)
         self.assertEqual((allowed, sid), (False, 2))
 
-    @patch('corrections.views.mssql._mssql_connect', side_effect=RuntimeError('db down'))
-    @patch('corrections.views.mssql._mssql_fetch_request', return_value={'STATUS_ID': 15})
+    @patch('corrections.views.common.mssql._mssql_connect', side_effect=RuntimeError('db down'))
+    @patch('corrections.views.common.mssql._mssql_fetch_request', return_value={'STATUS_ID': 15})
     def test_falls_back_to_fetch_request_when_direct_query_fails(self, mock_fetch, mock_connect):
         allowed, sid = _is_edit_allowed_for_fk(88)
 
@@ -158,7 +158,7 @@ class JwtIdentityHardeningTests(SimpleTestCase):
         self.factory = RequestFactory()
 
     @override_settings(ALLOW_UNVERIFIED_JWT_IDENTITY=False)
-    @patch("corrections.views.auth._redeem_ticket_with_token", return_value=(12, "a.b.c"))
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(12, "a.b.c"))
     def test_require_valid_ticket_does_not_trust_unverified_claims_by_default(self, _mock_redeem):
         @require_valid_ticket
         def _view(request):
@@ -176,8 +176,8 @@ class JwtIdentityHardeningTests(SimpleTestCase):
         self.assertIsNone(data["full_name"])
 
     @override_settings(ALLOW_UNVERIFIED_JWT_IDENTITY=True)
-    @patch("corrections.views.auth._redeem_ticket_with_token", return_value=(12, "a.b.c"))
-    @patch("corrections.views.auth._parse_jwt_user", return_value=(55, "Test User"))
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(12, "a.b.c"))
+    @patch("corrections.views.common.auth._parse_jwt_user", return_value=(55, "Test User"))
     def test_require_valid_ticket_keeps_legacy_mode_behind_flag(self, _mock_parse, _mock_redeem):
         @require_valid_ticket
         def _view(request):

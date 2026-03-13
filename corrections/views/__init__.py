@@ -1,8 +1,8 @@
-from .auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
-from .attach import attach_geojson, attach_geojson_by_ticket, attach_list_by_ticket, attach_upload
-from .debug import debug_mssql, debug_odbc
-from .gis import save_polygon, soft_delete_gis_by_ticket
-from .info import (
+from .common.auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
+from .features.attach import attach_geojson, attach_geojson_by_ticket, attach_list_by_ticket, attach_upload
+from .common.debug import debug_mssql, debug_odbc
+from .features.gis import save_polygon, soft_delete_gis_by_ticket
+from .features.info import (
     attributes_options,
     info_by_fk,
     info_by_geom,
@@ -12,7 +12,7 @@ from .info import (
     tekuis_exists_by_ticket,
     ticket_status,
 )
-from .tekuis import (
+from .tekuis.tekuis import (
     ignore_tekuis_gap,
     save_tekuis_parcels,
     tekuis_parcels_by_attach_ticket,
@@ -22,7 +22,7 @@ from .tekuis import (
     tekuis_validate_view,
     validate_tekuis_parcels,
 )
-from .uploads import upload_points, upload_shp
+from .features.uploads import upload_points, upload_shp
 
 __all__ = [
     "_redeem_ticket",
