@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 from shapely import wkt as shapely_wkt
 
-from .geo_utils import _clean_wkt_text
+from ..common.geo_utils import _clean_wkt_text
 
 NUM_RE = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?"
 TYPE_RE = r"(?:POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)"
@@ -85,4 +85,5 @@ def load_output_geom(wkt: str):
     w2 = clip_tail(wkt)
     tail_fixed = w2 != wkt
     w2 = normalize_wkt_remove_m_dims(w2)
+    
     return shapely_wkt.loads(w2), tail_fixed
