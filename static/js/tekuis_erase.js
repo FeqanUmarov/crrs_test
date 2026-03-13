@@ -478,7 +478,15 @@ async function _addTicketFeaturesToTekuis(tekuisSrc, ticketFeatures, gjFmt, temp
   /* ------------------------------
    * Əsas əməliyyat
    * ------------------------------ */
+  let _eraseFlowInProgress = false;
+
   async function runEraseFlow(){
+    if (_eraseFlowInProgress) {
+      window.Swal?.fire('Info', 'Kəsmə əməliyyatı artıq icra olunur. Zəhmət olmasa bitməsini gözləyin.', 'info');
+      return;
+    }
+
+    _eraseFlowInProgress = true;
     try{
       const gjFmt = new ol.format.GeoJSON();
       const tekuisSrc = _getTekuisSource();
@@ -659,12 +667,18 @@ async function _addTicketFeaturesToTekuis(tekuisSrc, ticketFeatures, gjFmt, temp
       };
       window._TEKUIS_ERASE_LAST = _result;
 
+      // Əməliyyatdan sonra cari vəziyyəti LS-ə yazırıq ki,
+      // sonradan yenidən yükləmələrdə köhnə TEKUİS vəziyyəti qayıtmasın.
+      try { window.saveTekuisToLS?.(); } catch (_) {}
+
       const msg = `Kəsildi: ${modified}, Tam silindi: ${removed}${skipped?`, Ötüldü: ${skipped}`:''}. Əlavə edildi: ${addedCount}. Qalan: ${remain}.`;
       (window.Swal ? Swal.fire('Hazırdır', msg, 'success') : alert(msg));
 
     }catch(err){
       console.error(err);
       (window.Swal ? Swal.fire('Xəta', err?.message || 'Əməliyyat alınmadı.', 'error') : alert('Xəta: '+(err?.message || err)));
+    } finally {
+      _eraseFlowInProgress = false;
     }
   }
 
