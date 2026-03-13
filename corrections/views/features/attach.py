@@ -16,8 +16,8 @@ from django.utils.text import get_valid_filename
 from django.views.decorators.http import require_GET
 from pyproj import CRS, Transformer
 
-from .auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized
-from .geo_utils import (
+from ..common.auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized
+from ..common.geo_utils import (
     _build_transformer_for_points,
     _canonize_crs_value,
     _decode_bytes_to_text,
@@ -30,7 +30,7 @@ from .geo_utils import (
     _shape_to_geojson_geometry,
     _sniff_dialect,
 )
-from .mssql import _as_bool, _is_edit_allowed_for_fk
+from ..common.mssql import _as_bool, _is_edit_allowed_for_fk
 
 
 # ==========================

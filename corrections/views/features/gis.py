@@ -6,9 +6,9 @@ from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from shapely import wkt as shapely_wkt
 
-from .auth import _redeem_ticket, _unauthorized, require_valid_ticket
-from .geo_utils import _clean_wkt_text, _payload_to_wkt_list
-from .mssql import _is_edit_allowed_for_fk, _mssql_clear_objectid
+from ..common.auth import _redeem_ticket, _unauthorized, require_valid_ticket
+from ..common.geo_utils import _clean_wkt_text, _payload_to_wkt_list
+from ..common.mssql import _is_edit_allowed_for_fk, _mssql_clear_objectid
 
 
 TEKUIS_PARCEL_TABLE = "public.tekuis_parcel"

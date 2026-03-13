@@ -8,8 +8,8 @@ from pathlib import Path
 import shapefile  # pyshp
 from django.http import HttpResponseBadRequest, JsonResponse
 
-from .auth import require_valid_ticket
-from .geo_utils import (
+from ..common.auth import require_valid_ticket
+from ..common.geo_utils import (
     _build_transformer_for_points,
     _canonize_crs_value,
     _decode_bytes_to_text,

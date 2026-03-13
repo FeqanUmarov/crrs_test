@@ -7,9 +7,9 @@ from django.db import connection
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
-from .auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
-from .mssql import _filter_request_fields, _is_edit_allowed_for_fk, _mssql_fetch_request
-from .tekuis import _has_active_tekuis
+from ..common.auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
+from ..common.mssql import _filter_request_fields, _is_edit_allowed_for_fk, _mssql_fetch_request
+from ..tekuis.tekuis import _has_active_tekuis
 
 logger = logging.getLogger(__name__)
 
