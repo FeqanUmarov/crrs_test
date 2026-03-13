@@ -22,9 +22,9 @@ from .mssql import (
     _mssql_restore_objectid,
     _mssql_set_objectid_with_retry,
 )
-from corrections.tekuis_topology_db import get_validation_state
-from corrections.tekuis_topology_service import run_tekuis_validation
-from corrections.tekuis_validation import ignore_gap, validate_tekuis
+from corrections.services.tekuis.topology_db import get_validation_state
+from corrections.services.tekuis.topology_service import run_tekuis_validation
+from corrections.services.tekuis.validation import ignore_gap, validate_tekuis
 from .tekuis_service import get_tekuis_parcels_by_bbox_response, get_tekuis_parcels_by_geom_response
 
 logger = logging.getLogger(__name__)

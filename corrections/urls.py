@@ -27,9 +27,9 @@ from .views import (
 
 )
 
-from .necas_api import necas_parcels_by_bbox, necas_parcels_by_geom
-from .tekuis_parcel_db import tekuis_parcels_by_db
-from .history_api import history_status
+from .api.necas import necas_parcels_by_bbox, necas_parcels_by_geom
+from .api.tekuis_parcel import tekuis_parcels_by_db
+from .api.history import history_status
 
 
 
