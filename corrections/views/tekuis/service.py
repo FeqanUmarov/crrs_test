@@ -6,9 +6,9 @@ import re
 from django.http import HttpResponseBadRequest, JsonResponse
 from shapely.geometry import mapping
 
-from .geo_utils import _clean_wkt_text, _payload_to_wkt_list
-from .tekuis_geom import CURVED_RE, infer_srid, load_output_geom, sanitize_input_wkts
-from .tekuis_repo import query_parcels_by_bbox, run_geom_chunked_query, tekuis_props_from_row
+from ..common.geo_utils import _clean_wkt_text, _payload_to_wkt_list
+from .geom import CURVED_RE, infer_srid, load_output_geom, sanitize_input_wkts
+from .repo import query_parcels_by_bbox, run_geom_chunked_query, tekuis_props_from_row
 
 logger = logging.getLogger(__name__)
 
