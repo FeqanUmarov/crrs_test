@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="{% static 'js/app_toast.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/app_toast.js' %}?v=1" defer></script>
 
   <script>
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
@@ -34,10 +34,10 @@
   </script>
 
 
-  <script src="{% static 'js/tekuis-validator.js' %}?v=1" defer></script>
-  <script src="{% static 'js/rtLoading.js' %}?v=1" defer></script>
+  <script src="{% static 'js/services/tekuis-validator.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/rtLoading.js' %}?v=1" defer></script>
 
-  <script src="{% static 'js/utils.js' %}?v=20250925.1" defer></script>
+  <script src="{% static 'js/core/utils.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/core/ticket.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/core/auth.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/map/basemaps.js' %}?v=20250925.1" defer></script>
@@ -56,24 +56,24 @@
   <script src="{% static 'js/services/tekuis-validation-service.js' %}?v=20251101.1" defer></script>
   <script src="{% static 'js/ui/tekuis-validation-workflow.js' %}?v=20251101.1" defer></script>
   <script src="{% static 'js/ui/info-mode.js' %}?v=20250925.1" defer></script>
-  <script src="{% static 'js/layer_colors.js' %}?v=1" defer></script>
-  <script src="{% static 'js/map_core.js' %}?v=20250925.1" defer></script>
+  <script src="{% static 'js/map/layer_colors.js' %}?v=1" defer></script>
+  <script src="{% static 'js/map/map_core.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/main/tekuis-necas.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/main/bootstrap.js' %}?v=20251024.2" defer></script>
   <script src="{% static 'js/main/editing.js' %}?v=20260226.1" defer></script>
   <script src="{% static 'js/main/layers.js' %}?v=20251024.2" defer></script>
-  <script src="{% static 'js/main.js' %}?v=20250925.1" defer></script>
+  <script src="{% static 'js/main/main.js' %}?v=20250925.1" defer></script>
   <script src="{% static 'js/ui/tekuis-topology.js' %}?v=20250925.1" defer></script>
-  <script src="{% static 'js/attributes_panel.js' %}?v=1" defer></script>
-  <script src="{% static 'js/tekuis_erase.js' %}?v=1" defer></script>
-  <script src="{% static 'js/editvertex.js' %}?v=1" defer></script>
-  <!-- <script src="{% static 'js/tekuis_erase_with_transfer.js' %}?v=1" defer></script> -->
-  <script src="{% static 'js/tekuis-switch.js' %}?v=1" defer></script>
-  <script src="{% static 'js/rtVertexToolbar.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/attributes_panel.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/tekuis_erase.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/editvertex.js' %}?v=1" defer></script>
+  <!-- <script src="{% static 'js/ui/tekuis_erase_with_transfer.js' %}?v=1" defer></script> -->
+  <script src="{% static 'js/ui/tekuis-switch.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/rtVertexToolbar.js' %}?v=1" defer></script>
 
 
 
-  <script src="{% static 'js/history.js' %}?v=1" defer></script>
+  <script src="{% static 'js/ui/history.js' %}?v=1" defer></script>
   <script src="{% static 'js/ui/right-tools-toggle.js' %}?v=1" defer></script>
 
 
