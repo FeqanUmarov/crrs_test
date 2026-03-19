@@ -61,53 +61,34 @@ def _resolve_redeem_auth_header(request=None) -> str:
     return ""
 
 
-def _redeem_ticket_with_token(ticket: str, request=None):
-    """
-    Node redeem-dən həm fk_metadata (id), həm də token qaytarır.
-    Token yoxdursa və ya vaxtı keçibsə -> (None, None).
-    """
+def _redeem_ticket_payload(ticket: str, request=None):
+    """Node redeem cavabının JSON payload-ını qaytarır."""
     url = str(getattr(settings, "NODE_REDEEM_URL", "") or "").strip().rstrip("/")
     if not url:
         logger.error("NODE_REDEEM_URL is empty; set it in .env")
-        return None, None
+        return None
     ticket = (ticket or "").strip()
     if not ticket:
-        return None, None
+        return None
     timeout = int(getattr(settings, "NODE_REDEEM_TIMEOUT", 8))
     prefer = (getattr(settings, "NODE_REDEEM_METHOD", "FORM") or "FORM").upper()
     headers = {"Accept": "application/json"}
     auth_header = _resolve_redeem_auth_header(request=request)
     if auth_header:
         headers["Authorization"] = auth_header
-    def _parse(resp):
+    def _parse(resp, mode: str):
         if resp.status_code != 200:
-            logger.warning("redeem(with_token) HTTP %s: %s", resp.status_code, (resp.text[:300] if getattr(resp, "text", None) else ""))
-            return None, None
+            logger.warning("redeem(%s) HTTP %s: %s", mode, resp.status_code, (resp.text[:300] if getattr(resp, "text", None) else ""))
+            return None
 
         try:
             data = resp.json()
         except Exception:
-            logger.warning("redeem(with_token) JSON parse failed")
-            return None, None
+            logger.warning("redeem(%s) JSON parse failed", mode)
+            return None
         if data.get("valid", True) is False:
-            return None, None
-        tok = (data.get("token") or "").strip()
-        exp = data.get("exp")
-
-        if not tok:
-            return None, None
-
-        exp_ms = _coerce_exp_ms(exp)
-        if exp_ms is None or _now_ms() > exp_ms + int(
-            getattr(settings, "NODE_REDEEM_EXP_SKEW_SEC", 15)
-        ) * 1000:
-            return None, None
-
-        rid = data.get("id") or data.get("rowid") or data.get("fk") or data.get("fk_metadata")
-        try:
-            return int(str(rid).strip()), tok
-        except Exception:
-            return None, None
+            return None
+        return data
 
     def _post_form(key: str):
         try:
@@ -117,10 +98,10 @@ def _redeem_ticket_with_token(ticket: str, request=None):
                 headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
                 timeout=timeout,
             )
-            return _parse(resp)
+            return _parse(resp, "payload/form")
         except Exception as e:
-            logger.warning("redeem(with_token) POST FORM (%s) failed: %s", key, e)
-            return None, None
+            logger.warning("redeem(payload) POST FORM (%s) failed: %s", key, e)
+            return None
 
     def _post_json(key: str):
         try:
@@ -130,10 +111,10 @@ def _redeem_ticket_with_token(ticket: str, request=None):
                 headers={**headers, "Content-Type": "application/json"},
                 timeout=timeout,
             )
-            return _parse(resp)
+            return _parse(resp, "payload/json")
         except Exception as e:
-            logger.warning("redeem(with_token) POST JSON (%s) failed: %s", key, e)
-            return None, None
+            logger.warning("redeem(payload) POST JSON (%s) failed: %s", key, e)
+            return None
 
     def _get_qs(key: str):
         try:
@@ -144,10 +125,10 @@ def _redeem_ticket_with_token(ticket: str, request=None):
                 timeout=timeout,
                 allow_redirects=False,
             )
-            return _parse(resp)
+            return _parse(resp, "payload/get")
         except Exception as e:
-            logger.warning("redeem(with_token) GET (%s) failed: %s", key, e)
-            return None, None
+            logger.warning("redeem(payload) GET (%s) failed: %s", key, e)
+            return None
 
     order_map = {
         "FORM": (_post_form, _post_json, _get_qs),
@@ -158,12 +139,35 @@ def _redeem_ticket_with_token(ticket: str, request=None):
 
     for fn in order:
         for key in ("ticket", "hash"):
-            fk, tok = fn(key)
-            if fk and tok:
-                return fk, tok
+            data = fn(key)
+            if data:
+                return data
 
-    logger.error("redeem(with_token) failed for ticket")
-    return None, None
+    logger.error("redeem(payload) failed for ticket")
+    return None
+
+
+def _redeem_ticket_with_token(ticket: str, request=None):
+    """
+    Node redeem-dən həm fk_metadata (id), həm də token qaytarır.
+    Token yoxdursa və ya vaxtı keçibsə -> (None, None).
+    """
+    data = _redeem_ticket_payload(ticket, request=request)
+    if not data:
+        return None, None
+
+    tok = (data.get("token") or "").strip()
+    exp_ms = _coerce_exp_ms(data.get("exp"))
+    if not tok or exp_ms is None:
+        return None, None
+    if _now_ms() > exp_ms + int(getattr(settings, "NODE_REDEEM_EXP_SKEW_SEC", 15)) * 1000:
+        return None, None
+
+    rid = data.get("id") or data.get("rowid") or data.get("fk") or data.get("fk_metadata")
+    try:
+        return int(str(rid).strip()), tok
+    except Exception:
+        return None, None
 
 
 

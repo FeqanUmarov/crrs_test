@@ -49,6 +49,7 @@ async function authGuardOnce(){
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
     window.applyEditPermissions?.();
+    window.applyStatusDrivenUI?.();
     window.updateTicketDeleteState?.();
     return true;
   }catch(e){
@@ -64,7 +65,7 @@ authGuardOnce();
 // Hər 30 saniyədən bir sessiyanı yoxla:
 setInterval(() => { authGuardOnce(); }, 30000);
 
-// === STATUS icazəsi (yalnız STATUS_ID 15 və 99 üçün) ===
+// === STATUS icazəsi (yalnız STATUS_ID 15 üçün) ===
 window.EDIT_ALLOWED = false;
 window.CURRENT_STATUS_ID = null;
 
@@ -79,12 +80,14 @@ async function fetchTicketStatus() {
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
     applyEditPermissions();
+    window.applyStatusDrivenUI?.();
     window.updateTicketDeleteState?.();
     return window.EDIT_ALLOWED;
   } catch (e) {
     console.warn('ticket-status error:', e);
     window.EDIT_ALLOWED = false;
     applyEditPermissions();
+    window.applyStatusDrivenUI?.();
     return false;
   }
 }
@@ -109,3 +112,41 @@ function applyEditPermissions(){
 window.authGuardOnce = authGuardOnce;
 window.fetchTicketStatus = fetchTicketStatus;
 window.applyEditPermissions = applyEditPermissions;
+
+function isFullStatusAccess(){
+  return window.CURRENT_STATUS_ID === 15;
+}
+
+function applyStatusDrivenUI(){
+  const fullAccess = isFullStatusAccess();
+
+  const panelBody = document.querySelector('.panel-body');
+  if (panelBody) {
+    panelBody.querySelectorAll('.layer-card .card-actions button').forEach((btn) => {
+      const keepVisible = fullAccess
+        || btn.id === 'btnSwitchTekuis'
+        || btn.classList.contains('zoombtn');
+      btn.style.display = keepVisible ? '' : 'none';
+    });
+  }
+
+  const rightTools = document.getElementById('rightTools');
+  if (rightTools) {
+    rightTools.querySelectorAll('.rt-btn').forEach((btn) => {
+      const keepVisible = fullAccess || btn.id === 'rtInfo' || btn.hasAttribute('data-open-history');
+      btn.style.display = keepVisible ? '' : 'none';
+    });
+  }
+}
+
+window.isFullStatusAccess = isFullStatusAccess;
+window.applyStatusDrivenUI = applyStatusDrivenUI;
+
+const statusUiObserver = new MutationObserver(() => applyStatusDrivenUI());
+window.addEventListener('DOMContentLoaded', () => {
+  const panelBody = document.querySelector('.panel-body');
+  const rightTools = document.getElementById('rightTools');
+  if (panelBody) statusUiObserver.observe(panelBody, { childList: true, subtree: true });
+  if (rightTools) statusUiObserver.observe(rightTools, { childList: true, subtree: true });
+  applyStatusDrivenUI();
+});

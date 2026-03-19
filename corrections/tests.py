@@ -1,9 +1,11 @@
+import json
 from unittest.mock import patch
 from django.test import SimpleTestCase, override_settings
 from django.test.client import RequestFactory
 
 from corrections.views.common.auth import _redeem_ticket_with_token, require_valid_ticket
 from corrections.views.common.mssql import _is_edit_allowed_for_fk
+from corrections.views.features.info import ticket_status
 
 
 class DummyResponse:
@@ -191,3 +193,30 @@ class JwtIdentityHardeningTests(SimpleTestCase):
 
         self.assertEqual(uid, 55)
         self.assertEqual(full_name, "Test User")
+
+class TicketStatusViewTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_uses_redeem_status_value_for_edit_permission(self, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 15)
+        self.assertTrue(data["allow_edit"])
+        self.assertEqual(data["fk_metadata"], 30)
+
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_hides_edit_for_non_15_statuses(self, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 0)
+        self.assertFalse(data["allow_edit"])
