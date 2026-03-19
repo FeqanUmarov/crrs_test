@@ -6,7 +6,7 @@ from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from shapely import wkt as shapely_wkt
 
-from ..common.auth import _redeem_ticket, _unauthorized, require_valid_ticket
+from ..common.auth import _redeem_ticket, _unauthorized, require_status_15, require_valid_ticket
 from ..common.geo_utils import _clean_wkt_text, _payload_to_wkt_list
 from ..common.mssql import _is_edit_allowed_for_fk, _mssql_clear_objectid
 
@@ -53,6 +53,7 @@ def _soft_delete_tekuis_current(cur, meta_id):
 # PostGIS insert (save)
 # ==========================
 @require_valid_ticket
+@require_status_15
 def save_polygon(request):
     if request.method != "POST":
         return HttpResponseBadRequest("POST gözlənirdi.")
@@ -189,6 +190,7 @@ def save_polygon(request):
 
 
 @require_POST
+@require_status_15
 def soft_delete_gis_by_ticket(request):
     # Browser-origin endpoint: state-changing POST olmasına görə CSRF yoxlaması aktiv saxlanılır.
     ticket = request.GET.get("ticket") or request.POST.get("ticket")

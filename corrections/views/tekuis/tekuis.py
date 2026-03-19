@@ -14,7 +14,7 @@ from shapely import wkt as shapely_wkt
 from shapely.geometry import mapping, shape as shapely_shape
 
 from ..features.attach import _find_attach_file, _geojson_from_csvtxt_file, _geojson_from_zip_file, _smb_net_use
-from ..common.auth import _redeem_ticket, _unauthorized, require_valid_ticket
+from ..common.auth import _redeem_ticket, _unauthorized, require_status_15, require_valid_ticket
 from ..common.geo_utils import _canonize_crs_value, _clean_wkt_text, _flatten_geoms, _payload_to_wkt_list
 from ..common.mssql import (
     PYODBC_AVAILABLE,
@@ -768,6 +768,7 @@ def tekuis_validate_ignore_gap_view(request):
 
 @csrf_exempt
 @require_valid_ticket
+@require_status_15
 def save_tekuis_parcels(request):
     if request.method != "POST":
         return JsonResponse({"ok": False, "error": "POST only"}, status=405)

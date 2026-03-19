@@ -16,7 +16,7 @@ from django.utils.text import get_valid_filename
 from django.views.decorators.http import require_GET
 from pyproj import CRS, Transformer
 
-from ..common.auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized
+from ..common.auth import _redeem_ticket, _redeem_ticket_with_token, _unauthorized, require_status_15
 from ..common.geo_utils import (
     _build_transformer_for_points,
     _canonize_crs_value,
@@ -245,7 +245,7 @@ def _find_attach_file(meta_id: int, name: str) -> Optional[Path]:
             continue
     return None
 
-
+@require_status_15
 def attach_upload(request):
     # API-only endpoint: ticket body parametri və JWT parse ilə işləyir; CSRF istisnası verilmədən saxlanılır.
     """

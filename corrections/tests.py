@@ -5,6 +5,7 @@ from django.test.client import RequestFactory
 
 from corrections.views.common.auth import _redeem_ticket_with_token, require_valid_ticket
 from corrections.views.common.mssql import _is_edit_allowed_for_fk
+from corrections.views.features.gis import soft_delete_gis_by_ticket
 from corrections.views.features.info import ticket_status
 
 
@@ -220,3 +221,54 @@ class TicketStatusViewTests(SimpleTestCase):
         data = json.loads(response.content)
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["allow_edit"])
+
+
+class Status15ApiGuardTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    def test_soft_delete_blocks_non_15_statuses(self, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
+
+        response = soft_delete_gis_by_ticket(self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 0)
+        self.assertFalse(data["ok"])
+
+    @patch("corrections.views.features.gis._redeem_ticket")
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.features.gis.transaction.atomic")
+    def test_soft_delete_allows_status_15_to_continue(self, mock_atomic, mock_payload, mock_redeem):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+        mock_redeem.return_value = 30
+
+        fake_cursor = _FakeCursor(columns=[], status_row=None)
+
+        class _CursorCtx:
+            def __enter__(self_inner):
+                return fake_cursor
+
+            def __exit__(self_inner, exc_type, exc, tb):
+                return False
+
+        class _AtomicCtx:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, exc_type, exc, tb):
+                return False
+
+        mock_atomic.return_value = _AtomicCtx()
+
+        with patch("corrections.views.features.gis.connection.cursor", return_value=_CursorCtx()), \
+             patch("corrections.views.features.gis._soft_delete_tekuis_current", return_value=[]), \
+             patch("corrections.views.features.gis._soft_delete_table_by_meta_id", return_value=0), \
+             patch("corrections.views.features.gis._mssql_clear_objectid", return_value=True):
+            response = soft_delete_gis_by_ticket(
+                self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"})
+            )
+
+        self.assertNotEqual(response.status_code, 403)

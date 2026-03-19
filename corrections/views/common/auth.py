@@ -266,6 +266,30 @@ def require_valid_ticket(view_fn):
 
     return _wrap
 
+def require_status_15(view_fn):
+    @wraps(view_fn)
+    def _wrap(request, *args, **kwargs):
+        ticket = _extract_ticket(request)
+        payload = _redeem_ticket_payload(ticket, request=request)
+        if not payload:
+            return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
+
+        status_value = (payload.get("status") or {}).get("value")
+        try:
+            status_id = int(status_value) if status_value is not None else None
+        except (TypeError, ValueError):
+            status_id = None
+
+        if status_id != 15:
+            return JsonResponse(
+                {"ok": False, "error": "Bu əməliyyat yalnız status 15 üçün icazəlidir.", "status_id": status_id},
+                status=403,
+            )
+
+        return view_fn(request, *args, **kwargs)
+
+    return _wrap
+
 
 def _redeem_ticket(ticket: str, request=None) -> Optional[int]:
     """
