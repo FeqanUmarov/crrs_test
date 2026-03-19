@@ -280,36 +280,36 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_upload_shp_blocks_status_15(self, _mock_ticket, mock_payload):
-        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+    def test_upload_shp_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_shp(self.factory.post("/api/upload-shp/", {"ticket": "abc"}))
 
         self.assertEqual(response.status_code, 403)
         data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 15)
+        self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_upload_points_blocks_status_15(self, _mock_ticket, mock_payload):
-        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+    def test_upload_points_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_points(self.factory.post("/api/upload-points/", {"ticket": "abc"}))
 
         self.assertEqual(response.status_code, 403)
         data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 15)
+        self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_attributes_options_blocks_status_15(self, _mock_ticket, mock_payload):
-        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+    def test_attributes_options_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = attributes_options(self.factory.get("/api/attributes/options/", {"ticket": "abc"}))
 
         self.assertEqual(response.status_code, 403)
         data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 15)
+        self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])

@@ -8,7 +8,7 @@ from pathlib import Path
 import shapefile  # pyshp
 from django.http import HttpResponseBadRequest, JsonResponse
 
-from ..common.auth import require_not_status_15, require_valid_ticket
+from ..common.auth import require_status_15, require_valid_ticket
 from ..common.geo_utils import (
     _build_transformer_for_points,
     _canonize_crs_value,
@@ -72,7 +72,7 @@ def _extract_archive_to_tmp(uploaded_bytes: bytes, filename: str) -> Path:
 # Upload servisleri
 # ==========================
 @require_valid_ticket
-@require_not_status_15
+@require_status_15
 def upload_shp(request):
     # API-only endpoint: ticket/JWT əsaslı inteqrasiya üçün CSRF middleware default davranışında qalır; @csrf_exempt istifadə edilmir.
     if request.method != "POST":
@@ -118,7 +118,7 @@ def upload_shp(request):
 
 
 @require_valid_ticket
-@require_not_status_15
+@require_status_15
 def upload_points(request):
     # API-only endpoint: session-cookie auth istifadəsi yoxdur, ona görə CSRF istisnası verilmədən mövcud ticket flow qorunur.
     """

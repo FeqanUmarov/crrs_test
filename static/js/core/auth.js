@@ -119,11 +119,9 @@ function isFullStatusAccess(){
 
 function applyStatusDrivenUI(){
   const fullAccess = isFullStatusAccess();
-  const shouldHideSidebarButtons = window.CURRENT_STATUS_ID === 15;
 
-  document.querySelectorAll('.tool-btn[data-hide-on-status="15"]').forEach((btn) => {
-    const panelName = btn.dataset.panel;
-    const hideBtn = shouldHideSidebarButtons && (panelName === 'contents' || panelName === 'attributes');
+  document.querySelectorAll('.tool-btn[data-show-only-status="15"]').forEach((btn) => {
+    const hideBtn = !fullAccess;
     const isActive = btn.classList.contains('active');
 
     btn.style.display = hideBtn ? 'none' : '';
