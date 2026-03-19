@@ -6,7 +6,8 @@ from django.test.client import RequestFactory
 from corrections.views.common.auth import _redeem_ticket_with_token, require_valid_ticket
 from corrections.views.common.mssql import _is_edit_allowed_for_fk
 from corrections.views.features.gis import soft_delete_gis_by_ticket
-from corrections.views.features.info import ticket_status
+from corrections.views.features.uploads import upload_points, upload_shp
+from corrections.views.features.info import attributes_options, ticket_status
 
 
 class DummyResponse:
@@ -272,3 +273,43 @@ class Status15ApiGuardTests(SimpleTestCase):
             )
 
         self.assertNotEqual(response.status_code, 403)
+
+class Status15RestrictedApiTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
+    def test_upload_shp_blocks_status_15(self, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        response = upload_shp(self.factory.post("/api/upload-shp/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 15)
+        self.assertFalse(data["ok"])
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
+    def test_upload_points_blocks_status_15(self, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        response = upload_points(self.factory.post("/api/upload-points/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 15)
+        self.assertFalse(data["ok"])
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
+    def test_attributes_options_blocks_status_15(self, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        response = attributes_options(self.factory.get("/api/attributes/options/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 15)
+        self.assertFalse(data["ok"])

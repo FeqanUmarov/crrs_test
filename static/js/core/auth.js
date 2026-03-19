@@ -119,6 +119,21 @@ function isFullStatusAccess(){
 
 function applyStatusDrivenUI(){
   const fullAccess = isFullStatusAccess();
+  const shouldHideSidebarButtons = window.CURRENT_STATUS_ID === 15;
+
+  document.querySelectorAll('.tool-btn[data-hide-on-status="15"]').forEach((btn) => {
+    const panelName = btn.dataset.panel;
+    const hideBtn = shouldHideSidebarButtons && (panelName === 'contents' || panelName === 'attributes');
+    const isActive = btn.classList.contains('active');
+
+    btn.style.display = hideBtn ? 'none' : '';
+    btn.hidden = hideBtn;
+    btn.setAttribute('aria-hidden', hideBtn ? 'true' : 'false');
+
+    if (hideBtn && isActive) {
+      window.PanelUI?.closePanel?.();
+    }
+  });
 
   const panelBody = document.querySelector('.panel-body');
   if (panelBody) {

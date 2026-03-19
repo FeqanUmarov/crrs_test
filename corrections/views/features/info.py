@@ -7,7 +7,7 @@ from django.db import connection
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
-from ..common.auth import _redeem_ticket, _redeem_ticket_payload, _redeem_ticket_with_token, _unauthorized, require_valid_ticket
+from ..common.auth import _redeem_ticket, _redeem_ticket_payload, _redeem_ticket_with_token, _unauthorized, require_not_status_15, require_valid_ticket
 from ..common.mssql import _filter_request_fields, _mssql_fetch_request
 from ..tekuis.tekuis import _has_active_tekuis
 
@@ -240,6 +240,7 @@ def kateqoriya_name_by_ticket(request):
 
 @require_GET
 @require_valid_ticket
+@require_not_status_15
 def attributes_options(request):
     """
     Atribut select-ləri üçün mapping listlərini qaytarır.
