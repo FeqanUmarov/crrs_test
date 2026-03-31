@@ -78,6 +78,41 @@ def _redeem_ticket_payload(ticket: str, request=None):
     auth_header = _resolve_redeem_auth_header(request=request)
     if auth_header:
         headers["Authorization"] = auth_header
+    def _normalize_redeem_payload(data):
+        if not isinstance(data, dict):
+            return None
+
+        def _looks_like_redeem_payload(obj):
+            if not isinstance(obj, dict):
+                return False
+            return any(
+                k in obj
+                for k in (
+                    "id",
+                    "rowid",
+                    "fk",
+                    "fk_metadata",
+                    "token",
+                    "status",
+                    "status_id",
+                    "statusId",
+                    "statusID",
+                )
+            )
+
+        if _looks_like_redeem_payload(data):
+            return data
+
+        for key in ("data", "result", "payload", "response"):
+            nested = data.get(key)
+            if not _looks_like_redeem_payload(nested):
+                continue
+            merged = dict(data)
+            merged.update(nested)
+            return merged
+
+        return data
+
     def _parse(resp, mode: str):
         if resp.status_code != 200:
             logger.warning("redeem(%s) HTTP %s: %s", mode, resp.status_code, (resp.text[:300] if getattr(resp, "text", None) else ""))
@@ -87,6 +122,9 @@ def _redeem_ticket_payload(ticket: str, request=None):
             data = resp.json()
         except Exception:
             logger.warning("redeem(%s) JSON parse failed", mode)
+            return None
+        data = _normalize_redeem_payload(data)
+        if not isinstance(data, dict):
             return None
         if data.get("valid", True) is False:
             return None

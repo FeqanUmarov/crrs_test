@@ -98,6 +98,26 @@ class RedeemWithTokenTests(SimpleTestCase):
         called_headers = mock_post.call_args.kwargs["headers"]
         self.assertEqual(called_headers["Authorization"], "Bearer live-user-token")
 
+    @override_settings(
+        NODE_REDEEM_URL="http://node/redeem",
+        NODE_REDEEM_METHOD="FORM",
+        NODE_REDEEM_AUTH_HEADER="",
+        NODE_REDEEM_BEARER="",
+    )
+    @patch("corrections.views.common.auth.requests.post")
+    def test_accepts_nested_payload_shape_from_redeem(self, mock_post):
+        mock_post.return_value = DummyResponse(
+            status_code=200,
+            data={
+                "valid": True,
+                "data": {"id": 33, "token": "jwt", "exp": 9999999999999, "status": {"value": 15}},
+            },
+        )
+
+        fk, tok = _redeem_ticket_with_token("abc")
+
+        self.assertEqual((fk, tok), (33, "jwt"))
+
 class _FakeCursor:
     def __init__(self, columns, status_row):
         self.columns = columns
@@ -233,6 +253,23 @@ class TicketStatusViewTests(SimpleTestCase):
     @patch("corrections.views.features.info._redeem_ticket_payload")
     def test_ticket_status_accepts_top_level_status_id(self, mock_payload, _mock_edit_allowed):
         mock_payload.return_value = {"id": "30", "status_id": "15"}
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 15)
+        self.assertTrue(data["allow_edit"])
+
+    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=True)
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_accepts_nested_data_status_payload(self, mock_payload, _mock_edit_allowed):
+        mock_payload.return_value = {
+            "valid": True,
+            "data": {"id": "30", "status": {"value": 15}},
+            "id": "30",
+            "status": {"value": 15},
+        }
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
 
