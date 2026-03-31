@@ -135,25 +135,29 @@ class _FakeConn:
 class EditStatusRuleTests(SimpleTestCase):
     @override_settings(MSSQL_STATUS_SCHEMA='original')
     @patch('corrections.views.common.mssql._mssql_connect')
-    def test_allows_only_status_15_and_99_from_original_schema(self, mock_connect):
-        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(15,))
+    @patch('corrections.views.common.mssql.is_edit_allowed_status')
+    def test_uses_postgres_driven_status_decision_for_mssql_records(self, mock_is_edit_allowed, mock_connect):
+        mock_is_edit_allowed.side_effect = lambda sid: sid == 7
+
+        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(7,))
         allowed, sid = _is_edit_allowed_for_fk(77)
-        self.assertEqual((allowed, sid), (True, 15))
+        self.assertEqual((allowed, sid), (True, 7))
 
         mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(99,))
         allowed, sid = _is_edit_allowed_for_fk(77)
-        self.assertEqual((allowed, sid), (True, 99))
+        self.assertEqual((allowed, sid), (False, 15))
 
         mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(2,))
         allowed, sid = _is_edit_allowed_for_fk(77)
         self.assertEqual((allowed, sid), (False, 2))
 
     @patch('corrections.views.common.mssql._mssql_connect', side_effect=RuntimeError('db down'))
-    @patch('corrections.views.common.mssql._mssql_fetch_request', return_value={'STATUS_ID': 15})
-    def test_falls_back_to_fetch_request_when_direct_query_fails(self, mock_fetch, mock_connect):
+    @patch('corrections.views.common.mssql._mssql_fetch_request', return_value={'STATUS_ID': 7})
+    @patch('corrections.views.common.mssql.is_edit_allowed_status', return_value=True)
+    def test_falls_back_to_fetch_request_when_direct_query_fails(self, _mock_is_allowed, mock_fetch, mock_connect):
         allowed, sid = _is_edit_allowed_for_fk(88)
 
-        self.assertEqual((allowed, sid), (True, 15))
+        self.assertEqual((allowed, sid), (True, 7))
         mock_fetch.assert_called_once_with(88)
 
 
@@ -200,8 +204,10 @@ class TicketStatusViewTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
+    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=True)
+
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_uses_redeem_status_value_for_edit_permission(self, mock_payload):
+    def test_ticket_status_uses_redeem_status_value_for_edit_permission(self, mock_payload, _mock_edit_allowed):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -211,9 +217,9 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 15)
         self.assertTrue(data["allow_edit"])
         self.assertEqual(data["fk_metadata"], 30)
-
+    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=False)
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_hides_edit_for_non_15_statuses(self, mock_payload):
+    def test_ticket_status_hides_edit_for_non_15_statuses(self, mock_payload, _mock_edit_allowed):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -229,7 +235,8 @@ class Status15ApiGuardTests(SimpleTestCase):
         self.factory = RequestFactory()
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
-    def test_soft_delete_blocks_non_15_statuses(self, mock_payload):
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
+    def test_soft_delete_blocks_non_15_statuses(self, mock_is_edit_allowed, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = soft_delete_gis_by_ticket(self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"}))
@@ -241,8 +248,9 @@ class Status15ApiGuardTests(SimpleTestCase):
 
     @patch("corrections.views.features.gis._redeem_ticket")
     @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=True)
     @patch("corrections.views.features.gis.transaction.atomic")
-    def test_soft_delete_allows_status_15_to_continue(self, mock_atomic, mock_payload, mock_redeem):
+    def test_soft_delete_allows_status_15_to_continue(self, mock_atomic, _mock_is_edit_allowed, mock_payload, mock_redeem):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
         mock_redeem.return_value = 30
 
@@ -280,7 +288,8 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_upload_shp_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
+    def test_upload_shp_blocks_non_15_statuses(self, _mock_status, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_shp(self.factory.post("/api/upload-shp/", {"ticket": "abc"}))
@@ -292,7 +301,8 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_upload_points_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
+    def test_upload_points_blocks_non_15_statuses(self, _mock_status, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_points(self.factory.post("/api/upload-points/", {"ticket": "abc"}))
@@ -304,7 +314,8 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_attributes_options_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
+    def test_attributes_options_blocks_non_15_statuses(self, _mock_status, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = attributes_options(self.factory.get("/api/attributes/options/", {"ticket": "abc"}))
