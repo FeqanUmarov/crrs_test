@@ -18,8 +18,15 @@
 
   <script src="{% static 'js/ui/app_toast.js' %}?v=1" defer></script>
 
+  {{ initial_status_payload|json_script:"initial-status-access" }}
   <script>
-    document.documentElement.classList.add('status-access-pending');
+    const initialStatusAccess = JSON.parse(
+      document.getElementById('initial-status-access').textContent || '{}'
+    );
+    if (initialStatusAccess?.resolved === false) {
+      document.documentElement.classList.add('status-access-pending');
+    }
+    window.INITIAL_STATUS_ACCESS = initialStatusAccess;
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
   </script>
 

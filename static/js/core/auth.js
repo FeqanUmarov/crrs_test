@@ -68,10 +68,10 @@ authGuardOnce();
 setInterval(() => { authGuardOnce(); }, 30000);
 
 // === STATUS icazəsi (yalnız STATUS_ID 15 üçün) ===
-window.EDIT_ALLOWED = false;
-window.CURRENT_STATUS_ID = null;
-let statusAccessResolved = false;
-
+const initialStatusAccess = window.INITIAL_STATUS_ACCESS || {};
+window.EDIT_ALLOWED = !!initialStatusAccess.allow_edit;
+window.CURRENT_STATUS_ID = initialStatusAccess.status_id ?? null;
+let statusAccessResolved = initialStatusAccess.resolved === true;
 function markStatusAccessResolved() {
   if (statusAccessResolved) return;
   statusAccessResolved = true;
