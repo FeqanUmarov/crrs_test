@@ -493,11 +493,8 @@ window.MainLayers.init = function initLayers(state = {}) {
       moveIndicatorToButton(btn);
 
       const which = btn.dataset.panel;
-      const dataEntryBtn = document.querySelector('.tool-btn[data-panel="contents"]');
-      const isDataEntryButtonVisible = !!(dataEntryBtn && dataEntryBtn.offsetParent !== null);
-      const blockDataEntryByStatus = !window.EDIT_ALLOWED && !isDataEntryButtonVisible;
 
-      if ((which === 'catalog' && !window.EDIT_ALLOWED) || (which === 'contents' && blockDataEntryByStatus)) {
+      if (!window.EDIT_ALLOWED && (which === 'contents' || which === 'catalog')) {
         Swal.fire('Diqqət', 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'info');
         return;
       }

@@ -1,8 +1,6 @@
 function setupDataPanel({ openPanel, panelBodyEl, uploadHandlers } = {}){
   function renderDataPanel(){
-    const dataEntryBtn = document.querySelector('.tool-btn[data-panel="contents"]');
-    const isDataEntryButtonVisible = !!(dataEntryBtn && dataEntryBtn.offsetParent !== null);
-    if (!window.EDIT_ALLOWED && !isDataEntryButtonVisible) {
+    if (!window.EDIT_ALLOWED) {
       Swal.fire('Diqqət', 'Bu əməliyyatları yalnız redaktə və ya qaralama rejimində edə bilərsiz!', 'info');
       return;
     }

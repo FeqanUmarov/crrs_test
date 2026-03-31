@@ -647,8 +647,6 @@ def _meta_id_from_request(request):
 
 
 @csrf_exempt
-@require_valid_ticket
-@require_status_15
 def validate_tekuis_parcels(request):
     if request.method != "POST":
         return JsonResponse({"ok": False, "error": "POST only"}, status=405)
@@ -696,8 +694,6 @@ def validate_tekuis_parcels(request):
 
 
 @csrf_exempt
-@require_valid_ticket
-@require_status_15
 def ignore_tekuis_gap(request):
     if request.method != "POST":
         return JsonResponse({"ok": False, "error": "POST only"}, status=405)

@@ -18,15 +18,7 @@
 
   <script src="{% static 'js/ui/app_toast.js' %}?v=1" defer></script>
 
-  {{ initial_status_payload|json_script:"initial-status-access" }}
   <script>
-    const initialStatusAccess = JSON.parse(
-      document.getElementById('initial-status-access').textContent || '{}'
-    );
-    if (initialStatusAccess?.resolved === false) {
-      document.documentElement.classList.add('status-access-pending');
-    }
-    window.INITIAL_STATUS_ACCESS = initialStatusAccess;
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
   </script>
 
@@ -316,10 +308,6 @@
   display:none;
 }
 
-html.status-access-pending .sidebar .tool-btn[data-requires-edit="true"]{
-  display:none !important;
-}
-
     .kv{
       display:grid; grid-template-columns: 180px 1fr; gap:6px 12px;
       font-size:14px; line-height:1.35;
@@ -344,7 +332,7 @@ html.status-access-pending .sidebar .tool-btn[data-requires-edit="true"]{
           Publik Hüquqi Şəxsi
         </div>
       </div>
-      <button class="tool-btn" data-panel="contents" data-icon-tone="upload" data-requires-edit="true" title="Məlumat daxil et" aria-label="Məlumat daxil et">
+      <button class="tool-btn" data-panel="contents" data-icon-tone="upload" data-show-only-status="15" title="Məlumat daxil et" aria-label="Məlumat daxil et">
         <img class="tb-ico" src="{% static 'icons/images/upload.svg' %}" alt="Məlumat daxil et ikonu">
         <span class="tb-label">Məlumat daxil et</span>
       </button>
@@ -365,7 +353,7 @@ html.status-access-pending .sidebar .tool-btn[data-requires-edit="true"]{
       </button>
 
 
-      <button class="tool-btn" data-panel="attributes" data-icon-tone="attributes" data-requires-edit="true" title="Atribut məlumatları" aria-label="Atribut məlumatları">
+      <button class="tool-btn" data-panel="attributes" data-icon-tone="attributes" data-show-only-status="15" title="Atribut məlumatları" aria-label="Atribut məlumatları">
         <img class="tb-ico" src="{% static 'icons/images/att.svg' %}" alt="Atribut ikonu">
         <span class="tb-label">Atribut məlumatları</span>
       </button>

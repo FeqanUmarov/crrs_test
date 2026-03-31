@@ -8,7 +8,6 @@ from corrections.views.common.mssql import _is_edit_allowed_for_fk
 from corrections.views.features.gis import soft_delete_gis_by_ticket
 from corrections.views.features.uploads import upload_points, upload_shp
 from corrections.views.features.info import attributes_options, ticket_status
-from corrections.views.tekuis.tekuis import ignore_tekuis_gap, validate_tekuis_parcels
 
 
 class DummyResponse:
@@ -99,26 +98,6 @@ class RedeemWithTokenTests(SimpleTestCase):
         called_headers = mock_post.call_args.kwargs["headers"]
         self.assertEqual(called_headers["Authorization"], "Bearer live-user-token")
 
-    @override_settings(
-        NODE_REDEEM_URL="http://node/redeem",
-        NODE_REDEEM_METHOD="FORM",
-        NODE_REDEEM_AUTH_HEADER="",
-        NODE_REDEEM_BEARER="",
-    )
-    @patch("corrections.views.common.auth.requests.post")
-    def test_accepts_nested_payload_shape_from_redeem(self, mock_post):
-        mock_post.return_value = DummyResponse(
-            status_code=200,
-            data={
-                "valid": True,
-                "data": {"id": 33, "token": "jwt", "exp": 9999999999999, "status": {"value": 15}},
-            },
-        )
-
-        fk, tok = _redeem_ticket_with_token("abc")
-
-        self.assertEqual((fk, tok), (33, "jwt"))
-
 class _FakeCursor:
     def __init__(self, columns, status_row):
         self.columns = columns
@@ -156,29 +135,25 @@ class _FakeConn:
 class EditStatusRuleTests(SimpleTestCase):
     @override_settings(MSSQL_STATUS_SCHEMA='original')
     @patch('corrections.views.common.mssql._mssql_connect')
-    @patch('corrections.views.common.mssql.is_edit_allowed_status')
-    def test_uses_postgres_driven_status_decision_for_mssql_records(self, mock_is_edit_allowed, mock_connect):
-        mock_is_edit_allowed.side_effect = lambda sid: sid == 7
-
-        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(7,))
+    def test_allows_only_status_15_and_99_from_original_schema(self, mock_connect):
+        mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(15,))
         allowed, sid = _is_edit_allowed_for_fk(77)
-        self.assertEqual((allowed, sid), (True, 7))
+        self.assertEqual((allowed, sid), (True, 15))
 
         mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(99,))
         allowed, sid = _is_edit_allowed_for_fk(77)
-        self.assertEqual((allowed, sid), (False, 15))
+        self.assertEqual((allowed, sid), (True, 99))
 
         mock_connect.return_value = _FakeConn(columns=['ROW_ID', 'STATUS_ID'], status_row=(2,))
         allowed, sid = _is_edit_allowed_for_fk(77)
         self.assertEqual((allowed, sid), (False, 2))
 
     @patch('corrections.views.common.mssql._mssql_connect', side_effect=RuntimeError('db down'))
-    @patch('corrections.views.common.mssql._mssql_fetch_request', return_value={'STATUS_ID': 7})
-    @patch('corrections.views.common.mssql.is_edit_allowed_status', return_value=True)
-    def test_falls_back_to_fetch_request_when_direct_query_fails(self, _mock_is_allowed, mock_fetch, mock_connect):
+    @patch('corrections.views.common.mssql._mssql_fetch_request', return_value={'STATUS_ID': 15})
+    def test_falls_back_to_fetch_request_when_direct_query_fails(self, mock_fetch, mock_connect):
         allowed, sid = _is_edit_allowed_for_fk(88)
 
-        self.assertEqual((allowed, sid), (True, 7))
+        self.assertEqual((allowed, sid), (True, 15))
         mock_fetch.assert_called_once_with(88)
 
 
@@ -225,10 +200,8 @@ class TicketStatusViewTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=True)
-
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_uses_redeem_status_value_for_edit_permission(self, mock_payload, _mock_edit_allowed):
+    def test_ticket_status_uses_redeem_status_value_for_edit_permission(self, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -238,9 +211,9 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 15)
         self.assertTrue(data["allow_edit"])
         self.assertEqual(data["fk_metadata"], 30)
-    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=False)
+
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_hides_edit_for_non_15_statuses(self, mock_payload, _mock_edit_allowed):
+    def test_ticket_status_hides_edit_for_non_15_statuses(self, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -250,43 +223,13 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["allow_edit"])
 
-    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=True)
-    @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_accepts_top_level_status_id(self, mock_payload, _mock_edit_allowed):
-        mock_payload.return_value = {"id": "30", "status_id": "15"}
-
-        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
-
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 15)
-        self.assertTrue(data["allow_edit"])
-
-    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=True)
-    @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_accepts_nested_data_status_payload(self, mock_payload, _mock_edit_allowed):
-        mock_payload.return_value = {
-            "valid": True,
-            "data": {"id": "30", "status": {"value": 15}},
-            "id": "30",
-            "status": {"value": 15},
-        }
-
-        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
-
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 15)
-        self.assertTrue(data["allow_edit"])
-
 
 class Status15ApiGuardTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
-    def test_soft_delete_blocks_non_15_statuses(self, mock_is_edit_allowed, mock_payload):
+    def test_soft_delete_blocks_non_15_statuses(self, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = soft_delete_gis_by_ticket(self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"}))
@@ -296,35 +239,10 @@ class Status15ApiGuardTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
 
-    @patch("corrections.views.common.auth._redeem_ticket_payload")
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=True)
-    @patch("corrections.views.features.gis._redeem_ticket", return_value=30)
-    @patch("corrections.views.features.gis.transaction.atomic")
-    def test_soft_delete_allows_top_level_status_id(self, mock_atomic, _mock_redeem, _mock_is_edit_allowed, mock_payload):
-        mock_payload.return_value = {"id": "30", "status_id": 15}
-
-        fake_cursor = _FakeCursor(columns=[], status_row=None)
-
-        class _CursorCtx:
-            def __enter__(self_inner):
-                return fake_cursor
-
-            def __exit__(self_inner, exc_type, exc, tb):
-                return False
-
-        mock_atomic.return_value.__enter__.return_value = None
-        mock_atomic.return_value.__exit__.return_value = False
-
-        with patch("corrections.views.features.gis.connection.cursor", return_value=_CursorCtx()):
-            response = soft_delete_gis_by_ticket(self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"}))
-
-        self.assertNotEqual(response.status_code, 403)
-
     @patch("corrections.views.features.gis._redeem_ticket")
     @patch("corrections.views.common.auth._redeem_ticket_payload")
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=True)
     @patch("corrections.views.features.gis.transaction.atomic")
-    def test_soft_delete_allows_status_15_to_continue(self, mock_atomic, _mock_is_edit_allowed, mock_payload, mock_redeem):
+    def test_soft_delete_allows_status_15_to_continue(self, mock_atomic, mock_payload, mock_redeem):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
         mock_redeem.return_value = 30
 
@@ -362,8 +280,7 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
-    def test_upload_shp_blocks_non_15_statuses(self, _mock_status, _mock_ticket, mock_payload):
+    def test_upload_shp_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_shp(self.factory.post("/api/upload-shp/", {"ticket": "abc"}))
@@ -375,8 +292,7 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
-    def test_upload_points_blocks_non_15_statuses(self, _mock_status, _mock_ticket, mock_payload):
+    def test_upload_points_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_points(self.factory.post("/api/upload-points/", {"ticket": "abc"}))
@@ -388,8 +304,7 @@ class Status15RestrictedApiTests(SimpleTestCase):
 
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
-    def test_attributes_options_blocks_non_15_statuses(self, _mock_status, _mock_ticket, mock_payload):
+    def test_attributes_options_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = attributes_options(self.factory.get("/api/attributes/options/", {"ticket": "abc"}))
@@ -398,43 +313,3 @@ class Status15RestrictedApiTests(SimpleTestCase):
         data = json.loads(response.content)
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
-
-    @patch("corrections.views.common.auth._redeem_ticket_payload")
-    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
-    def test_validate_tekuis_blocks_non_editable_statuses(self, _mock_status, _mock_ticket, mock_payload):
-        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
-
-        response = validate_tekuis_parcels(
-            self.factory.post(
-                "/api/tekuis/validate/",
-                data=json.dumps({"geojson": {"type": "FeatureCollection", "features": []}}),
-                content_type="application/json",
-            )
-        )
-
-        self.assertEqual(response.status_code, 403)
-        data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 0)
-        self.assertFalse(data["ok"])
-
-    @patch("corrections.views.common.auth._redeem_ticket_payload")
-    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
-    def test_ignore_tekuis_gap_blocks_non_editable_statuses(self, _mock_status, _mock_ticket, mock_payload):
-        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
-
-        response = ignore_tekuis_gap(
-            self.factory.post(
-                "/api/tekuis/validate/ignore-gap/",
-                data=json.dumps({"hash": "h1"}),
-                content_type="application/json",
-            )
-        )
-
-        self.assertEqual(response.status_code, 403)
-        data = json.loads(response.content)
-        self.assertEqual(data["status_id"], 0)
-        self.assertFalse(data["ok"])
-
-    

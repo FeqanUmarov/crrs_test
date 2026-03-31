@@ -9,8 +9,6 @@ import requests
 from django.conf import settings
 from django.http import JsonResponse
 
-from ...status_access import is_edit_allowed_status
-
 logger = logging.getLogger(__name__)
 
 
@@ -78,41 +76,6 @@ def _redeem_ticket_payload(ticket: str, request=None):
     auth_header = _resolve_redeem_auth_header(request=request)
     if auth_header:
         headers["Authorization"] = auth_header
-    def _normalize_redeem_payload(data):
-        if not isinstance(data, dict):
-            return None
-
-        def _looks_like_redeem_payload(obj):
-            if not isinstance(obj, dict):
-                return False
-            return any(
-                k in obj
-                for k in (
-                    "id",
-                    "rowid",
-                    "fk",
-                    "fk_metadata",
-                    "token",
-                    "status",
-                    "status_id",
-                    "statusId",
-                    "statusID",
-                )
-            )
-
-        if _looks_like_redeem_payload(data):
-            return data
-
-        for key in ("data", "result", "payload", "response"):
-            nested = data.get(key)
-            if not _looks_like_redeem_payload(nested):
-                continue
-            merged = dict(data)
-            merged.update(nested)
-            return merged
-
-        return data
-
     def _parse(resp, mode: str):
         if resp.status_code != 200:
             logger.warning("redeem(%s) HTTP %s: %s", mode, resp.status_code, (resp.text[:300] if getattr(resp, "text", None) else ""))
@@ -122,9 +85,6 @@ def _redeem_ticket_payload(ticket: str, request=None):
             data = resp.json()
         except Exception:
             logger.warning("redeem(%s) JSON parse failed", mode)
-            return None
-        data = _normalize_redeem_payload(data)
-        if not isinstance(data, dict):
             return None
         if data.get("valid", True) is False:
             return None
@@ -307,22 +267,11 @@ def require_valid_ticket(view_fn):
     return _wrap
 
 def _extract_status_id_from_payload(payload) -> Optional[int]:
-    if not isinstance(payload, dict):
+    status_value = (payload.get("status") or {}).get("value")
+    try:
+        return int(status_value) if status_value is not None else None
+    except (TypeError, ValueError):
         return None
-
-    candidates = [
-        (payload.get("status") or {}).get("value"),
-        (payload.get("status") or {}).get("id"),
-        payload.get("status_id"),
-        payload.get("statusId"),
-        payload.get("statusID"),
-    ]
-    for value in candidates:
-        try:
-            return int(value) if value is not None else None
-        except (TypeError, ValueError):
-            continue
-    return None
 
 
 def require_status_15(view_fn):
@@ -335,9 +284,9 @@ def require_status_15(view_fn):
 
         status_id = _extract_status_id_from_payload(payload)
 
-        if not is_edit_allowed_status(status_id):
+        if status_id != 15:
             return JsonResponse(
-                {"ok": False, "error": "Bu əməliyyat üçün status icazəli deyil.", "status_id": status_id},
+                {"ok": False, "error": "Bu əməliyyat yalnız status 15 üçün icazəlidir.", "status_id": status_id},
                 status=403,
             )
 
@@ -354,9 +303,9 @@ def require_not_status_15(view_fn):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
 
         status_id = _extract_status_id_from_payload(payload)
-        if is_edit_allowed_status(status_id):
+        if status_id == 15:
             return JsonResponse(
-                {"ok": False, "error": "Bu əməliyyat edit icazəsi olan statuslar üçün əlçatan deyil.", "status_id": status_id},
+                {"ok": False, "error": "Bu əməliyyat status 15 olduqda əlçatan deyil.", "status_id": status_id},
                 status=403,
             )
 

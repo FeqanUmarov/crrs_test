@@ -51,11 +51,9 @@ async function authGuardOnce(){
     window.applyEditPermissions?.();
     window.applyStatusDrivenUI?.();
     window.updateTicketDeleteState?.();
-    markStatusAccessResolved();
     return true;
   }catch(e){
     console.warn('authGuard error:', e);
-    markStatusAccessResolved();
     showAuthGateAndRedirect('Şəbəkə xətası.');
     return false;
   }
@@ -68,15 +66,8 @@ authGuardOnce();
 setInterval(() => { authGuardOnce(); }, 30000);
 
 // === STATUS icazəsi (yalnız STATUS_ID 15 üçün) ===
-const initialStatusAccess = window.INITIAL_STATUS_ACCESS || {};
-window.EDIT_ALLOWED = !!initialStatusAccess.allow_edit;
-window.CURRENT_STATUS_ID = initialStatusAccess.status_id ?? null;
-let statusAccessResolved = initialStatusAccess.resolved === true;
-function markStatusAccessResolved() {
-  if (statusAccessResolved) return;
-  statusAccessResolved = true;
-  document.documentElement.classList.remove('status-access-pending');
-}
+window.EDIT_ALLOWED = false;
+window.CURRENT_STATUS_ID = null;
 
 async function fetchTicketStatus() {
   if (!window.PAGE_TICKET) return false;
@@ -91,14 +82,12 @@ async function fetchTicketStatus() {
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
     window.updateTicketDeleteState?.();
-    markStatusAccessResolved();
     return window.EDIT_ALLOWED;
   } catch (e) {
     console.warn('ticket-status error:', e);
     window.EDIT_ALLOWED = false;
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
-    markStatusAccessResolved();
     return false;
   }
 }
@@ -125,13 +114,13 @@ window.fetchTicketStatus = fetchTicketStatus;
 window.applyEditPermissions = applyEditPermissions;
 
 function isFullStatusAccess(){
-  return !!window.EDIT_ALLOWED;
+  return window.CURRENT_STATUS_ID === 15;
 }
 
 function applyStatusDrivenUI(){
   const fullAccess = isFullStatusAccess();
 
-  document.querySelectorAll('.tool-btn[data-requires-edit="true"]').forEach((btn) => {
+  document.querySelectorAll('.tool-btn[data-show-only-status="15"]').forEach((btn) => {
     const hideBtn = !fullAccess;
     const isActive = btn.classList.contains('active');
 
