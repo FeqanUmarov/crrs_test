@@ -9,6 +9,8 @@ import requests
 from django.conf import settings
 from django.http import JsonResponse
 
+from ...status_access import is_edit_allowed_status
+
 logger = logging.getLogger(__name__)
 
 
@@ -284,9 +286,9 @@ def require_status_15(view_fn):
 
         status_id = _extract_status_id_from_payload(payload)
 
-        if status_id != 15:
+        if not is_edit_allowed_status(status_id):
             return JsonResponse(
-                {"ok": False, "error": "Bu əməliyyat yalnız status 15 üçün icazəlidir.", "status_id": status_id},
+                {"ok": False, "error": "Bu əməliyyat üçün status icazəli deyil.", "status_id": status_id},
                 status=403,
             )
 
@@ -303,9 +305,9 @@ def require_not_status_15(view_fn):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
 
         status_id = _extract_status_id_from_payload(payload)
-        if status_id == 15:
+        if is_edit_allowed_status(status_id):
             return JsonResponse(
-                {"ok": False, "error": "Bu əməliyyat status 15 olduqda əlçatan deyil.", "status_id": status_id},
+                {"ok": False, "error": "Bu əməliyyat edit icazəsi olan statuslar üçün əlçatan deyil.", "status_id": status_id},
                 status=403,
             )
 

@@ -114,13 +114,13 @@ window.fetchTicketStatus = fetchTicketStatus;
 window.applyEditPermissions = applyEditPermissions;
 
 function isFullStatusAccess(){
-  return window.CURRENT_STATUS_ID === 15;
+  return !!window.EDIT_ALLOWED;
 }
 
 function applyStatusDrivenUI(){
   const fullAccess = isFullStatusAccess();
 
-  document.querySelectorAll('.tool-btn[data-show-only-status="15"]').forEach((btn) => {
+  document.querySelectorAll('.tool-btn[data-requires-edit="true"]').forEach((btn) => {
     const hideBtn = !fullAccess;
     const isActive = btn.classList.contains('active');
 

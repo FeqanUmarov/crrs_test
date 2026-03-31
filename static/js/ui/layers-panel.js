@@ -40,13 +40,13 @@ function setupLayersPanel({
     const delBtn = document.getElementById('btnDeleteTicket');
     if (!delBtn) return;
 
-    const showByStatus = (window.CURRENT_STATUS_ID === 15);
+    const showByStatus = !!window.EDIT_ALLOWED;
     // Yalnız STATUS_ID 15 olduqda göstər
     delBtn.style.display = showByStatus ? '' : 'none';
     if (!showByStatus) return;
 
     // Görünəndə də icazəyə görə aktiv/deaktiv et
-    const allowed = (window.CURRENT_STATUS_ID === 15);
+    const allowed = !!window.EDIT_ALLOWED;
     delBtn.disabled = !allowed;
     delBtn.title = allowed ? '' : 'Bu əməliyyat yalnız cis proseslərinin icraatında mümkündür.';
   }
@@ -133,7 +133,7 @@ function setupLayersPanel({
 
 
   function renderLayersPanel(){
-    const canDelete = (window.CURRENT_STATUS_ID === 15);
+    const canDelete = !!window.EDIT_ALLOWED;
 
     const html = `
     <div class="card layer-card" id="cardTicket">
@@ -285,7 +285,7 @@ function setupLayersPanel({
 
     if (canDelete) {
       document.getElementById('btnDeleteTicket').addEventListener('click', async () => {
-        const allowed = (window.CURRENT_STATUS_ID === 15);
+        const allowed = !!window.EDIT_ALLOWED;
 
         const currentTicketLayerCount = getTicketLayerCount?.() ?? 0;
         const hasTicketData = (currentTicketLayerCount > 0);

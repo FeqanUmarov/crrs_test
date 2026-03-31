@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple
 
 from django.conf import settings
+from ...status_access import is_mssql_edit_allowed_status
 
 logger = logging.getLogger(__name__)
 
@@ -366,4 +367,4 @@ def _is_edit_allowed_for_fk(meta_id: int) -> Tuple[bool, Optional[int]]:
         details = _mssql_fetch_request(int(meta_id))
         sid = _get_status_id_from_row(details)
 
-    return (sid in (15, 99)), sid
+    return is_mssql_edit_allowed_status(sid), sid
