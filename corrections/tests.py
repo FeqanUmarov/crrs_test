@@ -229,6 +229,18 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["allow_edit"])
 
+    @patch("corrections.views.features.info.is_edit_allowed_status", return_value=True)
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_accepts_top_level_status_id(self, mock_payload, _mock_edit_allowed):
+        mock_payload.return_value = {"id": "30", "status_id": "15"}
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 15)
+        self.assertTrue(data["allow_edit"])
+
 
 class Status15ApiGuardTests(SimpleTestCase):
     def setUp(self):
@@ -245,6 +257,30 @@ class Status15ApiGuardTests(SimpleTestCase):
         data = json.loads(response.content)
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=True)
+    @patch("corrections.views.features.gis._redeem_ticket", return_value=30)
+    @patch("corrections.views.features.gis.transaction.atomic")
+    def test_soft_delete_allows_top_level_status_id(self, mock_atomic, _mock_redeem, _mock_is_edit_allowed, mock_payload):
+        mock_payload.return_value = {"id": "30", "status_id": 15}
+
+        fake_cursor = _FakeCursor(columns=[], status_row=None)
+
+        class _CursorCtx:
+            def __enter__(self_inner):
+                return fake_cursor
+
+            def __exit__(self_inner, exc_type, exc, tb):
+                return False
+
+        mock_atomic.return_value.__enter__.return_value = None
+        mock_atomic.return_value.__exit__.return_value = False
+
+        with patch("corrections.views.features.gis.connection.cursor", return_value=_CursorCtx()):
+            response = soft_delete_gis_by_ticket(self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"}))
+
+        self.assertNotEqual(response.status_code, 403)
 
     @patch("corrections.views.features.gis._redeem_ticket")
     @patch("corrections.views.common.auth._redeem_ticket_payload")

@@ -7,7 +7,15 @@ from django.db import connection
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
-from ..common.auth import _redeem_ticket, _redeem_ticket_payload, _redeem_ticket_with_token, _unauthorized, require_status_15, require_valid_ticket
+from ..common.auth import (
+    _extract_status_id_from_payload,
+    _redeem_ticket,
+    _redeem_ticket_payload,
+    _redeem_ticket_with_token,
+    _unauthorized,
+    require_status_15,
+    require_valid_ticket,
+)
 from ...status_access import is_edit_allowed_status
 from ..common.mssql import _filter_request_fields, _mssql_fetch_request
 from ..tekuis.tekuis import _has_active_tekuis
@@ -41,12 +49,7 @@ def ticket_status(request):
     payload = _redeem_ticket_payload(ticket, request=request)
     if not payload:
         return JsonResponse({"ok": False}, status=401)
-    status_value = payload.get("status", {}).get("value")
-
-    try:
-        status_id = int(status_value) if status_value is not None else None
-    except (TypeError, ValueError):
-        status_id = None
+    status_id = _extract_status_id_from_payload(payload)
 
     allow_edit = is_edit_allowed_status(status_id)
     fk = payload.get("id") or payload.get("rowid") or payload.get("fk") or payload.get("fk_metadata")

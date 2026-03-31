@@ -269,11 +269,22 @@ def require_valid_ticket(view_fn):
     return _wrap
 
 def _extract_status_id_from_payload(payload) -> Optional[int]:
-    status_value = (payload.get("status") or {}).get("value")
-    try:
-        return int(status_value) if status_value is not None else None
-    except (TypeError, ValueError):
+    if not isinstance(payload, dict):
         return None
+
+    candidates = [
+        (payload.get("status") or {}).get("value"),
+        (payload.get("status") or {}).get("id"),
+        payload.get("status_id"),
+        payload.get("statusId"),
+        payload.get("statusID"),
+    ]
+    for value in candidates:
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def require_status_15(view_fn):
