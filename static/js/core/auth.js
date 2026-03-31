@@ -51,9 +51,11 @@ async function authGuardOnce(){
     window.applyEditPermissions?.();
     window.applyStatusDrivenUI?.();
     window.updateTicketDeleteState?.();
+    markStatusAccessResolved();
     return true;
   }catch(e){
     console.warn('authGuard error:', e);
+    markStatusAccessResolved();
     showAuthGateAndRedirect('Şəbəkə xətası.');
     return false;
   }
@@ -68,6 +70,13 @@ setInterval(() => { authGuardOnce(); }, 30000);
 // === STATUS icazəsi (yalnız STATUS_ID 15 üçün) ===
 window.EDIT_ALLOWED = false;
 window.CURRENT_STATUS_ID = null;
+let statusAccessResolved = false;
+
+function markStatusAccessResolved() {
+  if (statusAccessResolved) return;
+  statusAccessResolved = true;
+  document.documentElement.classList.remove('status-access-pending');
+}
 
 async function fetchTicketStatus() {
   if (!window.PAGE_TICKET) return false;
@@ -82,12 +91,14 @@ async function fetchTicketStatus() {
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
     window.updateTicketDeleteState?.();
+    markStatusAccessResolved();
     return window.EDIT_ALLOWED;
   } catch (e) {
     console.warn('ticket-status error:', e);
     window.EDIT_ALLOWED = false;
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
+    markStatusAccessResolved();
     return false;
   }
 }

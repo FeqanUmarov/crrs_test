@@ -19,6 +19,7 @@
   <script src="{% static 'js/ui/app_toast.js' %}?v=1" defer></script>
 
   <script>
+    document.documentElement.classList.add('status-access-pending');
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
   </script>
 
@@ -306,6 +307,10 @@
 .ui-tooltip[data-tooltip=""]::after,
 .ui-tooltip[data-tooltip=""]::before{
   display:none;
+}
+
+html.status-access-pending .sidebar .tool-btn[data-requires-edit="true"]{
+  display:none !important;
 }
 
     .kv{
