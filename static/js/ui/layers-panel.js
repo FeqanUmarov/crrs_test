@@ -41,7 +41,7 @@ function setupLayersPanel({
     if (!delBtn) return;
 
     const showByStatus = !!window.EDIT_ALLOWED;
-    // Yalnız STATUS_ID 15 olduqda göstər
+    // status_control.is_edit=true olan statuslarda göstər
     delBtn.style.display = showByStatus ? '' : 'none';
     if (!showByStatus) return;
 
