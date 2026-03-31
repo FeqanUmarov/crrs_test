@@ -8,6 +8,7 @@ from corrections.views.common.mssql import _is_edit_allowed_for_fk
 from corrections.views.features.gis import soft_delete_gis_by_ticket
 from corrections.views.features.uploads import upload_points, upload_shp
 from corrections.views.features.info import attributes_options, ticket_status
+from corrections.views.tekuis.tekuis import ignore_tekuis_gap, validate_tekuis_parcels
 
 
 class DummyResponse:
@@ -397,3 +398,43 @@ class Status15RestrictedApiTests(SimpleTestCase):
         data = json.loads(response.content)
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
+    def test_validate_tekuis_blocks_non_editable_statuses(self, _mock_status, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
+
+        response = validate_tekuis_parcels(
+            self.factory.post(
+                "/api/tekuis/validate/",
+                data=json.dumps({"geojson": {"type": "FeatureCollection", "features": []}}),
+                content_type="application/json",
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 0)
+        self.assertFalse(data["ok"])
+
+    @patch("corrections.views.common.auth._redeem_ticket_payload")
+    @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
+    @patch("corrections.views.common.auth.is_edit_allowed_status", return_value=False)
+    def test_ignore_tekuis_gap_blocks_non_editable_statuses(self, _mock_status, _mock_ticket, mock_payload):
+        mock_payload.return_value = {"id": "30", "status": {"value": 0}}
+
+        response = ignore_tekuis_gap(
+            self.factory.post(
+                "/api/tekuis/validate/ignore-gap/",
+                data=json.dumps({"hash": "h1"}),
+                content_type="application/json",
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.content)
+        self.assertEqual(data["status_id"], 0)
+        self.assertFalse(data["ok"])
+
+    
