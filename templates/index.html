@@ -20,13 +20,19 @@
 
   <script>
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
-    window.CURRENT_STATUS_ID = {{ initial_status_id|default:"null" }};
-    window.EDIT_ALLOWED = {{ initial_allow_edit|yesno:"true,false" }};
   </script>
 
+{{ initial_status_id|json_script:"tekuis-current-status-id" }}
+{{ initial_allow_edit|json_script:"tekuis-edit-allowed" }}
 {{ validation_state|json_script:"tekuis-validation-state" }}
 {{ meta_id|json_script:"tekuis-meta-id" }}
   <script>
+    window.CURRENT_STATUS_ID = JSON.parse(
+      document.getElementById("tekuis-current-status-id").textContent || "null"
+    );
+    window.EDIT_ALLOWED = JSON.parse(
+      document.getElementById("tekuis-edit-allowed").textContent || "false"
+    );
     window.META_ID = JSON.parse(
       document.getElementById("tekuis-meta-id").textContent || "null"
     );
