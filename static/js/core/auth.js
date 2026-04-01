@@ -66,8 +66,8 @@ authGuardOnce();
 setInterval(() => { authGuardOnce(); }, 30000);
 
 // === STATUS icazəsi (status_control.is_edit=true olan statuslar üçün) ===
-window.EDIT_ALLOWED = false;
-window.CURRENT_STATUS_ID = null;
+window.EDIT_ALLOWED = typeof window.EDIT_ALLOWED === 'boolean' ? window.EDIT_ALLOWED : false;
+window.CURRENT_STATUS_ID = Number.isInteger(window.CURRENT_STATUS_ID) ? window.CURRENT_STATUS_ID : null;
 
 async function fetchTicketStatus() {
   if (!window.PAGE_TICKET) return false;

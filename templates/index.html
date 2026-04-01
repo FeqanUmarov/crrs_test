@@ -20,6 +20,8 @@
 
   <script>
     window.APP = { ticket: "{{ ticket|default_if_none:''|escapejs }}" };
+    window.CURRENT_STATUS_ID = {{ initial_status_id|default:"null" }};
+    window.EDIT_ALLOWED = {{ initial_allow_edit|yesno:"true,false" }};
   </script>
 
 {{ validation_state|json_script:"tekuis-validation-state" }}
@@ -332,7 +334,7 @@
           Publik Hüquqi Şəxsi
         </div>
       </div>
-      <button class="tool-btn" data-panel="contents" data-icon-tone="upload" data-show-only-status="15" title="Məlumat daxil et" aria-label="Məlumat daxil et">
+      <button class="tool-btn" data-panel="contents" data-icon-tone="upload" data-show-only-status="15" title="Məlumat daxil et" aria-label="Məlumat daxil et"{% if not initial_allow_edit %} hidden aria-hidden="true" style="display:none"{% endif %}>
         <img class="tb-ico" src="{% static 'icons/images/upload.svg' %}" alt="Məlumat daxil et ikonu">
         <span class="tb-label">Məlumat daxil et</span>
       </button>
@@ -353,7 +355,7 @@
       </button>
 
 
-      <button class="tool-btn" data-panel="attributes" data-icon-tone="attributes" data-show-only-status="15" title="Atribut məlumatları" aria-label="Atribut məlumatları">
+      <button class="tool-btn" data-panel="attributes" data-icon-tone="attributes" data-show-only-status="15" title="Atribut məlumatları" aria-label="Atribut məlumatları"{% if not initial_allow_edit %} hidden aria-hidden="true" style="display:none"{% endif %}>
         <img class="tb-ico" src="{% static 'icons/images/att.svg' %}" alt="Atribut ikonu">
         <span class="tb-label">Atribut məlumatları</span>
       </button>
