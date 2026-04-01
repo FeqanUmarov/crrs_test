@@ -30,7 +30,7 @@ from ..common.geo_utils import (
     _shape_to_geojson_geometry,
     _sniff_dialect,
 )
-from ..common.mssql import _as_bool, _is_edit_allowed_for_fk
+from ..common.mssql import _as_bool
 
 
 # ==========================
@@ -273,13 +273,6 @@ def attach_upload(request):
     # Phase-1 hardening: JWT imzası ayrıca verify edilmədiyi üçün payload identity-si istifadə olunmur.
     # Bu endpoint üçün audit sahələrinə yalnız təhlükəsiz fallback (None) yazılır.
     uid, ufn = None, None
-
-    allowed, sid = _is_edit_allowed_for_fk(meta_id)
-    if not allowed:
-        return JsonResponse(
-            {"ok": False, "error": "Bu müraciət statusunda fayl əlavə etmək qadağandır.", "status_id": sid},
-            status=403,
-        )
 
     if meta_id is None:
         return HttpResponseBadRequest("Ticket nömrəsi aktiv deyil.")

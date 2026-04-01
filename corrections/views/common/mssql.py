@@ -2,7 +2,7 @@ import logging
 import time
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from django.conf import settings
 
@@ -322,48 +322,3 @@ def _mssql_clear_objectid(row_id: int) -> bool:
     except Exception as e:
         logger.error("MSSQL OBJECTID clear failed: %s", e)
         return False
-
-
-# --- GIS edit icazəsi: STATUS_ID yalnız 15 və 99 olduqda ---
-
-def _get_status_id_from_row(row: Optional[Dict[str, Any]]) -> Optional[int]:
-    if not row:
-        return None
-    for k, v in row.items():
-        if str(k).upper() == "STATUS_ID":
-            try:
-                return int(v)
-            except Exception:
-                return None
-    return None
-
-
-def _is_edit_allowed_for_fk(meta_id: int) -> Tuple[bool, Optional[int]]:
-    sid = None
-    schema = getattr(settings, "MSSQL_STATUS_SCHEMA", "original")
-
-    try:
-        with _mssql_connect() as cn:
-            cur = cn.cursor()
-            cur.execute(
-                """
-                SELECT UPPER(COLUMN_NAME)
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'TBL_REQUEST_REG'
-            """,
-                (schema,),
-            )
-            cols = {r[0] for r in cur.fetchall()}
-            idcol = "ROW_ID" if "ROW_ID" in cols else ("ROWID" if "ROWID" in cols else ("ID" if "ID" in cols else None))
-            if not idcol or "STATUS_ID" not in cols:
-                return False, None
-
-            cur.execute(f"SELECT TOP 1 STATUS_ID FROM {schema}.TBL_REQUEST_REG WHERE {idcol} = ?", (int(meta_id),))
-            row = cur.fetchone()
-            if row and row[0] is not None:
-                sid = int(row[0])
-    except Exception:
-        details = _mssql_fetch_request(int(meta_id))
-        sid = _get_status_id_from_row(details)
-
-    return (sid in (15, 99)), sid

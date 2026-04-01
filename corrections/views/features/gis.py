@@ -8,7 +8,7 @@ from shapely import wkt as shapely_wkt
 
 from ..common.auth import _redeem_ticket, _unauthorized, require_status_15, require_valid_ticket
 from ..common.geo_utils import _clean_wkt_text, _payload_to_wkt_list
-from ..common.mssql import _is_edit_allowed_for_fk, _mssql_clear_objectid
+from ..common.mssql import _mssql_clear_objectid
 
 
 TEKUIS_PARCEL_TABLE = "public.tekuis_parcel"
@@ -68,13 +68,6 @@ def save_polygon(request):
     fk_metadata = getattr(request, "fk_metadata", None)
     if not fk_metadata:
         return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
-
-    allowed, sid = _is_edit_allowed_for_fk(fk_metadata)
-    if not allowed:
-        return JsonResponse(
-            {"ok": False, "error": "Bu müraciət statusunda GIS redaktə qadağandır.", "status_id": sid},
-            status=403,
-        )
 
     try:
         with connection.cursor() as cur:

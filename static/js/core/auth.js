@@ -65,7 +65,7 @@ authGuardOnce();
 // Hər 30 saniyədən bir sessiyanı yoxla:
 setInterval(() => { authGuardOnce(); }, 30000);
 
-// === STATUS icazəsi (yalnız STATUS_ID 15 üçün) ===
+// === STATUS icazəsi (status_control.is_edit=true olan statuslar üçün) ===
 window.EDIT_ALLOWED = false;
 window.CURRENT_STATUS_ID = null;
 
@@ -114,7 +114,7 @@ window.fetchTicketStatus = fetchTicketStatus;
 window.applyEditPermissions = applyEditPermissions;
 
 function isFullStatusAccess(){
-  return window.CURRENT_STATUS_ID === 15;
+  return !!window.EDIT_ALLOWED;
 }
 
 function applyStatusDrivenUI(){
