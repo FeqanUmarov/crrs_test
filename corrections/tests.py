@@ -200,9 +200,8 @@ class TicketStatusViewTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    @patch("corrections.views.features.info._is_edit_enabled_for_status", return_value=True)
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_uses_status_control_for_edit_permission(self, mock_payload, _mock_is_edit):
+    def test_ticket_status_uses_redeem_status_value_for_edit_permission(self, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -213,9 +212,8 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertTrue(data["allow_edit"])
         self.assertEqual(data["fk_metadata"], 30)
 
-    @patch("corrections.views.features.info._is_edit_enabled_for_status", return_value=False)
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_hides_edit_when_status_control_blocks(self, mock_payload, _mock_is_edit):
+    def test_ticket_status_hides_edit_for_non_15_statuses(self, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -230,9 +228,9 @@ class Status15ApiGuardTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    @patch("corrections.views.common.auth._is_edit_enabled_for_status", return_value=False)
+
     @patch("corrections.views.common.auth._redeem_ticket_payload")
-    def test_soft_delete_blocks_statuses_with_edit_closed(self, mock_payload, _mock_is_edit):
+    def test_soft_delete_blocks_non_15_statuses(self, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = soft_delete_gis_by_ticket(self.factory.post("/api/layers/soft-delete-by-ticket/", {"ticket": "abc"}))
@@ -243,10 +241,9 @@ class Status15ApiGuardTests(SimpleTestCase):
         self.assertFalse(data["ok"])
 
     @patch("corrections.views.features.gis._redeem_ticket")
-    @patch("corrections.views.common.auth._is_edit_enabled_for_status", return_value=True)
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.features.gis.transaction.atomic")
-    def test_soft_delete_allows_status_with_edit_open(self, mock_atomic, mock_payload, _mock_is_edit, mock_redeem):
+    def test_soft_delete_allows_status_15_to_continue(self, mock_atomic, mock_payload, mock_redeem):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
         mock_redeem.return_value = 30
 
@@ -282,10 +279,10 @@ class Status15RestrictedApiTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    @patch("corrections.views.common.auth._is_edit_enabled_for_status", return_value=False)
+
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_upload_shp_blocks_statuses_with_edit_closed(self, _mock_ticket, mock_payload, _mock_is_edit):
+    def test_upload_shp_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_shp(self.factory.post("/api/upload-shp/", {"ticket": "abc"}))
@@ -295,10 +292,9 @@ class Status15RestrictedApiTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["ok"])
 
-    @patch("corrections.views.common.auth._is_edit_enabled_for_status", return_value=False)
     @patch("corrections.views.common.auth._redeem_ticket_payload")
     @patch("corrections.views.common.auth._redeem_ticket_with_token", return_value=(30, "jwt"))
-    def test_upload_points_blocks_statuses_with_edit_closed(self, _mock_ticket, mock_payload, _mock_is_edit):
+    def test_upload_points_blocks_non_15_statuses(self, _mock_ticket, mock_payload):
         mock_payload.return_value = {"id": "30", "status": {"value": 0}}
 
         response = upload_points(self.factory.post("/api/upload-points/", {"ticket": "abc"}))
