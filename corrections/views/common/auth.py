@@ -7,6 +7,7 @@ from typing import Optional
 
 import requests
 from django.conf import settings
+from django.db import connection
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
@@ -274,6 +275,30 @@ def _extract_status_id_from_payload(payload) -> Optional[int]:
         return None
 
 
+def _is_edit_enabled_for_status(status_id: Optional[int]) -> bool:
+    """status_control cədvəlindən status üçün redaktə icazəsini yoxlayır."""
+    if status_id is None:
+        return False
+
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT is_edit
+                FROM status_control
+                WHERE status_id = %s
+                LIMIT 1
+                """,
+                [int(status_id)],
+            )
+            row = cur.fetchone()
+    except Exception:
+        logger.exception("status_control lookup failed for status_id=%s", status_id)
+        return False
+
+    return bool(row and row[0] is True)
+
+
 def require_status_15(view_fn):
     @wraps(view_fn)
     def _wrap(request, *args, **kwargs):
@@ -284,9 +309,9 @@ def require_status_15(view_fn):
 
         status_id = _extract_status_id_from_payload(payload)
 
-        if status_id != 15:
+        if not _is_edit_enabled_for_status(status_id):
             return JsonResponse(
-                {"ok": False, "error": "Bu əməliyyat yalnız status 15 üçün icazəlidir.", "status_id": status_id},
+                {"ok": False, "error": "Bu müraciətin statusu üçün redaktə icazəsi yoxdur.", "status_id": status_id},
                 status=403,
             )
 
@@ -303,9 +328,9 @@ def require_not_status_15(view_fn):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
 
         status_id = _extract_status_id_from_payload(payload)
-        if status_id == 15:
+        if _is_edit_enabled_for_status(status_id):
             return JsonResponse(
-                {"ok": False, "error": "Bu əməliyyat status 15 olduqda əlçatan deyil.", "status_id": status_id},
+                {"ok": False, "error": "Bu əməliyyat redaktə açıq statuslarda əlçatan deyil.", "status_id": status_id},
                 status=403,
             )
 
