@@ -21,7 +21,25 @@ from ..tekuis.tekuis import _has_active_tekuis
 
 logger = logging.getLogger(__name__)
 
-
+def _has_active_gis_data_for_fk(fk_metadata):
+    if fk_metadata is None:
+        return False
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1
+                FROM gis_data
+                WHERE fk_metadata = %s
+                  AND COALESCE(status, 1) = 1
+                LIMIT 1
+                """,
+                [fk_metadata],
+            )
+            return cur.fetchone() is not None
+    except Exception:
+        logger.exception("_has_active_gis_data_for_fk failed for fk_metadata=%s", fk_metadata)
+        return False
 
 def _resolve_fk_by_wkt(wkt: str):
     try:
@@ -63,7 +81,17 @@ def ticket_status(request):
     except Exception:
         fk = None
 
-    return JsonResponse({"ok": True, "fk_metadata": fk, "status_id": status_id, "allow_edit": allow_edit})
+    draw_snap_locked = _has_active_gis_data_for_fk(fk)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "fk_metadata": fk,
+            "status_id": status_id,
+            "allow_edit": allow_edit,
+            "draw_snap_locked": draw_snap_locked,
+        }
+    )
 
 
 @require_GET

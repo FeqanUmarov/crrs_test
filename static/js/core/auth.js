@@ -48,8 +48,10 @@ async function authGuardOnce(){
     // mövcud dəyişənlərin yenilənməsi (səndə artıq var)
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
+    window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
     window.applyEditPermissions?.();
     window.applyStatusDrivenUI?.();
+    window.applyRightToolLocks?.();
     window.updateTicketDeleteState?.();
     return true;
   }catch(e){
@@ -68,6 +70,7 @@ setInterval(() => { authGuardOnce(); }, 30000);
 // === STATUS icazəsi (status_control.is_edit=true olan statuslar üçün) ===
 window.EDIT_ALLOWED = typeof window.EDIT_ALLOWED === 'boolean' ? window.EDIT_ALLOWED : false;
 window.CURRENT_STATUS_ID = Number.isInteger(window.CURRENT_STATUS_ID) ? window.CURRENT_STATUS_ID : null;
+window.RT_DRAW_SNAP_LOCKED = !!window.RT_DRAW_SNAP_LOCKED;
 
 async function fetchTicketStatus() {
   if (!window.PAGE_TICKET) return false;
@@ -79,15 +82,19 @@ async function fetchTicketStatus() {
     const data = await resp.json();
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
+    window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
+    window.applyRightToolLocks?.();
     window.updateTicketDeleteState?.();
     return window.EDIT_ALLOWED;
   } catch (e) {
     console.warn('ticket-status error:', e);
     window.EDIT_ALLOWED = false;
+    window.RT_DRAW_SNAP_LOCKED = false;
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
+    window.applyRightToolLocks?.();
     return false;
   }
 }

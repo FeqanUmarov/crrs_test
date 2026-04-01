@@ -203,6 +203,60 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 0)
         self.assertFalse(data["allow_edit"])
 
+    @patch("corrections.views.features.info.connection.cursor")
+    @patch("corrections.views.features.info._is_edit_allowed_for_status", return_value=True)
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_locks_draw_and_snap_when_active_gis_data_exists(self, mock_payload, _mock_allow, mock_cursor):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        class _Cursor:
+            def execute(self, *_args, **_kwargs):
+                return None
+
+            def fetchone(self):
+                return (1,)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        mock_cursor.return_value = _Cursor()
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertTrue(data["draw_snap_locked"])
+
+    @patch("corrections.views.features.info.connection.cursor")
+    @patch("corrections.views.features.info._is_edit_allowed_for_status", return_value=True)
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_keeps_draw_and_snap_enabled_when_no_active_gis_data(self, mock_payload, _mock_allow, mock_cursor):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        class _Cursor:
+            def execute(self, *_args, **_kwargs):
+                return None
+
+            def fetchone(self):
+                return None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        mock_cursor.return_value = _Cursor()
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertFalse(data["draw_snap_locked"])
+
 
 class Status15ApiGuardTests(SimpleTestCase):
     def setUp(self):

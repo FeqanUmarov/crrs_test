@@ -793,6 +793,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     updateDeleteButtonState();
     updateAllSaveButtons();
     updateCutButtonState();
+    applyRightToolLocks();
 
     return { ok: true, createdCount: newFeatures.length };
   }
@@ -1270,6 +1271,33 @@ window.MainEditing.init = function initEditing(state = {}) {
   }
   window.ensureEditAllowed = ensureEditAllowed;
 
+  function applyRightToolLocks(){
+    const lockDrawSnap = !!window.RT_DRAW_SNAP_LOCKED;
+
+    if (lockDrawSnap) {
+      stopDraw(true);
+    }
+
+    if (rtEditUI.btnDraw) {
+      rtEditUI.btnDraw.disabled = lockDrawSnap;
+      rtEditUI.btnDraw.setAttribute('aria-disabled', lockDrawSnap ? 'true' : 'false');
+      rtEditUI.btnDraw.title = lockDrawSnap
+        ? 'Aktiv GIS məlumatı olduğu üçün çəkim bağlıdır.'
+        : '';
+    }
+
+    if (rtEditUI.btnSnap) {
+      rtEditUI.btnSnap.disabled = lockDrawSnap || !drawInteraction;
+      rtEditUI.btnSnap.classList.toggle('active', !lockDrawSnap && !!snapState.enabled);
+      rtEditUI.btnSnap.setAttribute('aria-disabled', rtEditUI.btnSnap.disabled ? 'true' : 'false');
+      rtEditUI.btnSnap.title = lockDrawSnap
+        ? 'Aktiv GIS məlumatı olduğu üçün snap bağlıdır.'
+        : '';
+    }
+  }
+
+  window.applyRightToolLocks = applyRightToolLocks;
+
   function injectRightEditButtons(){
     const host = document.getElementById('rightTools');
     if (!host) return;
@@ -1332,6 +1360,7 @@ window.MainEditing.init = function initEditing(state = {}) {
 
     // 3) Draw düyməsi
     rtEditUI.btnDraw.addEventListener('click', () => {
+      if (rtEditUI.btnDraw.disabled) return;
       if (!ensureEditAllowed()) return;
       if (drawInteraction) { stopDraw(); } else { startDraw(); }
     });
@@ -1425,6 +1454,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     rtEditUI.btnDelete.disabled = (selectInteraction.getFeatures().getLength() === 0);
     rtEditUI.btnSave.disabled   = !hasAtLeastOnePolygonSelected();
     updateCutButtonState();
+    applyRightToolLocks();
   }
 
   // Xəritə hazır olanda düymələri daxil et
@@ -1441,7 +1471,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       rtEditUI.btnDraw.classList.toggle('active', active);
     }
     if (rtEditUI && rtEditUI.btnSnap) {
-      rtEditUI.btnSnap.disabled = !active;
+      rtEditUI.btnSnap.disabled = !!window.RT_DRAW_SNAP_LOCKED || !active;
       if (!active) {
         rtEditUI.btnSnap.classList.remove('active');
       }
