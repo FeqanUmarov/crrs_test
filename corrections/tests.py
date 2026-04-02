@@ -179,8 +179,9 @@ class TicketStatusViewTests(SimpleTestCase):
         self.factory = RequestFactory()
 
     @patch("corrections.views.features.info._is_edit_allowed_for_status", return_value=True)
+    @patch("corrections.views.features.info._has_active_tekuis", return_value=True)
     @patch("corrections.views.features.info._redeem_ticket_payload")
-    def test_ticket_status_uses_status_control_for_edit_permission(self, mock_payload, _mock_allow):
+    def test_ticket_status_uses_status_control_for_edit_permission(self, mock_payload, _mock_has_tekuis, _mock_allow):
         mock_payload.return_value = {"id": "30", "status": {"value": 15}}
 
         response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc"}))
@@ -190,6 +191,7 @@ class TicketStatusViewTests(SimpleTestCase):
         self.assertEqual(data["status_id"], 15)
         self.assertTrue(data["allow_edit"])
         self.assertEqual(data["fk_metadata"], 30)
+        self.assertTrue(data["tekuis_action_locked"])
 
     @patch("corrections.views.features.info._is_edit_allowed_for_status", return_value=False)
     @patch("corrections.views.features.info._redeem_ticket_payload")

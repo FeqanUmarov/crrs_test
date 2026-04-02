@@ -515,6 +515,7 @@
         this.state.needsValidation = false;
         setSaveReminder(false);
         writeStoredState(this.state.metaId, true);
+        window.setTekuisActionLocked?.(true);
         applyButtonState(this.state);
 
         Swal.fire(

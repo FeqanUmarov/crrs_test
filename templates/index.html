@@ -25,6 +25,7 @@
 {{ initial_status_id|json_script:"tekuis-current-status-id" }}
 {{ initial_allow_edit|json_script:"tekuis-edit-allowed" }}
 {{ initial_draw_snap_locked|json_script:"tekuis-draw-snap-locked" }}
+{{ initial_tekuis_action_locked|json_script:"tekuis-action-locked" }}
 {{ validation_state|json_script:"tekuis-validation-state" }}
 {{ meta_id|json_script:"tekuis-meta-id" }}
   <script>
@@ -36,6 +37,9 @@
     );
     window.RT_DRAW_SNAP_LOCKED = JSON.parse(
       document.getElementById("tekuis-draw-snap-locked").textContent || "false"
+    );
+    window.TEKUIS_ACTION_LOCKED = JSON.parse(
+      document.getElementById("tekuis-action-locked").textContent || "false"
     );
     window.META_ID = JSON.parse(
       document.getElementById("tekuis-meta-id").textContent || "null"

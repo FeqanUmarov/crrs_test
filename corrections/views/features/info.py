@@ -82,6 +82,7 @@ def ticket_status(request):
         fk = None
 
     draw_snap_locked = _has_active_gis_data_for_fk(fk)
+    tekuis_action_locked = _has_active_tekuis(fk) if fk is not None else False
 
     return JsonResponse(
         {
@@ -90,6 +91,7 @@ def ticket_status(request):
             "status_id": status_id,
             "allow_edit": allow_edit,
             "draw_snap_locked": draw_snap_locked,
+            "tekuis_action_locked": tekuis_action_locked,
         }
     )
 

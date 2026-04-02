@@ -58,6 +58,7 @@ def index(request):
     status_id = _extract_status_id_from_payload(payload)
     initial_allow_edit = _is_edit_allowed_for_status(status_id)
     initial_draw_snap_locked = _has_active_gis_data_for_fk(int(fk))
+    initial_tekuis_action_locked = _has_active_tekuis(int(fk))
 
     return render(
         request,
@@ -69,5 +70,6 @@ def index(request):
             "initial_status_id": status_id,
             "initial_allow_edit": initial_allow_edit,
             "initial_draw_snap_locked": initial_draw_snap_locked,
+            "initial_tekuis_action_locked": initial_tekuis_action_locked,
         },
     )

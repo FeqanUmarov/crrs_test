@@ -45,13 +45,15 @@ async function authGuardOnce(){
       return false;
     }
     const data = await r.json();
-    // mövcud dəyişənlərin yenilənməsi (səndə artıq var)
+    // mövcud dəyişənlərin yenilənməsi
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
     window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
+    window.TEKUIS_ACTION_LOCKED = !!data?.tekuis_action_locked;
     window.applyEditPermissions?.();
     window.applyStatusDrivenUI?.();
     window.applyRightToolLocks?.();
+    window.applyTekuisActionLocks?.();
     window.updateTicketDeleteState?.();
     return true;
   }catch(e){
@@ -71,6 +73,51 @@ setInterval(() => { authGuardOnce(); }, 30000);
 window.EDIT_ALLOWED = typeof window.EDIT_ALLOWED === 'boolean' ? window.EDIT_ALLOWED : false;
 window.CURRENT_STATUS_ID = Number.isInteger(window.CURRENT_STATUS_ID) ? window.CURRENT_STATUS_ID : null;
 window.RT_DRAW_SNAP_LOCKED = !!window.RT_DRAW_SNAP_LOCKED;
+window.TEKUIS_ACTION_LOCKED = !!window.TEKUIS_ACTION_LOCKED;
+
+const TEKUIS_LOCKED_BUTTON_IDS = [
+  'btnValidateTekuis',
+  'btnSaveTekuis',
+  'btnEraseTekuisInsideTicket',
+  'rtExplode',
+  'rtCutPolygon',
+  'rtErase',
+  'rtEditVertices'
+];
+
+function setButtonDisabledState(el, disabled, lockTitle) {
+  if (!el) return;
+  if (disabled) {
+    if (!el.dataset.prevTitle && el.title) {
+      el.dataset.prevTitle = el.title;
+    }
+    el.disabled = true;
+    el.setAttribute('aria-disabled', 'true');
+    if (lockTitle) el.title = lockTitle;
+    return;
+  }
+  el.disabled = false;
+  el.setAttribute('aria-disabled', 'false');
+  if (el.dataset.prevTitle !== undefined) {
+    el.title = el.dataset.prevTitle || '';
+    delete el.dataset.prevTitle;
+  } else {
+    el.removeAttribute('title');
+  }
+}
+
+function applyTekuisActionLocks() {
+  const locked = !!window.TEKUIS_ACTION_LOCKED;
+  const lockTitle = 'TEKUİS məlumatı artıq yadda saxlanılıb. Əməliyyat üçün əvvəlcə ləğv edin.';
+  TEKUIS_LOCKED_BUTTON_IDS.forEach((id) => {
+    setButtonDisabledState(document.getElementById(id), locked, lockTitle);
+  });
+}
+
+function setTekuisActionLocked(locked) {
+  window.TEKUIS_ACTION_LOCKED = !!locked;
+  applyTekuisActionLocks();
+}
 
 async function fetchTicketStatus() {
   if (!window.PAGE_TICKET) return false;
@@ -83,18 +130,22 @@ async function fetchTicketStatus() {
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
     window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
+    window.TEKUIS_ACTION_LOCKED = !!data?.tekuis_action_locked;
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
     window.applyRightToolLocks?.();
+    applyTekuisActionLocks();
     window.updateTicketDeleteState?.();
     return window.EDIT_ALLOWED;
   } catch (e) {
     console.warn('ticket-status error:', e);
     window.EDIT_ALLOWED = false;
     window.RT_DRAW_SNAP_LOCKED = false;
+    window.TEKUIS_ACTION_LOCKED = false;
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
     window.applyRightToolLocks?.();
+    applyTekuisActionLocks();
     return false;
   }
 }
@@ -119,6 +170,8 @@ function applyEditPermissions(){
 window.authGuardOnce = authGuardOnce;
 window.fetchTicketStatus = fetchTicketStatus;
 window.applyEditPermissions = applyEditPermissions;
+window.applyTekuisActionLocks = applyTekuisActionLocks;
+window.setTekuisActionLocked = setTekuisActionLocked;
 
 function isFullStatusAccess(){
   return !!window.EDIT_ALLOWED;
@@ -162,11 +215,15 @@ function applyStatusDrivenUI(){
 window.isFullStatusAccess = isFullStatusAccess;
 window.applyStatusDrivenUI = applyStatusDrivenUI;
 
-const statusUiObserver = new MutationObserver(() => applyStatusDrivenUI());
+const statusUiObserver = new MutationObserver(() => {
+  applyStatusDrivenUI();
+  applyTekuisActionLocks();
+});
 window.addEventListener('DOMContentLoaded', () => {
   const panelBody = document.querySelector('.panel-body');
   const rightTools = document.getElementById('rightTools');
   if (panelBody) statusUiObserver.observe(panelBody, { childList: true, subtree: true });
   if (rightTools) statusUiObserver.observe(rightTools, { childList: true, subtree: true });
   applyStatusDrivenUI();
+  applyTekuisActionLocks();
 });
