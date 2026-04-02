@@ -337,6 +337,7 @@ function setupLayersPanel({
 
           // UI/state təmizləmələri
           updateTicketDeleteState();
+          await window.fetchTicketStatus?.();
           clearTekuisCache?.();
           await refreshTekuisFromAttachIfAny?.(true); // attach boşdursa TEKUİS də təmizlənəcək
           const necasSource = getNecasSource?.();
