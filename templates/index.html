@@ -24,6 +24,7 @@
 
 {{ initial_status_id|json_script:"tekuis-current-status-id" }}
 {{ initial_allow_edit|json_script:"tekuis-edit-allowed" }}
+{{ initial_draw_snap_locked|json_script:"tekuis-draw-snap-locked" }}
 {{ validation_state|json_script:"tekuis-validation-state" }}
 {{ meta_id|json_script:"tekuis-meta-id" }}
   <script>
@@ -32,6 +33,9 @@
     );
     window.EDIT_ALLOWED = JSON.parse(
       document.getElementById("tekuis-edit-allowed").textContent || "false"
+    );
+    window.RT_DRAW_SNAP_LOCKED = JSON.parse(
+      document.getElementById("tekuis-draw-snap-locked").textContent || "false"
     );
     window.META_ID = JSON.parse(
       document.getElementById("tekuis-meta-id").textContent || "null"
@@ -167,6 +171,16 @@
   cursor:pointer; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(145deg, #ffffff, #e9f2ff);
   transition:transform .15s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.rt-btn:disabled,
+.rt-btn[aria-disabled="true"]{
+  cursor:not-allowed;
+  pointer-events:none;
+  transform:none;
+  background:linear-gradient(145deg, #e5e7eb, #d1d5db);
+  border-color:#cbd5e1;
+  box-shadow:none;
+  opacity:.9;
 }
 .rt-btn:hover{
   transform:translateY(-2px);

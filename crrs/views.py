@@ -1,6 +1,7 @@
 # crrs/views.py
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.db import connection
 
 from corrections.services.tekuis.topology_db import get_validation_state
 from corrections.views.tekuis.tekuis import _has_active_tekuis
@@ -10,6 +11,25 @@ from corrections.views.common.auth import _extract_status_id_from_payload, _is_e
 
 
 LOGIN_URL = "http://10.11.1.73:8085/login"
+
+def _has_active_gis_data_for_fk(fk_metadata: int | None) -> bool:
+    if fk_metadata is None:
+        return False
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1
+                FROM gis_data
+                WHERE fk_metadata = %s
+                  AND COALESCE(status, 1) = 1
+                LIMIT 1
+                """,
+                [fk_metadata],
+            )
+            return cur.fetchone() is not None
+    except Exception:
+        return False
 
 @ensure_csrf_cookie
 def index(request):
@@ -37,6 +57,7 @@ def index(request):
     payload = _redeem_ticket_payload(ticket, request=request) or {}
     status_id = _extract_status_id_from_payload(payload)
     initial_allow_edit = _is_edit_allowed_for_status(status_id)
+    initial_draw_snap_locked = _has_active_gis_data_for_fk(int(fk))
 
     return render(
         request,
@@ -47,5 +68,6 @@ def index(request):
             "validation_state": validation_state,
             "initial_status_id": status_id,
             "initial_allow_edit": initial_allow_edit,
+            "initial_draw_snap_locked": initial_draw_snap_locked,
         },
     )
