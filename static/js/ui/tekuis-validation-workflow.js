@@ -215,9 +215,55 @@
 
 
 
-  function resolveOriginalTekuis(fc) {
+  function isValidFeatureCollection(fc) {
+    return Boolean(
+      fc
+      && fc.type === "FeatureCollection"
+      && Array.isArray(fc.features)
+      && fc.features.length > 0
+    );
+  }
+
+  function buildOriginalTekuisFetchUrl({ ticket, metaId } = {}) {
+    const qs = new URLSearchParams();
+    if (Number.isFinite(+metaId)) {
+      qs.set("meta_id", String(+metaId));
+    } else if (ticket) {
+      qs.set("ticket", String(ticket));
+    } else {
+      return null;
+    }
+    qs.set("source", "old");
+    return `/api/tekuis/parcels/by-db/?${qs.toString()}`;
+  }
+
+  async function fetchOriginalTekuisFromDb({ ticket, metaId } = {}) {
+    const url = buildOriginalTekuisFetchUrl({ ticket, metaId });
+    if (!url) return null;
+    try {
+      const resp = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!resp.ok) return null;
+      const fc = await resp.json();
+      return isValidFeatureCollection(fc) ? fc : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function resolveOriginalTekuis({ fc, ticket, metaId } = {}) {
     const cached = window.tekuisCache?.getOriginalTekuis?.();
-    if (cached && cached.type === "FeatureCollection") return cached;
+    if (isValidFeatureCollection(cached)) return cached;
+
+    const fromDb = await fetchOriginalTekuisFromDb({ ticket, metaId });
+    if (isValidFeatureCollection(fromDb)) {
+      window.tekuisCache?.saveOriginalTekuis?.(fromDb, { force: true });
+      return fromDb;
+    }
+
+    if (isValidFeatureCollection(fc)) {
+      window.tekuisCache?.saveOriginalTekuis?.(fc, { force: true });
+      return fc;
+    }
     return null;
   }
 
@@ -486,7 +532,11 @@
 
       try {
         const fc = buildFeatureCollection(source);
-        const originalFc = resolveOriginalTekuis(fc);
+        const originalFc = await resolveOriginalTekuis({
+          fc,
+          ticket: this.ticket,
+          metaId: this.state.metaId ?? window.META_ID ?? null
+        });
         if (!originalFc) {
           if (!wasLockedBeforeSave) {
             window.setTekuisActionLocked?.(false);
