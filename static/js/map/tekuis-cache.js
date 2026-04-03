@@ -81,6 +81,9 @@ function loadTekuisFromLS(){
     const raw = localStorage.getItem(LS_KEYS.tekuis);
     if (!raw) return false;
     const fcObj = JSON.parse(raw);
+    if (fcObj?.type === 'FeatureCollection' && !hasOriginalTekuis()) {
+      saveOriginalTekuis(fcObj);
+    }
     const feats = geojsonFmt.readFeatures(fcObj, {
       dataProjection: 'EPSG:4326',
       featureProjection: 'EPSG:3857'

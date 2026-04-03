@@ -221,6 +221,24 @@
     return null;
   }
 
+  function ensureOriginalTekuisSnapshot(source) {
+    const hasCachedOriginal = window.tekuisCache?.hasOriginalTekuis?.();
+    if (hasCachedOriginal) return;
+
+    const features = source?.getFeatures?.() || [];
+    if (features.length === 0) return;
+
+    const formatter = new ol.format.GeoJSON();
+    const snapshot = formatter.writeFeaturesObject(features, {
+      dataProjection: "EPSG:4326",
+      featureProjection: "EPSG:3857"
+    });
+
+    if (snapshot?.type === "FeatureCollection") {
+      window.tekuisCache?.saveOriginalTekuis?.(snapshot);
+    }
+  }
+
   function readInitialState() {
     const payload = window.TEKUIS_VALIDATION_STATE;
     if (!payload || typeof payload !== "object") {
@@ -261,6 +279,7 @@
       this.source = tekuisSource || this.source;
       this.ticket = ticket || this.ticket || "";
       this.state = createState(readInitialState());
+      ensureOriginalTekuisSnapshot(this.source);
       applyButtonState(this.state);
       this.bindButtons();
       this.bindSourceEvents();
