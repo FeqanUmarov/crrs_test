@@ -478,6 +478,7 @@
       if (!ask.isConfirmed) return;
 
       const wasLockedBeforeSave = isTekuisActionLocked();
+      let saveCompleted = false;
       window.setTekuisActionLocked?.(true);
 
       this.state.saving = true;
@@ -487,6 +488,9 @@
         const fc = buildFeatureCollection(source);
         const originalFc = resolveOriginalTekuis(fc);
         if (!originalFc) {
+          if (!wasLockedBeforeSave) {
+            window.setTekuisActionLocked?.(false);
+          }
           Swal.fire("Xəta", "Köhnə TEKUİS məlumatı tapılmadı.", "error");
           return;
         }
@@ -503,6 +507,9 @@
             highlightMultipartIndexes(source, response.data?.multipart_indexes || []);
             window.updateAllSaveButtons?.();
             window.updateDeleteButtonState?.();
+            if (!wasLockedBeforeSave) {
+              window.setTekuisActionLocked?.(false);
+            }
             Swal.fire("Diqqət", response.data?.message || "Multipart parsellər saxlanıla bilməz.", "warning");
             return;
           }
@@ -538,6 +545,7 @@
         setSaveReminder(false);
         writeStoredState(this.state.metaId, true);
         window.setTekuisActionLocked?.(true);
+        saveCompleted = true;
         applyButtonState(this.state);
 
         Swal.fire(
@@ -551,6 +559,9 @@
         }
         Swal.fire("Xəta", e.message || "Şəbəkə xətası baş verdi.", "error");
       } finally {
+        if (!saveCompleted && !wasLockedBeforeSave) {
+          window.setTekuisActionLocked?.(false);
+        }
         this.state.saving = false;
         applyButtonState(this.state);
       }
