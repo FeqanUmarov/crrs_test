@@ -698,6 +698,10 @@ function resolveOriginalTekuis({ fallbackFc } = {}){
   if (isValidFeatureCollection(cached)) {
     return cached;
   }
+  if (isValidFeatureCollection(fallbackFc) && (fallbackFc.features?.length ?? 0) > 0) {
+    window.tekuisCache?.saveOriginalTekuis?.(fallbackFc);
+    return fallbackFc;
+  }
   return null;
 }
 
