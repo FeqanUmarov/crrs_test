@@ -88,9 +88,8 @@ window.TekuisNecas.create = function createTekuisNecas({
       tekuisSource.addFeatures(feats);
 
       setTekuisCountSafe(feats.length);
-      const tekuisMode = window.TekuisSwitch?.getMode?.() || 'current';
       const hasOriginal = window.tekuisCache?.hasOriginalTekuis?.();
-      if (tekuisMode === 'current' || !hasOriginal) {
+      if (!hasOriginal) {
         window.tekuisCache?.saveOriginalTekuis?.(fc);
       }
 

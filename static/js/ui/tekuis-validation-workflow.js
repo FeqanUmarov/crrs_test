@@ -218,10 +218,6 @@
   function resolveOriginalTekuis(fc) {
     const cached = window.tekuisCache?.getOriginalTekuis?.();
     if (cached && cached.type === "FeatureCollection") return cached;
-    if (fc && fc.type === "FeatureCollection") {
-      window.tekuisCache?.saveOriginalTekuis?.(fc);
-      return fc;
-    }
     return null;
   }
 
