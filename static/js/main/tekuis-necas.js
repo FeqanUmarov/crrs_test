@@ -89,7 +89,7 @@ window.TekuisNecas.create = function createTekuisNecas({
 
       setTekuisCountSafe(feats.length);
       const tekuisMode = window.TekuisSwitch?.getMode?.() || 'current';
-      window.tekuisCache?.saveOriginalTekuis?.(fc, { force: true });
+      window.tekuisCache?.saveOriginalTekuis?.(fc);
 
       if (document.getElementById('cardTekuis')){
         const mode = (window.TekuisSwitch && typeof window.TekuisSwitch.getMode === 'function')
