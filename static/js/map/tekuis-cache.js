@@ -53,9 +53,12 @@ function clearTekuisCache(){
   try { localStorage.removeItem(LS_KEYS.tekuis); } catch {}
 }
 
-function saveOriginalTekuis(fcObj){
+function saveOriginalTekuis(fcObj, { force = false } = {}){
   if (!fcObj || typeof fcObj !== 'object') return;
-  try { localStorage.setItem(LS_KEYS.tekuisOriginal, JSON.stringify(fcObj)); } catch {}
+  try {
+    if (!force && localStorage.getItem(LS_KEYS.tekuisOriginal)) return;
+    localStorage.setItem(LS_KEYS.tekuisOriginal, JSON.stringify(fcObj));
+  } catch {}
 }
 
 function hasOriginalTekuis(){
@@ -81,6 +84,9 @@ function loadTekuisFromLS(){
     const raw = localStorage.getItem(LS_KEYS.tekuis);
     if (!raw) return false;
     const fcObj = JSON.parse(raw);
+    if (!hasOriginalTekuis()) {
+      saveOriginalTekuis(fcObj);
+    }
     const feats = geojsonFmt.readFeatures(fcObj, {
       dataProjection: 'EPSG:4326',
       featureProjection: 'EPSG:3857'

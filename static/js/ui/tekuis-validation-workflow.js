@@ -218,11 +218,17 @@
   function resolveOriginalTekuis(fc) {
     const cached = window.tekuisCache?.getOriginalTekuis?.();
     if (cached && cached.type === "FeatureCollection") return cached;
-    if (fc && fc.type === "FeatureCollection") {
-      window.tekuisCache?.saveOriginalTekuis?.(fc);
-      return fc;
-    }
     return null;
+  }
+
+  function ensureOriginalSnapshot(source) {
+    const cached = window.tekuisCache?.getOriginalTekuis?.();
+    if (cached && cached.type === "FeatureCollection") return;
+
+    const fc = buildFeatureCollection(source);
+    if (!fc || fc.type !== "FeatureCollection") return;
+    if (!Array.isArray(fc.features) || fc.features.length === 0) return;
+    window.tekuisCache?.saveOriginalTekuis?.(fc);
   }
 
   function readInitialState() {
@@ -264,6 +270,7 @@
       this.service = window.TekuisValidationService?.create?.();
       this.source = tekuisSource || this.source;
       this.ticket = ticket || this.ticket || "";
+      ensureOriginalSnapshot(this.source);
       this.state = createState(readInitialState());
       applyButtonState(this.state);
       this.bindButtons();
@@ -302,7 +309,10 @@
       if (!source || source.__tekuisValidationBound) return;
       source.__tekuisValidationBound = true;
 
-      const markDirty = () => {
+      const markDirty = (evt) => {
+        if (evt?.type === "addfeature") {
+          ensureOriginalSnapshot(source);
+        }
         clearMultipartReminder();
         if (!this.state.loaded) return;
         this.state.localFinal = false;
