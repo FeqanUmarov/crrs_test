@@ -74,7 +74,7 @@ window.TekuisNecas.create = function createTekuisNecas({
     return Array.isArray(ext) && ext.length === 4 && ext.every(Number.isFinite);
   }
 
-  function showTekuis(fc){
+  function showTekuis(fc, { origin = null } = {}){
     try{
       const format = new ol.format.GeoJSON();
       const feats = format.readFeatures(fc, {
@@ -89,7 +89,9 @@ window.TekuisNecas.create = function createTekuisNecas({
 
       setTekuisCountSafe(feats.length);
       const tekuisMode = window.TekuisSwitch?.getMode?.() || 'current';
-      window.tekuisCache?.saveOriginalTekuis?.(fc);
+      if (origin === 'by-geom') {
+        window.tekuisCache?.saveOriginalTekuis?.(fc, { force: true });
+      }
 
       if (document.getElementById('cardTekuis')){
         const mode = (window.TekuisSwitch && typeof window.TekuisSwitch.getMode === 'function')
@@ -210,7 +212,7 @@ window.TekuisNecas.create = function createTekuisNecas({
       }
       return r.json();
     })
-    .then(fc => showTekuis(fc))
+      .then(fc => showTekuis(fc, { origin: 'by-geom' }))
     .catch(err => {
       console.error('TEKUİS GEOM error:', err);
       Swal.fire('TEKUİS xətası', (err && err.message) || 'Naməlum xəta', 'error');

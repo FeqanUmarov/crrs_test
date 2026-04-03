@@ -250,6 +250,37 @@
     }
   }
 
+  function buildOriginalTekuisByGeomPayload() {
+    const attachLayer = window.attachLayer || window.MapContext?.attachLayer || null;
+    const composed = window.composeLayerWKTAndSuggestBuffer?.(attachLayer) || {};
+    if (!composed?.wkt) return null;
+    return {
+      wkt: composed.wkt,
+      srid: 4326,
+      buffer_m: Number.isFinite(+composed.bufferMeters) ? +composed.bufferMeters : 0
+    };
+  }
+
+  async function fetchOriginalTekuisFromGeomApi() {
+    const payload = buildOriginalTekuisByGeomPayload();
+    if (!payload) return null;
+    try {
+      const resp = await fetch("/api/tekuis/parcels/by-geom/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) return null;
+      const fc = await resp.json();
+      return isValidFeatureCollection(fc) ? fc : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function resolveOriginalTekuis({ fc, ticket, metaId } = {}) {
     const cached = window.tekuisCache?.getOriginalTekuis?.();
     if (isValidFeatureCollection(cached)) return cached;
@@ -260,9 +291,10 @@
       return fromDb;
     }
 
-    if (isValidFeatureCollection(fc)) {
-      window.tekuisCache?.saveOriginalTekuis?.(fc, { force: true });
-      return fc;
+    const fromGeomApi = await fetchOriginalTekuisFromGeomApi();
+    if (isValidFeatureCollection(fromGeomApi)) {
+      window.tekuisCache?.saveOriginalTekuis?.(fromGeomApi, { force: true });
+      return fromGeomApi;
     }
     return null;
   }
