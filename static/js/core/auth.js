@@ -29,14 +29,14 @@ function showAuthGateAndRedirect(msg){
   };
 })();
 
-async function authGuardOnce(){
+async function authGuardOnce({ includeLocks = true } = {}){
   // Ticket ümumiyyətlə yoxdursa → birbaşa geri
   if (!window.PAGE_TICKET) {
     showAuthGateAndRedirect('Ticket tapılmadı.');
     return false;
   }
   try{
-    const r = await fetch(`/api/ticket-status/?ticket=${encodeURIComponent(window.PAGE_TICKET)}`, {
+    const r = await fetch(`/api/ticket-status/?ticket=${encodeURIComponent(window.PAGE_TICKET)}&include_locks=${includeLocks ? '1' : '0'}`, {
       headers: { 'Accept':'application/json' }
     });
     if (!r.ok) {
@@ -48,12 +48,16 @@ async function authGuardOnce(){
     // mövcud dəyişənlərin yenilənməsi
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
-    window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
-    window.TEKUIS_ACTION_LOCKED = !!data?.tekuis_action_locked;
+    if (includeLocks) {
+      window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
+      window.TEKUIS_ACTION_LOCKED = !!data?.tekuis_action_locked;
+    }
     window.applyEditPermissions?.();
     window.applyStatusDrivenUI?.();
     window.applyRightToolLocks?.();
-    window.applyTekuisActionLocks?.();
+    if (includeLocks) {
+      window.applyTekuisActionLocks?.();
+    }
     window.updateTicketDeleteState?.();
     return true;
   }catch(e){
@@ -64,10 +68,10 @@ async function authGuardOnce(){
 }
 
 // Səhifə açılan kimi yoxla:
-authGuardOnce();
+authGuardOnce({ includeLocks: true });
 
 // Hər 30 saniyədən bir sessiyanı yoxla:
-setInterval(() => { authGuardOnce(); }, 30000);
+setInterval(() => { authGuardOnce({ includeLocks: false }); }, 30000);
 
 // === STATUS icazəsi (status_control.is_edit=true olan statuslar üçün) ===
 window.EDIT_ALLOWED = typeof window.EDIT_ALLOWED === 'boolean' ? window.EDIT_ALLOWED : false;
@@ -119,33 +123,41 @@ function setTekuisActionLocked(locked) {
   applyTekuisActionLocks();
 }
 
-async function fetchTicketStatus() {
+async function fetchTicketStatus({ includeLocks = true } = {}) {
   if (!window.PAGE_TICKET) return false;
   try {
-    const resp = await fetch(`/api/ticket-status/?ticket=${encodeURIComponent(window.PAGE_TICKET)}`, {
+    const resp = await fetch(`/api/ticket-status/?ticket=${encodeURIComponent(window.PAGE_TICKET)}&include_locks=${includeLocks ? '1' : '0'}`, {
       headers: { 'Accept':'application/json' }
     });
     if (!resp.ok) throw new Error(await resp.text());
     const data = await resp.json();
     window.CURRENT_STATUS_ID = data?.status_id ?? null;
     window.EDIT_ALLOWED = !!data?.allow_edit;
-    window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
-    window.TEKUIS_ACTION_LOCKED = !!data?.tekuis_action_locked;
+    if (includeLocks) {
+      window.RT_DRAW_SNAP_LOCKED = !!data?.draw_snap_locked;
+      window.TEKUIS_ACTION_LOCKED = !!data?.tekuis_action_locked;
+    }
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
     window.applyRightToolLocks?.();
-    applyTekuisActionLocks();
+    if (includeLocks) {
+      applyTekuisActionLocks();
+    }
     window.updateTicketDeleteState?.();
     return window.EDIT_ALLOWED;
   } catch (e) {
     console.warn('ticket-status error:', e);
     window.EDIT_ALLOWED = false;
-    window.RT_DRAW_SNAP_LOCKED = false;
-    window.TEKUIS_ACTION_LOCKED = false;
+    if (includeLocks) {
+      window.RT_DRAW_SNAP_LOCKED = false;
+      window.TEKUIS_ACTION_LOCKED = false;
+    }
     applyEditPermissions();
     window.applyStatusDrivenUI?.();
     window.applyRightToolLocks?.();
-    applyTekuisActionLocks();
+    if (includeLocks) {
+      applyTekuisActionLocks();
+    }
     return false;
   }
 }

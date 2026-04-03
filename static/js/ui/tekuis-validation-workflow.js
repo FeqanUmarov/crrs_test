@@ -65,14 +65,19 @@
   }
 
   function applyButtonState(state) {
-    const { validateModal } = getButtons();
+    const { validateCard, validateModal, save } = getButtons();
+    const locked = Boolean(window.TEKUIS_ACTION_LOCKED);
     if (!state.loaded) {
+      setDisabled(validateCard, true);
       setDisabled(validateModal, true);
+      setDisabled(save, true);
       return;
     }
 
-    const validateDisabled = state.validating || state.saving || state.saved;
-    setDisabled(validateModal, validateDisabled);
+    const actionDisabled = state.validating || state.saving || state.saved || locked;
+    setDisabled(validateCard, actionDisabled);
+    setDisabled(validateModal, actionDisabled);
+    setDisabled(save, actionDisabled);
   }
   function getStorageKey(metaId) {
     if (!Number.isFinite(+metaId)) return null;
@@ -132,15 +137,8 @@
     };
   }
 
-  async function fetchSavedTekuisState() {
-    const api = window.tekuisNecasApi;
-    if (!api || typeof api.getTekuisSavedState !== "function") return false;
-    try {
-      return await api.getTekuisSavedState({ force: true });
-    } catch (e) {
-      console.warn("TEKUİS saved check xətası:", e);
-      return false;
-    }
+  function isTekuisActionLocked() {
+    return !!window.TEKUIS_ACTION_LOCKED;
   }
 
   function buildFeatureCollection(source) {
@@ -325,8 +323,7 @@
 
     async handleValidateClick({ trigger = "card" } = {}) {
       if (!this.service || this.state.validating) return;
-      const savedFromDb = await fetchSavedTekuisState();
-      if (savedFromDb || this.state.saved) {
+      if (isTekuisActionLocked() || this.state.saved) {
         this.state.saved = true;
         this.state.needsValidation = false;
         applyButtonState(this.state);
@@ -417,8 +414,7 @@
 
     async handleSaveClick() {
       if (!this.service || this.state.saving || this.state.validating) return;
-      const savedFromDb = await fetchSavedTekuisState();
-      if (savedFromDb || this.state.saved) {
+      if (isTekuisActionLocked() || this.state.saved) {
         this.state.saved = true;
         this.state.needsValidation = false;
         applyButtonState(this.state);
@@ -471,6 +467,9 @@
 
       if (!ask.isConfirmed) return;
 
+      const wasLockedBeforeSave = isTekuisActionLocked();
+      window.setTekuisActionLocked?.(true);
+
       this.state.saving = true;
       applyButtonState(this.state);
 
@@ -490,12 +489,25 @@
         });
 
         if (!response.ok) {
-          if (response.data?.error === "multipart_not_allowed") {
+          if ((response.data?.error === "multipart_not_allowed") || (response.data?.code === "multipart_not_allowed")) {
             highlightMultipartIndexes(source, response.data?.multipart_indexes || []);
             window.updateAllSaveButtons?.();
             window.updateDeleteButtonState?.();
             Swal.fire("Diqqət", response.data?.message || "Multipart parsellər saxlanıla bilməz.", "warning");
             return;
+          }
+          if (response.data?.code === "ALREADY_SAVED") {
+            this.state.saved = true;
+            this.state.needsValidation = false;
+            writeStoredState(this.state.metaId, true);
+            window.setTekuisActionLocked?.(true);
+            applyButtonState(this.state);
+            Swal.fire("Diqqət", response.data?.message || "TEKUİS parsellər artıq yadda saxlanılıb", "warning");
+            return;
+          }
+
+          if (!wasLockedBeforeSave) {
+            window.setTekuisActionLocked?.(false);
           }
           Swal.fire("Xəta", response.data?.error || "TEKUİS parselləri yadda saxlanılmadı.", "error");
           return;
@@ -524,6 +536,9 @@
           "success"
         );
       } catch (e) {
+        if (!wasLockedBeforeSave) {
+          window.setTekuisActionLocked?.(false);
+        }
         Swal.fire("Xəta", e.message || "Şəbəkə xətası baş verdi.", "error");
       } finally {
         this.state.saving = false;

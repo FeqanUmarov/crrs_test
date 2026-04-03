@@ -74,6 +74,9 @@ def ticket_status(request):
         status_id = None
 
     allow_edit = _is_edit_allowed_for_status(status_id)
+    include_locks_raw = (request.GET.get("include_locks") or "1").strip().lower()
+    include_locks = include_locks_raw not in {"0", "false", "no"}
+
     fk = payload.get("id") or payload.get("rowid") or payload.get("fk") or payload.get("fk_metadata")
     try:
         fk = int(str(fk).strip()) if fk is not None else None
@@ -81,8 +84,8 @@ def ticket_status(request):
     except Exception:
         fk = None
 
-    draw_snap_locked = _has_active_gis_data_for_fk(fk)
-    tekuis_action_locked = _has_active_tekuis(fk) if fk is not None else False
+    draw_snap_locked = _has_active_gis_data_for_fk(fk) if include_locks else False
+    tekuis_action_locked = _has_active_tekuis(fk) if (include_locks and fk is not None) else False
 
     return JsonResponse(
         {

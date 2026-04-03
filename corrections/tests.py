@@ -259,6 +259,22 @@ class TicketStatusViewTests(SimpleTestCase):
         data = json.loads(response.content)
         self.assertFalse(data["draw_snap_locked"])
 
+    @patch("corrections.views.features.info._has_active_tekuis")
+    @patch("corrections.views.features.info.connection.cursor")
+    @patch("corrections.views.features.info._is_edit_allowed_for_status", return_value=True)
+    @patch("corrections.views.features.info._redeem_ticket_payload")
+    def test_ticket_status_skips_lock_checks_when_include_locks_disabled(self, mock_payload, _mock_allow, mock_cursor, mock_has_tekuis):
+        mock_payload.return_value = {"id": "30", "status": {"value": 15}}
+
+        response = ticket_status(self.factory.get("/api/ticket-status/", {"ticket": "abc", "include_locks": "0"}))
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertFalse(data["draw_snap_locked"])
+        self.assertFalse(data["tekuis_action_locked"])
+        mock_cursor.assert_not_called()
+        mock_has_tekuis.assert_not_called()
+
 
 class Status15ApiGuardTests(SimpleTestCase):
     def setUp(self):
