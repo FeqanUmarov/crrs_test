@@ -270,6 +270,8 @@
   function ensureOriginalSnapshot(source) {
     const cached = window.tekuisCache?.getOriginalTekuis?.();
     if (cached && cached.type === "FeatureCollection") return;
+    const hasDirtyTekuisCache = window.tekuisCache?.hasTekuisCache?.();
+    if (hasDirtyTekuisCache) return;
 
     const fc = buildFeatureCollection(source);
     if (!fc || fc.type !== "FeatureCollection") return;
@@ -609,6 +611,9 @@
         }
         Swal.fire("Xəta", e.message || "Şəbəkə xətası baş verdi.", "error");
       } finally {
+        if (!saveCompleted && !wasLockedBeforeSave) {
+          window.setTekuisActionLocked?.(false);
+        }
         if (!saveCompleted && !wasLockedBeforeSave) {
           window.setTekuisActionLocked?.(false);
         }
