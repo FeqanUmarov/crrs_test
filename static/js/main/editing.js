@@ -415,6 +415,208 @@ window.MainEditing.init = function initEditing(state = {}) {
       : 'Poliqonu kəsmək üçün əvvəlcə tək bir parsel seçin';
   }
 
+  function updateMergeButtonState() {
+    if (!rtEditUI?.btnMerge) return;
+    const canMerge = getSelectedPolygons().length >= 2;
+    rtEditUI.btnMerge.disabled = false;
+    rtEditUI.btnMerge.classList.toggle('inactive', !canMerge);
+    rtEditUI.btnMerge.title = canMerge
+      ? 'Seçilən poliqonları birləşdir'
+      : 'Birləşdirmək üçün ən azı 2 poliqon seçin';
+  }
+
+  function getFeatureDisplayId(feature) {
+    const props = feature?.getProperties?.() || {};
+    const candidates = ['id', 'ID', 'objectid', 'OBJECTID', 'parcel_id', 'PARCEL_ID', 'fid', 'FID'];
+    for (const key of candidates) {
+      if (props[key] !== undefined && props[key] !== null && props[key] !== '') return props[key];
+    }
+    return feature?.getId?.() ?? '-';
+  }
+
+  function getFeatureCategory(feature) {
+    const props = feature?.getProperties?.() || {};
+    const candidates = [
+      'LAND_CATEGORY_ENUM',
+      'land_category_enum',
+      'category',
+      'CATEGORY',
+      'kateqoriya',
+      'KATEQORIYA'
+    ];
+    for (const key of candidates) {
+      if (props[key] !== undefined && props[key] !== null && props[key] !== '') return props[key];
+    }
+    return '-';
+  }
+
+  function ensureMergeModal() {
+    if (window.__rtMergeModal) return window.__rtMergeModal;
+    const overlay = document.createElement('div');
+    overlay.className = 'rt-merge-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'rt-merge-modal';
+    modal.innerHTML = `
+      <div class="rt-merge-head">
+        <strong>Poliqon birləşdirmə</strong>
+        <button type="button" class="rt-merge-close" aria-label="Bağla">✕</button>
+      </div>
+      <div class="rt-merge-body">
+        <div class="rt-merge-hint">Atributların saxlanacağı poliqonu seçin.</div>
+        <div class="rt-merge-table-wrap">
+          <table class="rt-merge-table">
+            <thead><tr><th>ID</th><th>Kateqoriya</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rt-merge-foot">
+        <button type="button" class="btn btn--ghost rt-merge-cancel">Ləğv et</button>
+        <button type="button" class="btn btn--primary rt-merge-apply">Tətbiq et</button>
+      </div>`;
+    document.body.append(overlay, modal);
+
+    const close = () => {
+      overlay.style.display = 'none';
+      modal.style.display = 'none';
+      modal.classList.remove('rt-merge-open');
+      modal.dataset.baseIndex = '';
+      modal.querySelector('tbody').innerHTML = '';
+    };
+    overlay.addEventListener('click', close);
+    modal.querySelector('.rt-merge-close').addEventListener('click', close);
+    modal.querySelector('.rt-merge-cancel').addEventListener('click', close);
+
+    const head = modal.querySelector('.rt-merge-head');
+    let dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
+    head.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return;
+      dragging = true;
+      const rect = modal.getBoundingClientRect();
+      modal.style.left = `${rect.left}px`;
+      modal.style.top = `${rect.top}px`;
+      modal.style.transform = 'none';
+      sx = e.clientX; sy = e.clientY; sl = rect.left; st = rect.top;
+      document.body.style.userSelect = 'none';
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const ww = window.innerWidth, wh = window.innerHeight;
+      const nw = modal.offsetWidth, nh = modal.offsetHeight;
+      const L = Math.max(8, Math.min(ww - nw - 8, sl + (e.clientX - sx)));
+      const T = Math.max(8, Math.min(wh - nh - 8, st + (e.clientY - sy)));
+      modal.style.left = `${L}px`;
+      modal.style.top = `${T}px`;
+    });
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = '';
+    });
+
+    window.__rtMergeModal = { overlay, modal, close };
+    return window.__rtMergeModal;
+  }
+
+  function getMergeSelection() {
+    return getSelectedPolygons().filter((feature) => {
+      const src = resolveFeatureSource(feature);
+      return !!src && (src === editSource || isTekuisSource(src));
+    });
+  }
+
+  async function mergePolygonsByBase(selected, baseFeature) {
+    const source = resolveFeatureSource(baseFeature);
+    if (!source) return { ok: false, message: 'Seçilən obyektin mənbəyi tapılmadı.' };
+    if (!selected.every((f) => resolveFeatureSource(f) === source)) {
+      return { ok: false, message: 'Birləşdirmə üçün poliqonlar eyni laydan seçilməlidir.' };
+    }
+    const turf = await ensureTurf();
+    const gjFmt = new ol.format.GeoJSON();
+    const toGJ = (f) => gjFmt.writeFeatureObject(f, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+
+    let merged = toGJ(selected[0]);
+    for (let i = 1; i < selected.length; i += 1) {
+      merged = turf.union(merged, toGJ(selected[i]));
+      if (!merged) return { ok: false, message: 'Birləşdirmə nəticəsi alına bilmədi.' };
+      const typ = merged.geometry?.type;
+      if (typ === 'MultiPolygon') {
+        return { ok: false, message: 'Poliqonlar yan-yana olmadıqda birləşdirmə aparıla bilməz.' };
+      }
+    }
+    if (merged.geometry?.type !== 'Polygon') {
+      return { ok: false, message: 'Yalnız poliqon həndəsələri birləşdirilə bilər.' };
+    }
+
+    const mergedFeature = gjFmt.readFeature(merged, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+    mergedFeature.setProperties(cloneFeatureAttributes(baseFeature));
+    const wasInAny = selected.some((f) => selectAny.getFeatures().getArray().includes(f));
+    const wasInSelect = selected.some((f) => selectInteraction.getFeatures().getArray().includes(f));
+    selected.forEach((f) => {
+      try { source.removeFeature(f); } catch {}
+      try { selectAny.getFeatures().remove(f); } catch {}
+      try { selectInteraction.getFeatures().remove(f); } catch {}
+    });
+    source.addFeature(mergedFeature);
+    if (wasInAny) selectAny.getFeatures().push(mergedFeature);
+    if (wasInSelect) selectInteraction.getFeatures().push(mergedFeature);
+    markTekuisFeaturesModified([...selected, mergedFeature]);
+    try { window.saveTekuisToLS?.(); } catch {}
+    updateDeleteButtonState();
+    updateAllSaveButtons();
+    return { ok: true };
+  }
+
+  async function openMergeModal() {
+    const selected = getMergeSelection();
+    if (selected.length < 2) {
+      Swal.fire('Diqqət', 'Ən azı iki poliqon seçməlisiniz', 'warning');
+      return;
+    }
+    const { overlay, modal, close } = ensureMergeModal();
+    const tbody = modal.querySelector('tbody');
+    tbody.innerHTML = '';
+    modal.dataset.baseIndex = '0';
+
+    selected.forEach((feature, index) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${getFeatureDisplayId(feature)}</td><td>${getFeatureCategory(feature)}</td>`;
+      if (index === 0) row.classList.add('selected');
+      row.addEventListener('click', () => {
+        modal.dataset.baseIndex = String(index);
+        tbody.querySelectorAll('tr').forEach((el) => el.classList.remove('selected'));
+        row.classList.add('selected');
+      });
+      tbody.appendChild(row);
+    });
+
+    const applyBtn = modal.querySelector('.rt-merge-apply');
+    applyBtn.onclick = async () => {
+      const idx = Number.parseInt(modal.dataset.baseIndex || '0', 10);
+      const baseFeature = selected[idx] || selected[0];
+      const result = await mergePolygonsByBase(selected, baseFeature);
+      if (!result.ok) {
+        Swal.fire('Diqqət', result.message || 'Birləşdirmə alınmadı.', 'warning');
+        return;
+      }
+      close();
+      Swal.fire('Uğurlu', 'Poliqonlar birləşdirildi.', 'success');
+    };
+
+    overlay.style.display = 'block';
+    modal.style.display = 'flex';
+    modal.style.left = '50%';
+    modal.style.top = '84px';
+    modal.style.transform = 'translateX(-50%)';
+    modal.classList.add('rt-merge-open');
+  }
+
   function normalizePolygonFeatures(polygonFeature) {
     const geom = polygonFeature?.geometry;
     if (!geom) return [];
@@ -1052,6 +1254,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       rtEditUI.btnSave.disabled = !hasPoly;
     }
     updateCutButtonState();
+    updateMergeButtonState();
   }
 
   const wktWriter = new ol.format.WKT();
@@ -1258,6 +1461,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     btnSnap:   null,
     btnDelete: null,
     btnCut: null,
+    btnMerge: null,
     btnExplode: null,
     btnSave:   null
   };
@@ -1339,6 +1543,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     rtEditUI.btnDelete = mkBtn('rtDeleteSel', 'Seçiləni sil',                 'deleteSel', 'delete');
     rtEditUI.btnExplode = mkBtn('rtExplode',  'Multipart poliqonu parçala',  'explode');
     rtEditUI.btnCut = mkBtn('rtCutPolygon', 'Poliqonu xətt ilə kəs', 'cutpolygon', 'cut');
+    rtEditUI.btnMerge = mkBtn('rtMergePolygon', 'Poliqonları birləşdir', 'merge');
     rtEditUI.btnSave   = mkBtn('rtSave',      'Yadda saxla',                  'save');
     rtEditUI.btnErase  = mkBtn('rtErase',     'Tədqiqat daxilini kəs & sil',  'erase');
 
@@ -1436,6 +1641,10 @@ window.MainEditing.init = function initEditing(state = {}) {
       if (!ensureEditAllowed()) return;
       toggleCutMode();
     });
+    rtEditUI.btnMerge.addEventListener('click', async () => {
+      if (!ensureEditAllowed()) return;
+      await openMergeModal();
+    });
 
 
 // 6) Save düyməsi
@@ -1454,6 +1663,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     rtEditUI.btnDelete.disabled = (selectInteraction.getFeatures().getLength() === 0);
     rtEditUI.btnSave.disabled   = !hasAtLeastOnePolygonSelected();
     updateCutButtonState();
+    updateMergeButtonState();
     applyRightToolLocks();
   }
 
@@ -1498,6 +1708,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       rtEditUI.btnDelete.disabled = (deletableCount === 0);
     }
     updateCutButtonState();
+    updateMergeButtonState();
   }
 
 

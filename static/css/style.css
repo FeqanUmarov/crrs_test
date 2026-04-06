@@ -1210,3 +1210,34 @@ body, button, input, select, textarea {
 @media (max-width:480px){
   .toast-stack{ right:10px; left:10px; max-width:unset; }
 }
+
+.rt-merge-overlay{
+  position:fixed; inset:0; z-index:1200;
+  background:rgba(15, 23, 42, .35);
+  display:none;
+}
+.rt-merge-modal{
+  position:fixed; z-index:1201; display:none; flex-direction:column;
+  width:min(560px, calc(100vw - 24px));
+  background:#fff; border:1px solid rgba(148,163,184,.45); border-radius:14px;
+  box-shadow:0 22px 52px rgba(15,23,42,.2);
+}
+.rt-merge-head{
+  padding:12px 14px; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid #e2e8f0; cursor:move;
+}
+.rt-merge-close{
+  border:0; background:transparent; cursor:pointer; color:#475569; font-size:16px;
+}
+.rt-merge-body{ padding:12px 14px; display:grid; gap:10px; }
+.rt-merge-hint{ color:#475569; font-size:13px; }
+.rt-merge-table-wrap{ max-height:280px; overflow:auto; border:1px solid #e2e8f0; border-radius:10px; }
+.rt-merge-table{ width:100%; border-collapse:collapse; }
+.rt-merge-table th,.rt-merge-table td{ padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:left; font-size:13px; }
+.rt-merge-table tbody tr{ cursor:pointer; }
+.rt-merge-table tbody tr:hover{ background:#f8fafc; }
+.rt-merge-table tbody tr.selected{ background:#eef2ff; }
+.rt-merge-foot{
+  display:flex; justify-content:flex-end; gap:8px;
+  border-top:1px solid #e2e8f0; padding:10px 14px;
+}

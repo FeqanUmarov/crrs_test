@@ -85,6 +85,7 @@ const TEKUIS_LOCKED_BUTTON_IDS = [
   'btnEraseTekuisInsideTicket',
   'rtExplode',
   'rtCutPolygon',
+  'rtMergePolygon',
   'rtErase',
   'rtEditVertices'
 ];
