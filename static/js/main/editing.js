@@ -453,23 +453,41 @@ window.MainEditing.init = function initEditing(state = {}) {
   const mergePreviewSource = new ol.source.Vector();
   const mergePulseCycleMs = 2200;
   let mergePulseTimer = null;
+  function interpolateChannel(from, to, ratio) {
+    return Math.round(from + ((to - from) * ratio));
+  }
+  function rgba(color, alpha) {
+    return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha.toFixed(3)})`;
+  }
   const mergePreviewLayer = new ol.layer.Vector({
     source: mergePreviewSource,
     style: () => {
       const cycle = (Date.now() % mergePulseCycleMs) / mergePulseCycleMs;
       const pulse = 0.5 + 0.5 * Math.sin(cycle * Math.PI * 2);
-      const fillAlpha = 0.18 + (pulse * 0.27);
-      const borderAlpha = 0.4 + (pulse * 0.55);
-      const borderWidth = 3 + (pulse * 4.2);
+      const softYellow = [254, 240, 138];
+      const deepYellow = [234, 179, 8];
+      const fillColor = [
+        interpolateChannel(softYellow[0], deepYellow[0], pulse),
+        interpolateChannel(softYellow[1], deepYellow[1], pulse),
+        interpolateChannel(softYellow[2], deepYellow[2], pulse)
+      ];
+      const borderColor = [
+        interpolateChannel(245, 158, pulse),
+        interpolateChannel(158, 120, pulse),
+        interpolateChannel(11, 35, pulse)
+      ];
+      const fillAlpha = 0.42 + (pulse * 0.30);
+      const borderAlpha = 0.68 + (pulse * 0.28);
+      const borderWidth = 2.8 + (pulse * 3.9);
       const dashOffset = cycle * 30;
       return ([
         new ol.style.Style({
-          fill: new ol.style.Fill({ color: `rgba(255, 214, 10, ${fillAlpha.toFixed(3)})` }),
-          stroke: new ol.style.Stroke({ color: 'rgba(245, 158, 11, 0.98)', width: borderWidth + 1.2 })
+          fill: new ol.style.Fill({ color: rgba(fillColor, fillAlpha) }),
+          stroke: new ol.style.Stroke({ color: rgba(borderColor, 0.98), width: borderWidth + 1.2 })
         }),
         new ol.style.Style({
           stroke: new ol.style.Stroke({
-            color: `rgba(234, 179, 8, ${borderAlpha.toFixed(3)})`,
+            color: rgba(deepYellow, borderAlpha),
             width: borderWidth,
             lineDash: [16, 10],
             lineDashOffset: dashOffset
