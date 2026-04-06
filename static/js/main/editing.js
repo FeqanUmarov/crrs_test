@@ -458,24 +458,25 @@ window.MainEditing.init = function initEditing(state = {}) {
     style: () => {
       const cycle = (Date.now() % mergePulseCycleMs) / mergePulseCycleMs;
       const pulse = 0.5 + 0.5 * Math.sin(cycle * Math.PI * 2);
-      const borderAlpha = 0.25 + (pulse * 0.7);
-      const borderWidth = 4 + (pulse * 3);
-      const dashOffset = cycle * 26;
+      const fillAlpha = 0.18 + (pulse * 0.27);
+      const borderAlpha = 0.4 + (pulse * 0.55);
+      const borderWidth = 3 + (pulse * 4.2);
+      const dashOffset = cycle * 30;
       return ([
         new ol.style.Style({
-          fill: new ol.style.Fill({ color: 'rgba(34, 197, 94, 0.20)' }),
-          stroke: new ol.style.Stroke({ color: 'rgba(22, 163, 74, 0.95)', width: 5 })
+          fill: new ol.style.Fill({ color: `rgba(255, 214, 10, ${fillAlpha.toFixed(3)})` }),
+          stroke: new ol.style.Stroke({ color: 'rgba(245, 158, 11, 0.98)', width: borderWidth + 1.2 })
         }),
         new ol.style.Style({
           stroke: new ol.style.Stroke({
-            color: `rgba(14, 116, 144, ${borderAlpha.toFixed(3)})`,
+            color: `rgba(234, 179, 8, ${borderAlpha.toFixed(3)})`,
             width: borderWidth,
-            lineDash: [14, 10],
+            lineDash: [16, 10],
             lineDashOffset: dashOffset
           })
         }),
         new ol.style.Style({
-          stroke: new ol.style.Stroke({ color: '#ffffff', width: 1.8 })
+          stroke: new ol.style.Stroke({ color: 'rgba(120, 53, 15, 0.95)', width: 1.6 })
         })
       ]);
     }
@@ -509,7 +510,11 @@ window.MainEditing.init = function initEditing(state = {}) {
     if (animateView) {
       const extent = clone.getGeometry?.()?.getExtent?.();
       if (extent && extent.every((n) => Number.isFinite(n))) {
-        map.getView().fit(extent, { padding: [120, 120, 120, 120], duration: 450, maxZoom: 19 });
+        map.getView().fit(extent, {
+          padding: [110, 110, 110, 110],
+          duration: 550,
+          maxZoom: 20
+        });
       }
     }
   }
