@@ -451,28 +451,51 @@ window.MainEditing.init = function initEditing(state = {}) {
   }
 
   const mergePreviewSource = new ol.source.Vector();
+  const mergePulseCycleMs = 2200;
+  let mergePulseTimer = null;
   const mergePreviewLayer = new ol.layer.Vector({
     source: mergePreviewSource,
-    style: () => ([
-      new ol.style.Style({
-        fill: new ol.style.Fill({ color: 'rgba(56, 189, 248, 0.22)' }),
-        stroke: new ol.style.Stroke({ color: 'rgba(14, 165, 233, 0.95)', width: 8 })
-      }),
-      new ol.style.Style({
-        stroke: new ol.style.Stroke({
-          color: '#ffffff',
-          width: 2.5,
-          lineDash: [12, 7],
-          lineDashOffset: 0
+    style: () => {
+      const cycle = (Date.now() % mergePulseCycleMs) / mergePulseCycleMs;
+      const pulse = 0.5 + 0.5 * Math.sin(cycle * Math.PI * 2);
+      const borderAlpha = 0.25 + (pulse * 0.7);
+      const borderWidth = 4 + (pulse * 3);
+      const dashOffset = cycle * 26;
+      return ([
+        new ol.style.Style({
+          fill: new ol.style.Fill({ color: 'rgba(34, 197, 94, 0.20)' }),
+          stroke: new ol.style.Stroke({ color: 'rgba(22, 163, 74, 0.95)', width: 5 })
+        }),
+        new ol.style.Style({
+          stroke: new ol.style.Stroke({
+            color: `rgba(14, 116, 144, ${borderAlpha.toFixed(3)})`,
+            width: borderWidth,
+            lineDash: [14, 10],
+            lineDashOffset: dashOffset
+          })
+        }),
+        new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: '#ffffff', width: 1.8 })
         })
-      }),
-      new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: '#0ea5e9', width: 3.2 })
-      })
-    ])
+      ]);
+    }
   });
   mergePreviewLayer.set('selectIgnore', true);
   map.addLayer(mergePreviewLayer);
+
+  function startMergePreviewPulse() {
+    if (mergePulseTimer !== null) return;
+    mergePulseTimer = window.setInterval(() => {
+      if (mergePreviewSource.getFeatures().length === 0) return;
+      map.render();
+    }, 120);
+  }
+
+  function stopMergePreviewPulse() {
+    if (mergePulseTimer === null) return;
+    window.clearInterval(mergePulseTimer);
+    mergePulseTimer = null;
+  }
 
   function clearMergePreview() {
     mergePreviewSource.clear();
@@ -595,6 +618,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       modal.classList.remove('rt-merge-open');
       modal.dataset.baseIndex = '';
       modal.querySelector('tbody').innerHTML = '';
+      stopMergePreviewPulse();
       clearMergePreview();
     };
     const closeAttr = () => {
@@ -752,6 +776,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     modal.style.top = '84px';
     modal.style.transform = 'translateX(-50%)';
     modal.classList.add('rt-merge-open');
+    startMergePreviewPulse();
     previewMergeFeature(selected[0], { animateView: false });
   }
 
