@@ -499,6 +499,31 @@ window.MainEditing.init = function initEditing(state = {}) {
       .sort(([a], [b]) => a.localeCompare(b, 'az'));
     return entries;
   }
+  const ATTRIBUTE_LABELS = {
+    LAND_CATEGORY2ENUM: 'Uqodiya',
+    LAND_CATEGORY4ENUM: 'Alt uqodiya',
+    LAND_CATEGORY_ENUM: 'Kateqoriya',
+    LAND_CATEGORY3ENUM: 'Alt kateqoriya',
+    NAME: 'Qeyd',
+    OWNER_TYPE_ENUM: 'Mülkiyyət',
+    SUVARILMA_NOVU_ENUM: 'Suvarma',
+    EMLAK_NOVU_ENUM: 'Emlak növü',
+    OLD_LAND_CATEGORY2ENUM: 'İslahat uqodiyası',
+    TERRITORY_NAME: 'Ünvan',
+    RAYON_ADI: 'Rayonun adı',
+    IED_ADI: 'İƏD adı',
+    BELEDIYE_ADI: 'Bələdiyyə adı',
+    AREA_HA: 'Sahə (hektarla)',
+    CADASTER_NUMBER: 'Kadastr nömrəsi',
+    KATEQORIYA: 'Kateqoriya',
+    UQODIYA: 'Uqodiyası'
+  };
+  const ATTRIBUTE_LABELS_UPPER = Object.fromEntries(
+    Object.entries(ATTRIBUTE_LABELS).map(([key, value]) => [String(key).toUpperCase(), value])
+  );
+  function getAttributeDisplayLabel(rawKey) {
+    return ATTRIBUTE_LABELS_UPPER[String(rawKey).toUpperCase()] || rawKey;
+  }
 
   function ensureMergeModal() {
     if (window.__rtMergeModal) return window.__rtMergeModal;
@@ -555,7 +580,7 @@ window.MainEditing.init = function initEditing(state = {}) {
         <div class="rt-attr-grid">
           ${attrs.map(([k, v]) => `
             <div class="rt-attr-row">
-              <div class="rt-attr-key">${k}</div>
+              <div class="rt-attr-key">${getAttributeDisplayLabel(k)}</div>
               <div class="rt-attr-val">${v === null || v === undefined || v === '' ? '—' : String(v)}</div>
             </div>
           `).join('')}
