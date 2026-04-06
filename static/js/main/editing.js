@@ -450,6 +450,56 @@ window.MainEditing.init = function initEditing(state = {}) {
     return '-';
   }
 
+  const mergePreviewSource = new ol.source.Vector();
+  const mergePreviewLayer = new ol.layer.Vector({
+    source: mergePreviewSource,
+    style: () => ([
+      new ol.style.Style({
+        fill: new ol.style.Fill({ color: 'rgba(56, 189, 248, 0.22)' }),
+        stroke: new ol.style.Stroke({ color: 'rgba(14, 165, 233, 0.95)', width: 8 })
+      }),
+      new ol.style.Style({
+        stroke: new ol.style.Stroke({
+          color: '#ffffff',
+          width: 2.5,
+          lineDash: [12, 7],
+          lineDashOffset: 0
+        })
+      }),
+      new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: '#0ea5e9', width: 3.2 })
+      })
+    ])
+  });
+  mergePreviewLayer.set('selectIgnore', true);
+  map.addLayer(mergePreviewLayer);
+
+  function clearMergePreview() {
+    mergePreviewSource.clear();
+  }
+
+  function previewMergeFeature(feature, { animateView = false } = {}) {
+    if (!feature) return;
+    clearMergePreview();
+    const clone = feature.clone();
+    mergePreviewSource.addFeature(clone);
+    if (animateView) {
+      const extent = clone.getGeometry?.()?.getExtent?.();
+      if (extent && extent.every((n) => Number.isFinite(n))) {
+        map.getView().fit(extent, { padding: [120, 120, 120, 120], duration: 450, maxZoom: 19 });
+      }
+    }
+  }
+
+  function getAllFeatureAttributes(feature) {
+    const props = { ...(feature?.getProperties?.() || {}) };
+    delete props.geometry;
+    const entries = Object.entries(props)
+      .filter(([k]) => k !== '__ownerSource')
+      .sort(([a], [b]) => a.localeCompare(b, 'az'));
+    return entries;
+  }
+
   function ensureMergeModal() {
     if (window.__rtMergeModal) return window.__rtMergeModal;
     const overlay = document.createElement('div');
@@ -458,34 +508,77 @@ window.MainEditing.init = function initEditing(state = {}) {
     modal.className = 'rt-merge-modal';
     modal.innerHTML = `
       <div class="rt-merge-head">
-        <strong>Poliqon birləşdirmə</strong>
-        <button type="button" class="rt-merge-close" aria-label="Bağla">✕</button>
+        <h3 class="rt-merge-title">Poliqon birləşdirmə</h3>
+        <button type="button" class="rt-merge-close" aria-label="Bağla">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <div class="rt-merge-body">
         <div class="rt-merge-hint">Atributların saxlanacağı poliqonu seçin.</div>
         <div class="rt-merge-table-wrap">
           <table class="rt-merge-table">
-            <thead><tr><th>ID</th><th>Kateqoriya</th></tr></thead>
+            <thead><tr><th>ID</th><th>Kateqoriya</th><th class="rt-merge-eye-col">Detallar</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
       <div class="rt-merge-foot">
+        <div class="rt-merge-foot-note">Sətrə klik: xəritədə poliqonu vurğula</div>
         <button type="button" class="btn btn--ghost rt-merge-cancel">Ləğv et</button>
         <button type="button" class="btn btn--primary rt-merge-apply">Tətbiq et</button>
       </div>`;
-    document.body.append(overlay, modal);
+    const attrModal = document.createElement('div');
+    attrModal.className = 'rt-attr-modal';
+    attrModal.innerHTML = `
+      <div class="rt-merge-head">
+        <h3 class="rt-merge-title">Obyekt atributları</h3>
+        <button type="button" class="rt-merge-close rt-attr-close" aria-label="Bağla">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="rt-merge-body rt-attr-body"></div>
+      <div class="rt-merge-foot">
+        <div class="rt-merge-foot-note">Bütün atributlar burada göstərilir</div>
+        <button type="button" class="btn btn--primary rt-attr-close">Bağla</button>
+      </div>
+    `;
+    document.body.append(overlay, modal, attrModal);
+
+    const renderAttrModal = (feature) => {
+      const body = attrModal.querySelector('.rt-attr-body');
+      const attrs = getAllFeatureAttributes(feature);
+      if (!attrs.length) {
+        body.innerHTML = '<div class="rt-attr-empty">Atribut məlumatı tapılmadı.</div>';
+        return;
+      }
+      body.innerHTML = `
+        <div class="rt-attr-grid">
+          ${attrs.map(([k, v]) => `
+            <div class="rt-attr-row">
+              <div class="rt-attr-key">${k}</div>
+              <div class="rt-attr-val">${v === null || v === undefined || v === '' ? '—' : String(v)}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    };
 
     const close = () => {
       overlay.style.display = 'none';
       modal.style.display = 'none';
+      attrModal.style.display = 'none';
       modal.classList.remove('rt-merge-open');
       modal.dataset.baseIndex = '';
       modal.querySelector('tbody').innerHTML = '';
+      clearMergePreview();
+    };
+    const closeAttr = () => {
+      attrModal.style.display = 'none';
     };
     overlay.addEventListener('click', close);
     modal.querySelector('.rt-merge-close').addEventListener('click', close);
     modal.querySelector('.rt-merge-cancel').addEventListener('click', close);
+    attrModal.querySelectorAll('.rt-attr-close').forEach((el) => el.addEventListener('click', closeAttr));
 
     const head = modal.querySelector('.rt-merge-head');
     let dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
@@ -514,7 +607,7 @@ window.MainEditing.init = function initEditing(state = {}) {
       document.body.style.userSelect = '';
     });
 
-    window.__rtMergeModal = { overlay, modal, close };
+    window.__rtMergeModal = { overlay, modal, attrModal, close, renderAttrModal };
     return window.__rtMergeModal;
   }
 
@@ -579,19 +672,38 @@ window.MainEditing.init = function initEditing(state = {}) {
       Swal.fire('Diqqət', 'Ən azı iki poliqon seçməlisiniz', 'warning');
       return;
     }
-    const { overlay, modal, close } = ensureMergeModal();
+    const { overlay, modal, attrModal, close, renderAttrModal } = ensureMergeModal();
     const tbody = modal.querySelector('tbody');
     tbody.innerHTML = '';
     modal.dataset.baseIndex = '0';
 
     selected.forEach((feature, index) => {
       const row = document.createElement('tr');
-      row.innerHTML = `<td>${getFeatureDisplayId(feature)}</td><td>${getFeatureCategory(feature)}</td>`;
+      row.innerHTML = `
+        <td>${getFeatureDisplayId(feature)}</td>
+        <td>${getFeatureCategory(feature)}</td>
+        <td class="rt-merge-eye-col">
+          <button type="button" class="rt-row-eye" aria-label="Atributlara bax">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path stroke-width="1.8" d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6-10-6-10-6z"></path>
+              <circle cx="12" cy="12" r="2.9" stroke-width="1.8"></circle>
+            </svg>
+          </button>
+        </td>`;
       if (index === 0) row.classList.add('selected');
       row.addEventListener('click', () => {
         modal.dataset.baseIndex = String(index);
         tbody.querySelectorAll('tr').forEach((el) => el.classList.remove('selected'));
         row.classList.add('selected');
+        previewMergeFeature(feature, { animateView: true });
+      });
+      row.querySelector('.rt-row-eye')?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        renderAttrModal(feature);
+        attrModal.style.display = 'flex';
+        attrModal.style.left = '50%';
+        attrModal.style.top = '104px';
+        attrModal.style.transform = 'translateX(-50%)';
       });
       tbody.appendChild(row);
     });
@@ -615,6 +727,7 @@ window.MainEditing.init = function initEditing(state = {}) {
     modal.style.top = '84px';
     modal.style.transform = 'translateX(-50%)';
     modal.classList.add('rt-merge-open');
+    previewMergeFeature(selected[0], { animateView: false });
   }
 
   function normalizePolygonFeatures(polygonFeature) {
