@@ -32,13 +32,11 @@ window.MainEditing.init = function initEditing(state = {}) {
     })
   });
   map.addLayer(editLayer);
+  const mergePulseCycleMs = 2200;
 
   const selectInteraction = new ol.interaction.Select({
     layers: (layer) => layer === editLayer,
-    style: new ol.style.Style({
-      fill:   new ol.style.Fill({ color: 'rgba(220,38,38,0.15)' }),
-      stroke: new ol.style.Stroke({ color: '#dc2626', width: 3 })
-    })
+    style: redSelectStyleFn
   });
   map.addInteraction(selectInteraction);
 
@@ -56,7 +54,78 @@ window.MainEditing.init = function initEditing(state = {}) {
   });
   map.addInteraction(modifyInteraction);
 
+  const mergeModalHighlightState = {
+    isActive: false,
+    previewFeature: null
+  };
+  function buildMergeModalYellowStyle(feature){
+    const cycle = (Date.now() % mergePulseCycleMs) / mergePulseCycleMs;
+    const pulse = 0.5 + 0.5 * Math.sin(cycle * Math.PI * 2);
+    const softYellow = [254, 240, 138];
+    const deepYellow = [234, 179, 8];
+    const fillColor = [
+      interpolateChannel(softYellow[0], deepYellow[0], pulse),
+      interpolateChannel(softYellow[1], deepYellow[1], pulse),
+      interpolateChannel(softYellow[2], deepYellow[2], pulse)
+    ];
+    const borderColor = [
+      interpolateChannel(245, 158, pulse),
+      interpolateChannel(158, 120, pulse),
+      interpolateChannel(11, 35, pulse)
+    ];
+    const fillAlpha = 0.30 + (pulse * 0.35);
+    const borderAlpha = 0.72 + (pulse * 0.24);
+    const borderWidth = 2.8 + (pulse * 2.8);
+    const t = feature.getGeometry().getType();
+    if (t === 'Point' || t === 'MultiPoint'){
+      return new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: 6.5 + (pulse * 1.5),
+          fill: new ol.style.Fill({ color: rgba(fillColor, Math.min(0.95, fillAlpha + 0.25)) }),
+          stroke: new ol.style.Stroke({ color: rgba(borderColor, borderAlpha), width: 2.4 + (pulse * 1.2) })
+        })
+      });
+    } else if (t === 'LineString' || t === 'MultiLineString'){
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({
+          color: rgba(borderColor, borderAlpha),
+          width: borderWidth
+        })
+      });
+    }
+    return new ol.style.Style({
+      fill: new ol.style.Fill({ color: rgba(fillColor, fillAlpha) }),
+      stroke: new ol.style.Stroke({
+        color: rgba(borderColor, borderAlpha),
+        width: borderWidth
+      })
+    });
+  }
+
   function redSelectStyleFn(feature){
+    if (mergeModalHighlightState.isActive) {
+      if (mergeModalHighlightState.previewFeature === feature) {
+        return buildMergeModalYellowStyle(feature);
+      }
+      const tMuted = feature.getGeometry().getType();
+      if (tMuted === 'Point' || tMuted === 'MultiPoint'){
+        return new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 5.5,
+            fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0.55)' }),
+            stroke: new ol.style.Stroke({ color: 'rgba(180, 83, 9, 0.95)', width: 1.5 })
+          })
+        });
+      } else if (tMuted === 'LineString' || tMuted === 'MultiLineString'){
+        return new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'rgba(180, 83, 9, 0.95)', width: 2.8 })
+        });
+      }
+      return new ol.style.Style({
+        fill: new ol.style.Fill({ color: 'rgba(245, 158, 11, 0.20)' }),
+        stroke: new ol.style.Stroke({ color: 'rgba(180, 83, 9, 0.95)', width: 2.8 })
+      });
+    }
     const t = feature.getGeometry().getType();
     if (t === 'Point' || t === 'MultiPoint'){
       return new ol.style.Style({
@@ -451,7 +520,6 @@ window.MainEditing.init = function initEditing(state = {}) {
   }
 
   const mergePreviewSource = new ol.source.Vector();
-  const mergePulseCycleMs = 2200;
   let mergePulseTimer = null;
   function interpolateChannel(from, to, ratio) {
     return Math.round(from + ((to - from) * ratio));
@@ -518,11 +586,13 @@ window.MainEditing.init = function initEditing(state = {}) {
 
   function clearMergePreview() {
     mergePreviewSource.clear();
+    mergeModalHighlightState.previewFeature = null;
   }
 
   function previewMergeFeature(feature, { animateView = false } = {}) {
     if (!feature) return;
     clearMergePreview();
+    mergeModalHighlightState.previewFeature = feature;
     const clone = feature.clone();
     mergePreviewSource.addFeature(clone);
     if (animateView) {
@@ -641,8 +711,11 @@ window.MainEditing.init = function initEditing(state = {}) {
       modal.classList.remove('rt-merge-open');
       modal.dataset.baseIndex = '';
       modal.querySelector('tbody').innerHTML = '';
+      mergeModalHighlightState.isActive = false;
+      mergeModalHighlightState.previewFeature = null;
       stopMergePreviewPulse();
       clearMergePreview();
+      map.render();
     };
     const closeAttr = () => {
       attrModal.style.display = 'none';
@@ -799,8 +872,10 @@ window.MainEditing.init = function initEditing(state = {}) {
     modal.style.top = '84px';
     modal.style.transform = 'translateX(-50%)';
     modal.classList.add('rt-merge-open');
+    mergeModalHighlightState.isActive = true;
     startMergePreviewPulse();
     previewMergeFeature(selected[0], { animateView: false });
+    map.render();
   }
 
   function normalizePolygonFeatures(polygonFeature) {
